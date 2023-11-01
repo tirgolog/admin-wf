@@ -1,0 +1,33 @@
+{
+  "name": "soketserver",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js",
+    "start:dev": "nodemon server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "MD5": "^1.3.0",
+    "aws-sdk": "^2.344.0",
+    "body-parser": "^1.18.3",
+    "cors": "^2.8.4",
+    "crypto": "^1.0.1",
+    "dadata": "0.0.3",
+    "express": "^4.16.3",
+    "firebase-admin": "^6.0.0",
+    "fluent-ffmpeg": "^2.1.2",
+    "jsonwebtoken": "^8.3.0",
+    "multer": "^1.3.1",
+    "mysql": "^2.14.1",
+    "mysql2": "^1.6.1",
+    "request": "^2.88.0",
+    "request-promise": "^4.2.2",
+    "sharp": "^0.31.2",
+    "socket.io": "^2.1.1",
+    "socketio-jwt": "^4.5.0"
+  }
+}
