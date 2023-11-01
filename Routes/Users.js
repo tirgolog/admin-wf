@@ -12,7 +12,7 @@ const
     sharp = require('sharp'),
     sendpulse = require("sendpulse-api"),
     crypto = require('crypto'),
-    upload = multer({ dest: '/home/hcm/tmp/' }),
+    upload = multer({ dest: '/tmp/' }),
     parseIp = (req) => (typeof req.headers['x-forwarded-for'] === 'string' && req.headers['x-forwarded-for'].split(',').shift()) || (req.connection && req.connection.remoteAddress) || (req.socket && req.socket.remoteAddress);
 
 let token;
