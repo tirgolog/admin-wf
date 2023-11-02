@@ -1,14 +1,13 @@
 const
     mysql = require('mysql2/promise'),
     connection = mysql.createPool({
-        host:'127.0.0.1',
-        user:'root',
-        password:'',
-        database:'tirgo_test',
+        host:'db4free.net.',
+        user:'tirgouser',
+        password:'eITYP12mrpc*',
+        database:'tirgodatabase',
         port: 3306,
         debug: false,
-        multipleStatements: true,
+        multipleStatements: true
 });
 
 module.exports.connection = connection;
-
