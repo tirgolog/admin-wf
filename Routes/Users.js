@@ -1767,6 +1767,7 @@ users.get('/getMyOrdersClient', async (req, res) => {
         if (rows.length){
             appData.data = await Promise.all(rows.map(async (item) => {
                 let newItem = item;
+                newItem.transport_types = JSON.parse(item.transport_types);
                 const [orders_accepted] = await connect.query('SELECT ul.*,oa.price as priceorder,oa.one_day,oa.two_day,oa.three_day,oa.status_order FROM orders_accepted oa LEFT JOIN users_list ul ON ul.id = oa.user_id WHERE oa.order_id = ? ORDER BY oa.id DESC',[item.id]);
                 newItem.orders_accepted = await Promise.all(orders_accepted.map(async (item2) => {
                     let newItemUsers = item2;
@@ -1824,6 +1825,7 @@ users.get('/getMyOrdersDriver', async (req, res) => {
         if (rows.length){
             appData.data = await Promise.all(rows.map(async (item) => {
                 let newItem = item;
+                newItem.transport_types = JSON.parse(item.transport_types);
                 const [orders_accepted] = await connect.query('SELECT ul.*,oa.price as priceorder,oa.status_order FROM orders_accepted oa LEFT JOIN users_list ul ON ul.id = oa.user_id WHERE oa.order_id = ?',[item.id]);
                 newItem.orders_accepted = await Promise.all(orders_accepted.map(async (item2) => {
                     let newItemUsers = item2;
