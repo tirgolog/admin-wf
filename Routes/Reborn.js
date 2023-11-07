@@ -90,14 +90,18 @@ reborn.post('/getUserInfo', async (req, res) => {
             const [trucks] = await connect.query('SELECT * FROM users_transport WHERE user_id = ?',[rows[0].id]);
             appData.data.trucks = await Promise.all(trucks.map(async (truck) => {
                 const [filestruck] = await connect.query('SELECT * FROM users_transport_files WHERE transport_id = ?', [truck.id]);
+                // console.log(filestruck)
                 let newTruck = truck;
                 newTruck.docks = await Promise.all(filestruck.map(async (filetruck) => {
                     let docks = filetruck;
                     docks.preview = fs.existsSync(process.env.FILES_PATCH +'tirgo/drivers/'+rows[0].id+'/'+ filetruck.name)?process.env.SERVER_URL +'tirgo/drivers/'+rows[0].id+'/'+ filetruck.name : null;
+                    // console.log(docks, process.env.FILES_PATCH)
                     return docks;
                 }))
+                // console.log(newTruck)
                 return newTruck;
             }));
+            console.log(appData.data)
             const [orders] = await connect.query('SELECT * FROM orders_accepted oa LEFT JOIN orders o ON oa.order_id = o.id WHERE oa.user_id = ?', [rows[0].id]);
             appData.data.orders = orders;
             const [contacts] = await connect.query('SELECT * FROM users_contacts WHERE user_id = ?', [rows[0].id]);

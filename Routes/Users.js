@@ -1767,6 +1767,7 @@ users.get('/getMyOrdersClient', async (req, res) => {
         if (rows.length){
             appData.data = await Promise.all(rows.map(async (item) => {
                 let newItem = item;
+                newItem.transport_types = JSON.parse(item.transport_types);
                 const [orders_accepted] = await connect.query('SELECT ul.*,oa.price as priceorder,oa.one_day,oa.two_day,oa.three_day,oa.status_order FROM orders_accepted oa LEFT JOIN users_list ul ON ul.id = oa.user_id WHERE oa.order_id = ? ORDER BY oa.id DESC',[item.id]);
                 newItem.orders_accepted = await Promise.all(orders_accepted.map(async (item2) => {
                     let newItemUsers = item2;
@@ -1819,11 +1820,11 @@ users.get('/getMyOrdersDriver', async (req, res) => {
         }
         transportstypes = transportstypes +'22,'
         transportstypes = transportstypes.substring(0, transportstypes.length - 1);
-        console.log(transportstypes)
         const [rows] = await connect.query('SELECT o.*,ul.name as usernameorder,ul.phone as userphoneorder FROM orders o LEFT JOIN users_list ul ON o.user_id = ul.id WHERE (FIND_IN_SET( o.transport_type,?) > 0 OR o.transport_types REGEXP REPLACE(?, \',\', \'(\\\\,|$)|\')) AND o.status <> 3 ORDER BY o.id DESC',[transportstypes,transportstypes]);
         if (rows.length){
             appData.data = await Promise.all(rows.map(async (item) => {
                 let newItem = item;
+                newItem.transport_types = JSON.parse(item.transport_types);
                 const [orders_accepted] = await connect.query('SELECT ul.*,oa.price as priceorder,oa.status_order FROM orders_accepted oa LEFT JOIN users_list ul ON ul.id = oa.user_id WHERE oa.order_id = ?',[item.id]);
                 newItem.orders_accepted = await Promise.all(orders_accepted.map(async (item2) => {
                     let newItemUsers = item2;
