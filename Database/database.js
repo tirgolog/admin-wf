@@ -1,7 +1,7 @@
 const
     mysql = require('mysql2/promise'),
     connection = mysql.createPool({
-        host:'185.183.243.223',
+        host:'localhost',
         user:'root',
         password:'tirgo_database_user',
         database:'tirgo',
