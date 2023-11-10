@@ -1,0 +1,17 @@
+version: '3.8'
+
+networks:
+  tirgo_net:
+
+services:
+  ws_tirgo:
+    image: ws-tirgo
+    container_name: ws_tirgo
+    networks:
+      - tirgo_net
+    restart: unless-stopped
+    ports:
+      - "7790:7790"
+    build:
+      context: .
+      dockerfile: Dockerfile
