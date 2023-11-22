@@ -1841,7 +1841,7 @@ users.get('/getMyOrdersDriver', async (req, res) => {
                 newItem.route = route[0];
                 return newItem;
             }));
-            appData.data = appData.filter(el => haveSameContents(el.transport_types, transports.map(el => el.type)))
+            appData.data = appData.data.filter(el => haveSameContents(el.transport_types, transports.map(el => el.type)))
             appData.status = true;
         }else {
             appData.error = 'Нет заказов';
