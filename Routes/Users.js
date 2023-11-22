@@ -1821,9 +1821,6 @@ users.get('/getMyOrdersDriver', async (req, res) => {
         transportstypes = transportstypes +'22,'
         transportstypes = transportstypes.substring(0, transportstypes.length - 1);
         let [rows] = await connect.query('SELECT o.*,ul.name as usernameorder,ul.phone as userphoneorder FROM orders o LEFT JOIN users_list ul ON o.user_id = ul.id WHERE o.status <> 3 ORDER BY o.id DESC',[transportstypes,transportstypes]);
-        rows = rows.filter(el => {
-            
-        })
         let orders = [];
         for (let row of rows){
             let count = 0;
