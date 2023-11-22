@@ -1820,9 +1820,25 @@ users.get('/getMyOrdersDriver', async (req, res) => {
         }
         transportstypes = transportstypes +'22,'
         transportstypes = transportstypes.substring(0, transportstypes.length - 1);
-        const [rows] = await connect.query('SELECT o.*,ul.name as usernameorder,ul.phone as userphoneorder FROM orders o LEFT JOIN users_list ul ON o.user_id = ul.id WHERE o.status <> 3 ORDER BY o.id DESC',[transportstypes,transportstypes]);
-        if (rows.length){
-            appData.data = await Promise.all(rows.map(async (item) => {
+        let [rows] = await connect.query('SELECT o.*,ul.name as usernameorder,ul.phone as userphoneorder FROM orders o LEFT JOIN users_list ul ON o.user_id = ul.id WHERE o.status <> 3 ORDER BY o.id DESC',[transportstypes,transportstypes]);
+        rows = rows.filter(el => {
+            
+        })
+        let orders = [];
+        for (let row of rows){
+            let count = 0;
+            for( let type of JSON.parse(row.transport_types)) {
+                if(transportstypes.includes(type)) {
+                    count += 1;
+                }
+            }
+            if(count > 0) {
+                orders.push(row)
+            }
+        }
+
+        if (orders.length){
+            appData.data = await Promise.all(orders.map(async (item) => {
                 let newItem = item;
                 newItem.transport_types = JSON.parse(item.transport_types);
                 const [orders_accepted] = await connect.query('SELECT ul.*,oa.price as priceorder,oa.status_order FROM orders_accepted oa LEFT JOIN users_list ul ON ul.id = oa.user_id WHERE oa.order_id = ?',[item.id]);
