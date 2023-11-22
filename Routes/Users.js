@@ -1841,13 +1841,14 @@ users.get('/getMyOrdersDriver', async (req, res) => {
                 newItem.route = route[0];
                 return newItem;
             }));
-            appData.data = appData.filter(el => haveSameContents(el.transport_types, transportstypes))
+            appData.data = appData.filter(el => haveSameContents(el.transport_types, transports.map(el => el.type)))
             appData.status = true;
         }else {
             appData.error = 'Нет заказов';
         }
         res.status(200).json(appData);
     } catch (err) {
+        console.log(err)
         appData.status = false;
         appData.error = err;
         res.status(403).json(appData);
