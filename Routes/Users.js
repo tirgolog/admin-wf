@@ -1820,7 +1820,7 @@ users.get('/getMyOrdersDriver', async (req, res) => {
         }
         transportstypes = transportstypes +'22,'
         transportstypes = transportstypes.substring(0, transportstypes.length - 1);
-        const [rows] = await connect.query('SELECT o.*,ul.name as usernameorder,ul.phone as userphoneorder FROM orders o LEFT JOIN users_list ul ON o.user_id = ul.id WHERE (o.transport_types REGEXP REPLACE(?, \',\', \'(\\\\,|$)|\')) AND o.status <> 3 ORDER BY o.id DESC',[transportstypes,transportstypes]);
+        const [rows] = await connect.query('SELECT o.*,ul.name as usernameorder,ul.phone as userphoneorder FROM orders o LEFT JOIN users_list ul ON o.user_id = ul.id WHERE o.status <> 3 ORDER BY o.id DESC',[transportstypes,transportstypes]);
         if (rows.length){
             appData.data = await Promise.all(rows.map(async (item) => {
                 let newItem = item;
