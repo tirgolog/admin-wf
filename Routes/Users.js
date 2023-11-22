@@ -1813,13 +1813,7 @@ users.get('/getMyOrdersDriver', async (req, res) => {
         transportstypes = '',
         appData = {status: false,timestamp: new Date().getTime()};
     try {
-
-        const haveSameContents = (a, b) => {
-            for (const v of new Set([...a, ...b]))
-              if (a.filter(e => e === v).length !== b.filter(e => e === v).length)
-                return false;
-            return true;
-          };
+     
         connect = await database.connection.getConnection();
         const [transports] = await connect.query('SELECT * FROM users_transport WHERE user_id = ? AND active = 1',[userInfo.id]);
         for (let transport of transports){
@@ -1841,7 +1835,6 @@ users.get('/getMyOrdersDriver', async (req, res) => {
                 newItem.route = route[0];
                 return newItem;
             }));
-            appData.data = appData.data.filter(el => haveSameContents(el.transport_types, transports.map(el => el.type)))
             appData.status = true;
         }else {
             appData.error = 'Нет заказов';
