@@ -1853,7 +1853,7 @@ users.get('/getMyOrdersDriver', async (req, res) => {
         }
         res.status(200).json(appData);
     } catch (err) {
-        console.log(erro)
+        console.log(err)
         appData.status = false;
         appData.error = err;
         res.status(403).json(appData);
