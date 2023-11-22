@@ -1824,7 +1824,8 @@ users.get('/getMyOrdersDriver', async (req, res) => {
         let orders = [];
         for (let row of rows){
             let count = 0;
-            for( let type of JSON.parse(row.transport_types)) {
+            const types = JSON.parse(row.transport_types)
+            for( let type of types) {
                 if(transportstypes.includes(type)) {
                     count += 1;
                 }
