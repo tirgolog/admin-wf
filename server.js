@@ -1,5 +1,6 @@
 const
     app = require('express')(),
+    express = require('express'),
     fs = require('fs'),
     options = {
         key: fs.readFileSync('private.key'),
@@ -35,7 +36,7 @@ https.on('request', (req, res) => {
     //console.log(req)
 });
 // Serve static files from the "uploads" folder
-app.use('/uploads', app.static('uploads'));
+app.use('/uploads', express.static('uploads'));
 app.use('/users', Users);
 app.use('/api', Api);
 app.use('/admin', Admin);
