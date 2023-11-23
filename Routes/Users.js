@@ -2124,16 +2124,5 @@ users.post('/uploadImage', upload.single('file'), async (req, res) => {
     }
 });
 
-users.get('/download/:filename', (req, res) => {
-    const filename = req.params.filename;
-    const filePath = path.join(__dirname, '..', 'uploads', filename);
-  
-    res.download(filePath, (err) => {
-      if (err) {
-        console.error(err);
-        res.status(404).send('File not found');
-      }
-    });
-  });
 
 module.exports = users;
