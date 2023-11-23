@@ -28,11 +28,6 @@ process.env.SERVER_URL = "https://tirgo.io/";
 app.get('/', function(req, res){
     res.send('<h1>tirgo glad you!!!</h1>');
 });
-// Define the path to the "tmp" folder
-const tmpFolderPath = path.join('/', 'tmp');
-
-// Serve static files from the "tmp" folder
-app.use('/tmp', express.static(tmpFolderPath));
 app.use(cors());
 app.use(bodyParser.json({limit: '150mb'}));
 app.use(bodyParser.urlencoded({
