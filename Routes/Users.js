@@ -2133,7 +2133,7 @@ users.get('/downloadFile', async (req, res) => {
     const filePath = __dirname + '/uploads/' + filename;
   
     // Send the file as an attachment
-    res.download(filePath, filename, (err) => {
+    res.sendFile(filePath, filename, (err) => {
       if (err) {
         // Handle error, such as file not found
         res.status(404).send('File not found');
