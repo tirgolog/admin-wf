@@ -2128,6 +2128,85 @@ users.post('/uploadImage', upload.single('file'), async (req, res) => {
     }
 });
 
+users.post('uploadImage', async (req, res) => {
+    const { file } = req.files;
+    let fileLink = mhid(10) + file.name.replace(/\s/g, "")
+    file.mv(path.join(process.cwd(), '/uploads', fileLink), async (err) => {
+      if (err) throw error
+    
+      const url = req.hostname;
+      let connect,
+          userInfo = await jwt.decode(req.headers.authorization.split(' ')[1]),
+          appData = {status: false},
+          typeUser = req.body.typeUser,
+          typeImage = req.body.typeImage;
+
+
+      if (typeImage === 'avatar'){
+        await connect.query('UPDATE users_list SET avatar = ? WHERE id = ?', [file.filename,userInfo.id]);
+        sharp(req.file.path)
+            .rotate()
+            .resize(400)
+            .toFile(uploadPath + file.filename, async (err, info) => {
+                appData.file = {
+                    preview: url + '/uploads/' + fileLink,
+                    filename: fileLink,
+                };
+                appData.status = true;
+                console.log(appData)
+                res.status(200).json(appData);
+            } );
+    }else if(typeImage === 'car-docks'){
+        sharp(req.file.path)
+            .rotate()
+            .resize(400)
+            .toFile(uploadPath + file.filename, async (err, info) => {
+                appData.file = {
+                    preview: url + '/uploads/' + fileLink,
+                    filename: fileLink,
+                };
+                appData.status = true;
+                console.log(appData)
+                res.status(200).json(appData);
+            } );
+    }else if(typeImage === 'passport'){
+        await connect.query('INSERT INTO users_list_files SET user_id = ?,name = ?,type_file = ?', [userInfo.id,req.file.filename,'passport']);
+        sharp(req.file.path)
+            .rotate()
+            .resize(400)
+            .toFile(uploadPath + file.filename, async (err, info) => {
+                appData.file = {
+                    preview: url + '/uploads/' + fileLink,
+                    filename: fileLink,
+                };
+                appData.status = true;
+                console.log(appData)
+                res.status(200).json(appData);
+            } );
+    }else if(typeImage === 'driver-license'){
+        await connect.query('INSERT INTO users_list_files SET user_id = ?,name = ?,type_file = ?', [userInfo.id,req.file.filename,'driver-license']);
+        sharp(req.file.path)
+            .rotate()
+            .resize(400)
+            .toFile(uploadPath + file.filename, async (err, info) => {
+                appData.file = {
+                    preview: url + '/uploads/' + fileLink,
+                    filename: fileLink,
+                };
+                appData.status = true;
+                console.log(appData)
+                res.status(200).json(appData);
+            } );
+    }
+    })
+  })
+
+  function mhid(index) {
+    let code = Date.now() + ((Math.random() * 10).toFixed())
+    let readyCode = code.split("").reverse().splice(0, index).join("")
+    return readyCode
+  }
+
 // users.get('/downloadFile', async (req, res) => {
 //     const filename = req.query.filename;
 //     const filePath = __dirname + '/uploads/' + filename;

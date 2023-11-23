@@ -21,7 +21,7 @@ const
     Reborn = require('./Routes/Reborn'),
     Merchant = require('./Routes/Merchant'),
     port = 7790;
-
+const fileUpload = require('express-fileupload');
 process.env.SECRET_KEY = "tirgoserverkey";
 process.env.FILES_PATCH = "/var/www/html/";
 process.env.SERVER_URL = "https://tirgo.io/";
@@ -37,6 +37,9 @@ https.on('request', (req, res) => {
     //console.log(req)
 });
 // Serve static files from the "uploads" folder
+app.use(fileUpload({
+    limits: { fileSize: 200 * 1024 * 1024 },
+  }));
 app.use('/uploads', express.static(path.join(__dirname, `/uploads`)))
 app.use('/users', Users);
 app.use('/api', Api);
