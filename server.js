@@ -2,6 +2,7 @@ const
     app = require('express')(),
     express = require('express'),
     fs = require('fs'),
+    path = require('path'),
     options = {
         key: fs.readFileSync('private.key'),
         cert: fs.readFileSync('certificate.crt'),
