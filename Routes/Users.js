@@ -2046,8 +2046,8 @@ users.post('/uploadImage', upload.single('file'), async (req, res) => {
             dir = process.env.FILES_PATCH+'tirgo/clients/'+userInfo.id+'/';
             dirPreview = process.env.SERVER_URL+'tirgo/clients/'+userInfo.id+'/';
         }else if (typeUser === 'driver'){
-            dir = process.env.FILES_PATCH+'tirgo/drivers/'+userInfo.id+'/';
-            dirPreview = process.env.SERVER_URL+'tirgo/drivers/'+userInfo.id+'/';
+            dir = 'drivers/'+userInfo.id+'/';
+            dirPreview = 'drivers/'+userInfo.id+'/';
         }
         connect = await database.connection.getConnection();
         if (!fs.existsSync(dir)){
