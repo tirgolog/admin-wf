@@ -2039,7 +2039,7 @@ users.post('/createOrderClientTypes', async (req, res) => {
 
 users.post('/uploadImage', upload.single('file'), async (req, res) => {
     res.set('Access-Control-Allow-Origin', '*')
-    const url = req.url;
+    const url = req.hostname;
     let connect,
         userInfo = await jwt.decode(req.headers.authorization.split(' ')[1]),
         appData = {status: false},
@@ -2127,5 +2127,18 @@ users.post('/uploadImage', upload.single('file'), async (req, res) => {
         }
     }
 });
+
+users.get('/downloadFile', async (req, res) => {
+    const filename = req.query.filename;
+    const filePath = __dirname + '/uploads/' + filename;
+  
+    // Send the file as an attachment
+    res.download(filePath, filename, (err) => {
+      if (err) {
+        // Handle error, such as file not found
+        res.status(404).send('File not found');
+      }
+    });
+})
 
 module.exports = users;
