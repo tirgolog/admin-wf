@@ -36,9 +36,10 @@ app.use(bodyParser.urlencoded({
 https.on('request', (req, res) => {
     //console.log(req)
 });
+console.log(path.join(__dirname, 'uploads'))
 app.get('/download/:filename', (req, res) => {
     const filename = req.params.filename;
-    const filePath = path.join(__dirname, '..', 'uploads', filename);
+    const filePath = path.join(__dirname, 'uploads', filename);
   
     res.download(filePath, (err) => {
       if (err) {
