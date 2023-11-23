@@ -2172,7 +2172,7 @@ try {
             } );
     }else if(typeImage === 'passport'){
         await connect.query('INSERT INTO users_list_files SET user_id = ?,name = ?,type_file = ?', [userInfo.id,req.file.filename,'passport']);
-        sharp(fileLink)
+        sharp(path.join(__dirname, `/uploads/`, fileLink))
             .rotate()
             .resize(400)
             .toFile(uploadPath + file.filename, async (err, info) => {
