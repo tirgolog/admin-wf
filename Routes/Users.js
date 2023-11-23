@@ -2062,7 +2062,7 @@ users.post('/uploadImage', upload.single('file'), async (req, res) => {
                 .resize(400)
                 .toFile(dir + req.file.filename, async (err, info) => {
                     appData.file = {
-                        preview: dirPreview + req.file.filename,
+                        preview: filePath,
                         filename: req.file.filename,
                     };
                     appData.status = true;
@@ -2075,7 +2075,7 @@ users.post('/uploadImage', upload.single('file'), async (req, res) => {
                 .resize(400)
                 .toFile(dir + req.file.filename, async (err, info) => {
                     appData.file = {
-                        preview: dirPreview + req.file.filename,
+                        preview: filePath,
                         filename: req.file.filename,
                     };
                     appData.status = true;
@@ -2104,7 +2104,7 @@ users.post('/uploadImage', upload.single('file'), async (req, res) => {
                 .resize(400)
                 .toFile(dir + req.file.filename, async (err, info) => {
                     appData.file = {
-                        preview: dirPreview + req.file.filename,
+                        preview: filePath,
                         filename: req.file.filename,
                     };
                     appData.status = true;
