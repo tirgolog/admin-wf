@@ -2039,7 +2039,7 @@ users.post('/createOrderClientTypes', async (req, res) => {
 
 users.post('/uploadImage', upload.single('file'), async (req, res) => {
     res.set('Access-Control-Allow-Origin', '*')
-    const subdomain = req.hostname.split('.')[0];
+    const url = req.url;
     let connect,
         userInfo = await jwt.decode(req.headers.authorization.split(' ')[1]),
         appData = {status: false},
@@ -2067,7 +2067,7 @@ users.post('/uploadImage', upload.single('file'), async (req, res) => {
                 .resize(400)
                 .toFile(uploadPath + req.file.filename, async (err, info) => {
                     appData.file = {
-                        preview: subdomain + '/uploads/' + req.file.filename,
+                        preview: url + '/uploads/' + req.file.filename,
                         filename: req.file.filename,
                     };
                     appData.status = true;
@@ -2080,7 +2080,7 @@ users.post('/uploadImage', upload.single('file'), async (req, res) => {
                 .resize(400)
                 .toFile(uploadPath + req.file.filename, async (err, info) => {
                     appData.file = {
-                        preview: subdomain + '/uploads/' + req.file.filename,
+                        preview: url + '/uploads/' + req.file.filename,
                         filename: req.file.filename,
                     };
                     appData.status = true;
@@ -2094,7 +2094,7 @@ users.post('/uploadImage', upload.single('file'), async (req, res) => {
                 .resize(400)
                 .toFile(uploadPath + req.file.filename, async (err, info) => {
                     appData.file = {
-                        preview: subdomain + '/uploads/' + req.file.filename,
+                        preview: url + '/uploads/' + req.file.filename,
                         filename: req.file.filename,
                     };
                     appData.status = true;
@@ -2108,7 +2108,7 @@ users.post('/uploadImage', upload.single('file'), async (req, res) => {
                 .resize(400)
                 .toFile(uploadPath + req.file.filename, async (err, info) => {
                     appData.file = {
-                        preview: subdomain + '/uploads/' + req.file.filename,
+                        preview: url + '/uploads/' + req.file.filename,
                         filename: req.file.filename,
                     };
                     appData.status = true;
