@@ -9,6 +9,7 @@ const
     jwt = require('jsonwebtoken'),
     multer  = require('multer'),
     fs = require('fs'),
+    path = require('path'),
     sharp = require('sharp'),
     sendpulse = require("sendpulse-api"),
     crypto = require('crypto'),
