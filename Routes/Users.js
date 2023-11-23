@@ -2037,7 +2037,7 @@ users.post('/uploadImage', upload.single('file'), async (req, res) => {
     let connect,
         userInfo = await jwt.decode(req.headers.authorization.split(' ')[1]),
         appData = {status: false},
-        dir ='/tmp/',
+        dir ='/uploads/',
         dirPreview ='',
         typeUser = req.body.typeUser,
         typeImage = req.body.typeImage;
