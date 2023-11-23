@@ -13,7 +13,6 @@ const
     sendpulse = require("sendpulse-api"),
     crypto = require('crypto'),
     parseIp = (req) => (typeof req.headers['x-forwarded-for'] === 'string' && req.headers['x-forwarded-for'].split(',').shift()) || (req.connection && req.connection.remoteAddress) || (req.socket && req.socket.remoteAddress);
-    upload = multer({ dest: 'uploads/' });
     // Set the destination to a local directory within your project
     const uploadDirectory = 'uploads/';
     const uploadPath = path.join(__dirname, uploadDirectory);
