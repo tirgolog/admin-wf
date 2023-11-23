@@ -81,7 +81,7 @@ reborn.post('/getUserInfo', async (req, res) => {
         if (rows.length){
             appData.data = rows[0];
             appData.data.avatar = fs.existsSync(process.env.FILES_PATCH +'tirgo/drivers/'+rows[0].id+'/'+ rows[0].avatar)?process.env.SERVER_URL +'tirgo/drivers/'+rows[0].id+'/'+ rows[0].avatar : null;
-            const [files] = await connect.query('SELECT * FROM users_list_files WHERE user_id = ? AND active <> 0', [rows[0].id]);
+            const [files] = await connect.query('SELECT * FROM users_list_files WHERE user_id = ? AND', [rows[0].id]);
             appData.data.files = await Promise.all(files.map(async (file) => {
                 let newFile = file;
                 newFile.preview = fs.existsSync(process.env.FILES_PATCH +'tirgo/drivers/'+rows[0].id+'/'+ file.name)?process.env.SERVER_URL +'tirgo/drivers/'+rows[0].id+'/'+ file.name : null;
