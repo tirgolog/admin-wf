@@ -12,8 +12,13 @@ const
     sharp = require('sharp'),
     sendpulse = require("sendpulse-api"),
     crypto = require('crypto'),
-    upload = multer({ dest: '/tmp/' }),
     parseIp = (req) => (typeof req.headers['x-forwarded-for'] === 'string' && req.headers['x-forwarded-for'].split(',').shift()) || (req.connection && req.connection.remoteAddress) || (req.socket && req.socket.remoteAddress);
+    upload = multer({ dest: 'uploads/' });
+    // Set the destination to a local directory within your project
+    const uploadDirectory = 'uploads/';
+    const uploadPath = path.join(__dirname, uploadDirectory);
+    // Configure multer with the destination
+    const upload = multer({ dest: uploadDirectory });
 
 let token;
 
@@ -2042,25 +2047,26 @@ users.post('/uploadImage', upload.single('file'), async (req, res) => {
         typeUser = req.body.typeUser,
         typeImage = req.body.typeImage;
     try {
-        if (typeUser === 'client'){
-            dir = process.env.FILES_PATCH+'tirgo/clients/'+userInfo.id+'/';
-            dirPreview = process.env.SERVER_URL+'tirgo/clients/'+userInfo.id+'/';
-        }else if (typeUser === 'driver'){
-            dir = 'drivers/'+userInfo.id+'/';
-            dirPreview = 'drivers/'+userInfo.id+'/';
-        }
+        // if (typeUser === 'client'){
+        //     dir = process.env.FILES_PATCH+'tirgo/clients/'+userInfo.id+'/';
+        //     dirPreview = process.env.SERVER_URL+'tirgo/clients/'+userInfo.id+'/';
+        // }else if (typeUser === 'driver'){
+        //     dir = 'drivers/'+userInfo.id+'/';
+        //     dirPreview = 'drivers/'+userInfo.id+'/';
+        // }
         connect = await database.connection.getConnection();
-        if (!fs.existsSync(dir)){
-            fs.mkdirSync(dir, {recursive: true});
+        // Create the directory if it doesn't exist
+        if (!fs.existsSync(uploadPath)) {
+            fs.mkdirSync(uploadPath, { recursive: true });
         }
         if (typeImage === 'avatar'){
             await connect.query('UPDATE users_list SET avatar = ? WHERE id = ?', [req.file.filename,userInfo.id]);
             sharp(req.file.path)
                 .rotate()
                 .resize(400)
-                .toFile(dir + req.file.filename, async (err, info) => {
+                .toFile(uploadPath + req.file.filename, async (err, info) => {
                     appData.file = {
-                        preview: dirPreview + req.file.filename,
+                        preview: uploadPath + req.file.filename,
                         filename: req.file.filename,
                     };
                     appData.status = true;
@@ -2071,9 +2077,9 @@ users.post('/uploadImage', upload.single('file'), async (req, res) => {
             sharp(req.file.path)
                 .rotate()
                 .resize(400)
-                .toFile(dir + req.file.filename, async (err, info) => {
+                .toFile(uploadPath + req.file.filename, async (err, info) => {
                     appData.file = {
-                        preview: dirPreview + req.file.filename,
+                        preview: uploadPath + req.file.filename,
                         filename: req.file.filename,
                     };
                     appData.status = true;
@@ -2085,9 +2091,9 @@ users.post('/uploadImage', upload.single('file'), async (req, res) => {
             sharp(req.file.path)
                 .rotate()
                 .resize(400)
-                .toFile(dir + req.file.filename, async (err, info) => {
+                .toFile(uploadPath + req.file.filename, async (err, info) => {
                     appData.file = {
-                        preview: dirPreview + req.file.filename,
+                        preview: uploadPath + req.file.filename,
                         filename: req.file.filename,
                     };
                     appData.status = true;
@@ -2099,9 +2105,9 @@ users.post('/uploadImage', upload.single('file'), async (req, res) => {
             sharp(req.file.path)
                 .rotate()
                 .resize(400)
-                .toFile(dir + req.file.filename, async (err, info) => {
+                .toFile(uploadPath + req.file.filename, async (err, info) => {
                     appData.file = {
-                        preview: dirPreview + req.file.filename,
+                        preview: uploadPath + req.file.filename,
                         filename: req.file.filename,
                     };
                     appData.status = true;
