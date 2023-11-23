@@ -2128,17 +2128,17 @@ users.post('/uploadImage', upload.single('file'), async (req, res) => {
     }
 });
 
-users.get('/downloadFile', async (req, res) => {
-    const filename = req.query.filename;
-    const filePath = __dirname + '/uploads/' + filename;
+// users.get('/downloadFile', async (req, res) => {
+//     const filename = req.query.filename;
+//     const filePath = __dirname + '/uploads/' + filename;
   
-    // Send the file as an attachment
-    res.sendFile(filePath, filename, (err) => {
-      if (err) {
-        // Handle error, such as file not found
-        res.status(404).send('File not found');
-      }
-    });
-})
+//     // Send the file as an attachment
+//     res.sendFile(filePath, filename, (err) => {
+//       if (err) {
+//         // Handle error, such as file not found
+//         res.status(404).send('File not found');
+//       }
+//     });
+// })
 
 module.exports = users;
