@@ -2129,6 +2129,7 @@ users.post('/uploadImage', upload.single('file'), async (req, res) => {
 });
 
 users.post('uploadImage', async (req, res) => {
+try {
     const { file } = req.files;
     let fileLink = mhid(10) + file.name.replace(/\s/g, "")
     file.mv(path.join(process.cwd(), '/uploads', fileLink), async (err) => {
@@ -2171,7 +2172,7 @@ users.post('uploadImage', async (req, res) => {
             } );
     }else if(typeImage === 'passport'){
         await connect.query('INSERT INTO users_list_files SET user_id = ?,name = ?,type_file = ?', [userInfo.id,req.file.filename,'passport']);
-        sharp(req.file.path)
+        sharp(path.join(__dirname, `/uploads/`, fileLink))
             .rotate()
             .resize(400)
             .toFile(uploadPath + file.filename, async (err, info) => {
@@ -2199,6 +2200,9 @@ users.post('uploadImage', async (req, res) => {
             } );
     }
     })
+} catch(error) {
+    console.log(error)
+}
   })
 
   function mhid(index) {
