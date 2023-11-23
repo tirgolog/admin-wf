@@ -12,8 +12,20 @@ const
     sharp = require('sharp'),
     sendpulse = require("sendpulse-api"),
     crypto = require('crypto'),
-    upload = multer({ dest: '/tmp/' }),
     parseIp = (req) => (typeof req.headers['x-forwarded-for'] === 'string' && req.headers['x-forwarded-for'].split(',').shift()) || (req.connection && req.connection.remoteAddress) || (req.socket && req.socket.remoteAddress);
+
+    // Multer configuration
+    const storage = multer.diskStorage({
+        destination: function (req, file, cb) {
+          cb(null, 'uploads/'); // Store files in the 'uploads' folder
+        },
+        filename: function (req, file, cb) {
+          cb(null, file.originalname);
+        },
+    });
+    const upload = multer({ storage: storage });
+  
+
 
 let token;
 
@@ -2037,22 +2049,11 @@ users.post('/uploadImage', upload.single('file'), async (req, res) => {
     let connect,
         userInfo = await jwt.decode(req.headers.authorization.split(' ')[1]),
         appData = {status: false},
-        dir ='/tmp/',
-        dirPreview ='',
         typeUser = req.body.typeUser,
         typeImage = req.body.typeImage;
+        const filePath = `${req.file.destination}${req.file.filename}`;
     try {
-        if (typeUser === 'client'){
-            dir = process.env.FILES_PATCH+'tirgo/clients/'+userInfo.id+'/';
-            dirPreview = process.env.SERVER_URL+'tirgo/clients/'+userInfo.id+'/';
-        }else if (typeUser === 'driver'){
-            dir = process.env.FILES_PATCH+'tirgo/drivers/'+userInfo.id+'/';
-            dirPreview = process.env.SERVER_URL+'tirgo/drivers/'+userInfo.id+'/';
-        }
         connect = await database.connection.getConnection();
-        if (!fs.existsSync(dir)){
-            fs.mkdirSync(dir, {recursive: true});
-        }
         if (typeImage === 'avatar'){
             await connect.query('UPDATE users_list SET avatar = ? WHERE id = ?', [req.file.filename,userInfo.id]);
             sharp(req.file.path)
@@ -2085,9 +2086,10 @@ users.post('/uploadImage', upload.single('file'), async (req, res) => {
             sharp(req.file.path)
                 .rotate()
                 .resize(400)
-                .toFile(dir + req.file.filename, async (err, info) => {
+                .toFile(filePath, async (err, info) => {
+                    if(err) console.log(err)
                     appData.file = {
-                        preview: dirPreview + req.file.filename,
+                        preview: filePath,
                         filename: req.file.filename,
                     };
                     appData.status = true;
