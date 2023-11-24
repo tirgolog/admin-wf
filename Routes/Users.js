@@ -2046,6 +2046,7 @@ users.post('/createOrderClientTypes', async (req, res) => {
 });
 
 users.post('/uploadImage', upload.single('file'), async (req, res) => {
+    console.log('/uploadImage')
     res.set('Access-Control-Allow-Origin', '*')
     let connect,
         userInfo = await jwt.decode(req.headers.authorization.split(' ')[1]),
