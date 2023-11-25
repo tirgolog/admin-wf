@@ -2061,7 +2061,7 @@ users.post('/uploadImage', upload.single('file'), async (req, res) => {
             sharp(req.file.path)
                 .rotate()
                 .resize(400)
-                .toFile(dir + req.file.filename, async (err, info) => {
+                .toFile(filePath, async (err, info) => {
                     appData.file = {
                         preview: filePath,
                         filename: req.file.filename,
@@ -2074,7 +2074,7 @@ users.post('/uploadImage', upload.single('file'), async (req, res) => {
             sharp(req.file.path)
                 .rotate()
                 .resize(400)
-                .toFile(dir + req.file.filename, async (err, info) => {
+                .toFile(filePath, async (err, info) => {
                     appData.file = {
                         preview: filePath,
                         filename: req.file.filename,
@@ -2103,7 +2103,7 @@ users.post('/uploadImage', upload.single('file'), async (req, res) => {
             sharp(req.file.path)
                 .rotate()
                 .resize(400)
-                .toFile(dir + req.file.filename, async (err, info) => {
+                .toFile(filePath, async (err, info) => {
                     appData.file = {
                         preview: filePath,
                         filename: req.file.filename,
