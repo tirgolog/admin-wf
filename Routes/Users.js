@@ -742,7 +742,7 @@ users.get('/checkSessionClient', async function(req, res) {
         if (rows.length) {
             const [config] = await connect.query('SELECT * FROM config LIMIT 1');
             appData.user = rows[0];
-            appData.data.user.config = config;
+            appData.user.config = config;
             appData.user.avatar = fs.existsSync(process.env.FILES_PATCH +'tirgo/clients/'+userInfo.id+'/'+ rows[0].avatar)?process.env.SERVER_URL +'tirgo/clients/'+userInfo.id+'/'+ rows[0].avatar : null;
             const [files] = await connect.query('SELECT * FROM users_list_files WHERE user_id = ?', [userInfo.id]);
             appData.user.files = await Promise.all(files.map(async (item) => {
