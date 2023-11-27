@@ -32,7 +32,8 @@ const corsOptions = {
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
     optionsSuccessStatus: 204,
-  };
+    preflightContinue: true, // Handle preflight requests
+};
 app.use(cors(corsOptions));
 app.use(bodyParser.json({limit: '150mb'}));
 app.use(bodyParser.urlencoded({
