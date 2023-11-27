@@ -1,6 +1,5 @@
 const
     app = require('express')(),
-    express = require('express'),
     fs = require('fs'),
     path = require('path'),
     options = {
@@ -10,8 +9,8 @@ const
         requestCert: true,
         rejectUnauthorized: false
     },
-    https = require('https').createServer(options, app),
-    io = require('socket.io')(https),
+    http = require('http').createServer(app),
+    io = require('socket.io')(http),
     cors = require('cors'),
     bodyParser = require('body-parser'),
     socket = require('./Modules/Socket'),
@@ -33,10 +32,9 @@ app.use(bodyParser.json({limit: '150mb'}));
 app.use(bodyParser.urlencoded({
     extended: true
 }));
-https.on('request', (req, res) => {
+http.on('request', (req, res) => {
     //console.log(req)
 });
-console.log(path.join(__dirname, 'uploads'))
 app.get('/download/:filename', (req, res) => {
     console.log('/downloadImage')
     const filename = req.params.filename;
@@ -55,9 +53,9 @@ app.use('/admin', Admin);
 app.use('/reborn', Reborn);
 app.use('/merchant', Merchant);
 socket.init(io);
-https.on('listening',function(){
+http.on('listening',function(){
     console.log('ok, server is running');
 });
-app.listen(port, function(){
+http.listen(port, function(){
     console.log('tirgo server listening on port ' + port);
 });
