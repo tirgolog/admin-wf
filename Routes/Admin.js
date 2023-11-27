@@ -614,7 +614,13 @@ admin.get('/getAllMessages', async (req, res) => {
         appData = {status: false,timestamp: new Date().getTime()};
     try {
         connect = await database.connection.getConnection();
-        const [rows] = await connect.query('SELECT *,ul.avatar,ul.name as username FROM chat_support cs LEFT JOIN users_list ul ON ul.id = cs.user_id GROUP BY cs.user_id');
+        // const [rows] = await connect.query('SELECT *,ul.avatar,ul.name as username FROM chat_support cs LEFT JOIN users_list ul ON ul.id = cs.user_id GROUP BY cs.user_id, ul.avatar, ul.name');
+        const [rows] = await connect.query(`
+        SELECT cs.user_id, MAX(cs.id) AS max_id, ul.avatar, ul.name AS username
+        FROM chat_support cs
+        LEFT JOIN users_list ul ON ul.id = cs.user_id
+        GROUP BY cs.user_id, ul.avatar, ul.name;
+        `)
         if (rows.length){
             appData.data = await Promise.all(rows.map(async (item) => {
                 let newItem = item;
