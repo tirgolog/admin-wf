@@ -27,7 +27,13 @@ process.env.SERVER_URL = "https://tirgo.io/";
 app.get('/', function(req, res){
     res.send('<h1>tirgo glad you!!!</h1>');
 });
-app.use(cors());
+const corsOptions = {
+    origin: '*', // Replace with the address of your Ionic app
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+    optionsSuccessStatus: 204,
+  };
+app.use(cors(corsOptions));
 app.use(bodyParser.json({limit: '150mb'}));
 app.use(bodyParser.urlencoded({
     extended: true
