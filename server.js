@@ -34,6 +34,14 @@ const corsOptions = {
     optionsSuccessStatus: 204,
     preflightContinue: true, // Handle preflight requests
 };
+// Enable CORS for Socket.io
+io.origins('*:*'); // Adjust this based on your requirements
+io.use((socket, next) => {
+    // Set CORS headers for Socket.io
+    socket.handshake.headers.origin = socket.handshake.headers.origin || '*';
+    next();
+});
+
 app.use(cors(corsOptions));
 // Enable CORS for all routes
 app.use((req, res, next) => {
@@ -49,6 +57,7 @@ app.use(bodyParser.urlencoded({
 http.on('request', (req, res) => {
     //console.log(req)
 });
+
 app.get('/download/:filename', (req, res) => {
     console.log('/downloadImage')
     const filename = req.params.filename;
