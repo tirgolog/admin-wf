@@ -10,7 +10,12 @@ const
         rejectUnauthorized: false
     },
     http = require('http').createServer(app),
-    io = require('socket.io')(http),
+    io = require('socket.io')(http, {
+        cors: {
+            origin: '*',
+            methods: ['GET', 'POST'],
+        },
+    }),
     cors = require('cors'),
     bodyParser = require('body-parser'),
     socket = require('./Modules/Socket'),
