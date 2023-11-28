@@ -1,19 +1,25 @@
-const app = require('express')();
-const fs = require('fs');
-const path = require('path');
-const http = require('http').createServer(app);
-const io = require('socket.io')(http);
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const socket = require('./Modules/Socket');
-const Users = require('./Routes/Users');
-const Api = require('./Routes/Api');
-const Admin = require('./Routes/Admin');
-const Reborn = require('./Routes/Reborn');
-const Merchant = require('./Routes/Merchant');
-const port = 7790;
-
-app.use(cors());
+const
+    app = require('express')(),
+    fs = require('fs'),
+    path = require('path'),
+    options = {
+        key: fs.readFileSync('private.key'),
+        cert: fs.readFileSync('certificate.crt'),
+        ca: fs.readFileSync('ca_bundle.crt'),
+        requestCert: true,
+        rejectUnauthorized: false
+    },
+    http = require('http').createServer(app),
+    io = require('socket.io')(http),
+    cors = require('cors'),
+    bodyParser = require('body-parser'),
+    socket = require('./Modules/Socket'),
+    Users = require('./Routes/Users'),
+    Api = require('./Routes/Api'),
+    Admin = require('./Routes/Admin'),
+    Reborn = require('./Routes/Reborn'),
+    Merchant = require('./Routes/Merchant'),
+    port = 7790;
 
 process.env.SECRET_KEY = "tirgoserverkey";
 process.env.FILES_PATCH = "/var/www/html/";
@@ -28,16 +34,14 @@ app.get('/', function(req, res){
 //     optionsSuccessStatus: 204,
 //     preflightContinue: true, // Handle preflight requests
 // };
-// app.options('*', cors(corsOptions));
 // app.use(cors(corsOptions));
-
 // // Enable CORS for all routes
 // app.use((req, res, next) => {
-//     res.header('Access-Control-Allow-Origin', '*'); // Replace with your Ionic app's address
+//     res.header('Access-Control-Allow-Origin', 'http://localhost:8100'); // Replace with your Ionic app's address
 //     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
 //     res.header('Access-Control-Allow-Headers', 'Content-Type');
 //     next();
-//   });
+// });
 app.use(bodyParser.json({limit: '150mb'}));
 app.use(bodyParser.urlencoded({
     extended: true
