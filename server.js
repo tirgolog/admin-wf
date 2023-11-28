@@ -27,21 +27,21 @@ process.env.SERVER_URL = "https://tirgo.io/";
 app.get('/', function(req, res){
     res.send('<h1>tirgo glad you!!!</h1>');
 });
-// const corsOptions = {
-//     origin: '*', // Replace with the address of your Ionic app
-//     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-//     credentials: true,
-//     optionsSuccessStatus: 204,
-//     preflightContinue: true, // Handle preflight requests
-// };
-// app.use(cors(corsOptions));
-// // Enable CORS for all routes
-// app.use((req, res, next) => {
-//     res.header('Access-Control-Allow-Origin', 'http://localhost:8100'); // Replace with your Ionic app's address
-//     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
-//     res.header('Access-Control-Allow-Headers', 'Content-Type');
-//     next();
-// });
+const corsOptions = {
+    origin: '*', // Replace with the address of your Ionic app
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+    optionsSuccessStatus: 204,
+    preflightContinue: true, // Handle preflight requests
+};
+app.use(cors(corsOptions));
+// Enable CORS for all routes
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', 'http://localhost:8100'); // Replace with your Ionic app's address
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    next();
+});
 app.use(bodyParser.json({limit: '150mb'}));
 app.use(bodyParser.urlencoded({
     extended: true
