@@ -38,10 +38,10 @@ app.get('/', function(req, res){
 //     res.header('Access-Control-Allow-Headers', 'Content-Type');
 //     next();
 //   });
-// app.use(bodyParser.json({limit: '150mb'}));
-// app.use(bodyParser.urlencoded({
-//     extended: true
-// }));
+app.use(bodyParser.json({limit: '150mb'}));
+app.use(bodyParser.urlencoded({
+    extended: true
+}));
 http.on('request', (req, res) => {
     //console.log(req)
 });
