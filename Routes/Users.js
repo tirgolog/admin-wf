@@ -334,9 +334,11 @@ users.get('/getTokenEskiz', async function(req, res) {
 });
 
 async function getCityFromLatLng(lat,lng){
+    connect = await database.connection.getConnection();
+    const [row] = await connect.query('SELECT * FROM config WHERE id = 1 LIMIT 1');
     let options = {
             method: 'GET',
-            uri: "https://geocode-maps.yandex.ru/1.x/?format=json&geocode=" + lng + "," + lat + "&apikey=df0cb391-97e5-47ce-a954-f54cb0644e56&lang=ru-RU",
+            uri: "https://geocode-maps.yandex.ru/1.x/?format=json&geocode=" + lng + "," + lat + `&apikey=${row[0]?.key_api_maps}&lang=ru-RU`,
         };
     try {
         const res = JSON.parse(await rp(options))
