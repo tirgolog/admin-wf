@@ -8,7 +8,6 @@ let socketIO;
 module.exports = {
     init: function (io) {
         socketIO = io;
-        console.log(socketIO)
         socketIO.on('connection', socketioJwt.authorize({
             secret: process.env.SECRET_KEY,
             timeout: 15000
