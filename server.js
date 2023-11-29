@@ -40,6 +40,7 @@ io.use((socket, next) => {
     next();
 });
 try {
+    console.log('socket.init(io)')
     socket.init(io);
 }
 catch(err) {
