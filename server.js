@@ -32,13 +32,6 @@ process.env.SERVER_URL = "https://tirgo.io/";
 app.get('/', function(req, res){
     res.send('<h1>tirgo glad you!!!</h1>');
 });
-const corsOptions = {
-    origin: '*', // Replace with the address of your Ionic app
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true,
-    optionsSuccessStatus: 204,
-    preflightContinue: true, // Handle preflight requests
-};
 // Enable CORS for Socket.io
 io.origins('*:*'); // Adjust this based on your requirements
 io.use((socket, next) => {
@@ -46,7 +39,20 @@ io.use((socket, next) => {
     socket.handshake.headers.origin = socket.handshake.headers.origin || '*';
     next();
 });
+try {
+    socket.init(io);
+}
+catch(err) {
+    console.log('Socket io error: ', err)
+}
 
+const corsOptions = {
+    origin: '*', // Replace with the address of your Ionic app
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+    optionsSuccessStatus: 204,
+    preflightContinue: true, // Handle preflight requests
+};
 app.use(cors(corsOptions));
 // Enable CORS for all routes
 app.use((req, res, next) => {
@@ -80,7 +86,6 @@ app.use('/api', Api);
 app.use('/admin', Admin);
 app.use('/reborn', Reborn);
 app.use('/merchant', Merchant);
-socket.init(io);
 http.on('listening',function(){
     console.log('ok, server is running');
 });
