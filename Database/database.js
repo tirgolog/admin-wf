@@ -3,7 +3,7 @@ const
     connection = mysql.createPool({
         host:'localhost',
         user:'root',
-        password:'tirgO@01',
+        password:'mysql12paSs!@',
         database:'tirgo',
         port: 3306,
         debug: false,
