@@ -74,56 +74,18 @@ reborn.post('/getAllDrivers', async (req, res) => {
 reborn.post('/getAllDriversList', async (req, res) => {
     let connect,
         id = req.body.id ? req.body.id:'',
-        phone = req.body.phone ? req.body.phone:'',
-        indentificator = req.body.indentificator ? req.body.indentificator:'',
-        typetransport = req.body.typetransport ? req.body.typetransport:'',
-        name = req.body.name ? req.body.name:'',
-        dateReg = req.body.dateReg ? req.body.dateReg:'',
-        dateLogin = req.body.dateLogin ? req.body.dateLogin:'',
-        [rows] = [],
         appData = {status: false};
     try {
         connect = await database.connection.getConnection();
-        if (!typetransport){
-            [rows] = await connect.query('SELECT * FROM users_list WHERE user_type = 1 AND id LIKE ? AND IFNULL(name, ?) LIKE ? AND IFNULL(phone, ?) LIKE ? AND IFNULL(date_reg, ?) LIKE ? AND IFNULL(date_last_login, ?) LIKE ? AND IFNULL(iso_code, ?) LIKE ?  ORDER BY id',
-                [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%']);
-        }else {
-            [rows] = await connect.query('SELECT ul.* FROM users_transport ut LEFT JOIN users_list ul ON ul.id = ut.user_id WHERE ut.type = ? AND ul.user_type = 1 AND ul.id LIKE ? AND IFNULL(ul.name, ?) LIKE ? AND IFNULL(ul.phone, ?) LIKE ? AND IFNULL(ul.date_reg, ?) LIKE ? AND IFNULL(ul.date_last_login, ?) LIKE ? AND IFNULL(ul.iso_code, ?) LIKE ?  ORDER BY ul.id',
-                [+typetransport,id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%']);
-        }
-        const [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 ORDER BY id DESC');
+       [rows] = await connect.query('SELECT id, phone, username FROM users_list WHERE user_type = 1 AND id LIKE ? ORDER BY id',
+        [id ? id:'%']);
         if (rows.length){
-            appData.data_count = rows_count[0].allcount
-            appData.data = await Promise.all(rows.map(async (row) => {
-                let newUser = row;
-                newUser.avatar = fs.existsSync(process.env.FILES_PATCH +'tirgo/drivers/'+row.id+'/'+ row.avatar)?process.env.SERVER_URL +'tirgo/drivers/'+row.id+'/'+ row.avatar : null;
-                const [files] = await connect.query('SELECT * FROM users_list_files WHERE user_id = ?', [row.id]);
-                newUser.files = await Promise.all(files.map(async (file) => {
-                    let newFile = file;
-                    newFile.preview = fs.existsSync(process.env.FILES_PATCH +'tirgo/drivers/'+row.id+'/'+ file.name)?process.env.SERVER_URL +'tirgo/drivers/'+row.id+'/'+ file.name : null;
-                    return newFile;
-                }));
-                const [trucks] = await connect.query('SELECT * FROM users_transport WHERE user_id = ?',[row.id]);
-                newUser.trucks = await Promise.all(trucks.map(async (truck) => {
-                    const [filestruck] = await connect.query('SELECT * FROM users_transport_files WHERE transport_id = ?', [truck.id]);
-                    let newTruck = truck;
-                    newTruck.docks = await Promise.all(filestruck.map(async (filetruck) => {
-                        let docks = filetruck;
-                        docks.preview = fs.existsSync(process.env.FILES_PATCH +'tirgo/drivers/'+row.id+'/'+ filetruck.name)?process.env.SERVER_URL +'tirgo/drivers/'+row.id+'/'+ filetruck.name : null;
-                        return docks;
-                    }))
-                    return newTruck;
-                }));
-                const [orders] = await connect.query('SELECT * FROM orders_accepted oa LEFT JOIN orders o ON oa.order_id = o.id WHERE oa.user_id = ?', [row.id]);
-                newUser.orders = orders;
-                const [contacts] = await connect.query('SELECT * FROM users_contacts WHERE user_id = ?', [row.id]);
-                newUser.contacts = contacts;
-                return newUser;
-            }))
+            appData.data = rows
             appData.status = true;
         }
         res.status(200).json(appData);
     } catch (e) {
+        console.log(e)
         appData.error = e.message;
         res.status(400).json(appData);
     } finally {
