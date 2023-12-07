@@ -1,4 +1,12 @@
 const { app } = require("firebase-admin");
+var Minio = require("minio");
+var minioClient = new Minio.Client({
+  endPoint: "localhost",
+  port: 9000,
+  useSSL: false,
+  accessKey: "TkLzCg9YAzvYhLtQLUBr",
+  secretKey: "GXdc3nTAFoNU6UVxfEIepdb1Y1mf3bgzuBwDP22J",
+});
 
 const express = require("express"),
   users = express.Router(),
@@ -30,7 +38,7 @@ const storage = multer.diskStorage({
   },
 });
 const upload = multer({
-//   limits: { fieldSize: 200 * 1024 * 1024 },
+  //   limits: { fieldSize: 200 * 1024 * 1024 },
   storage: storage,
 });
 
@@ -456,6 +464,7 @@ users.post("/login", async (req, res) => {
     phone = req.body.phone.replace(/[^0-9, ]/g, "").replace(/ /g, "");
   try {
     connect = await database.connection.getConnection();
+    console.log(connect);
     if (phone === "998935421324" || phone === "9988888888") {
       code = "00000";
     }
@@ -2762,93 +2771,114 @@ users.post("/createOrderClientTypes", async (req, res) => {
   }
 });
 
-users.post("/uploadImage", upload.single("file"), async (req, res) => {
-  console.log("/uploadImage");
-  res.set("Access-Control-Allow-Origin", "*");
-  let connect,
-    userInfo = await jwt.decode(req.headers.authorization.split(" ")[1]),
-    appData = { status: false },
-    typeUser = req.body.typeUser,
-    typeImage = req.body.typeImage;
-  const filePath = `${req.file.destination}${req.file.filename}`;
-  try {
-    connect = await database.connection.getConnection();
-    if (typeImage === "avatar") {
-      await connect.query("UPDATE users_list SET avatar = ? WHERE id = ?", [
-        req.file.filename,
-        userInfo.id,
-      ]);
-      sharp(req.file.path)
-        .rotate()
-        .resize(400)
-        .toFile(filePath, async (err, info) => {
-          appData.file = {
-            preview: filePath,
-            filename: req.file.filename,
-          };
-          appData.status = true;
-          console.log(appData);
-          res.status(200).json(appData);
-        });
-    } else if (typeImage === "car-docks") {
-      sharp(req.file.path)
-        .rotate()
-        .resize(400)
-        .toFile(filePath, async (err, info) => {
-          appData.file = {
-            preview: filePath,
-            filename: req.file.filename,
-          };
-          appData.status = true;
-          console.log(appData);
-          res.status(200).json(appData);
-        });
-    } else if (typeImage === "passport") {
-      await connect.query(
-        "INSERT INTO users_list_files SET user_id = ?,name = ?,type_file = ?",
-        [userInfo.id, req.file.filename, "passport"]
-      );
-      sharp(req.file.path)
-        .rotate()
-        .resize(400)
-        .toFile(filePath, async (err, info) => {
-          if (err) console.log(err);
-          appData.file = {
-            preview: filePath,
-            filename: req.file.filename,
-          };
-          appData.status = true;
-          console.log(appData);
-          res.status(200).json(appData);
-        });
-    } else if (typeImage === "driver-license") {
-      await connect.query(
-        "INSERT INTO users_list_files SET user_id = ?,name = ?,type_file = ?",
-        [userInfo.id, req.file.filename, "driver-license"]
-      );
-      sharp(req.file.path)
-        .rotate()
-        .resize(400)
-        .toFile(filePath, async (err, info) => {
-          appData.file = {
-            preview: filePath,
-            filename: req.file.filename,
-          };
-          appData.status = true;
-          console.log(appData);
-          res.status(200).json(appData);
-        });
+users.post(
+  "/uploadImage",
+  multer({ storage: multer.memoryStorage() }).single("file"),
+  async (req, res) => {
+    console.log("/uploadImage");
+    res.set("Access-Control-Allow-Origin", "*");
+    let connect,
+      userInfo = await jwt.decode(req.headers.authorization.split(" ")[1]),
+      appData = { status: false },
+      typeUser = req.body.typeUser,
+      typeImage = req.body.typeImage;
+    // console.log(req.file);
+    // const filePath = `${req.file.destination}${req.file.filename}`;
+    //   minioClient.putObject("tirgo", req.file.originalname, req.file.buffer, function(res, error) {
+    //     console.log(res)
+    //     if(error) {
+    //         return console.log(error);
+    //     }
+    // });
+    try {
+      var publicUrl = minioClient.protocol + '//' + minioClient.host + ':' + minioClient.port + '/' + 'tirgo' + '/' + '1.jpg'
+
+      // Send the presigned URL back to the user
+      res.send({ url: publicUrl })
+    } catch (error) {
+      
     }
-  } catch (err) {
-    appData.status = false;
-    appData.error = err.message;
-    console.log(err.message);
-    res.status(200).json(appData);
-  } finally {
-    if (connect) {
-      connect.release();
+
+
+    try {
+      connect = await database.connection.getConnection();
+      if (typeImage === "avatar") {
+        await connect.query("UPDATE users_list SET avatar = ? WHERE id = ?", [
+          req.file.filename,
+          userInfo.id,
+        ]);
+        sharp(req.file.path)
+          .rotate()
+          .resize(400)
+          .toFile(filePath, async (err, info) => {
+            appData.file = {
+              preview: filePath,
+              filename: req.file.filename,
+            };
+            appData.status = true;
+            console.log(appData);
+            res.status(200).json(appData);
+          });
+      } else if (typeImage === "car-docks") {
+        sharp(req.file.path)
+          .rotate()
+          .resize(400)
+          .toFile(filePath, async (err, info) => {
+            appData.file = {
+              preview: filePath,
+              filename: req.file.filename,
+            };
+            appData.status = true;
+            console.log(appData);
+            res.status(200).json(appData);
+          });
+      } else if (typeImage === "passport") {
+        await connect.query(
+          "INSERT INTO users_list_files SET user_id = ?,name = ?,type_file = ?",
+          [userInfo.id, req.file.filename, "passport"]
+        );
+        sharp(req.file.path)
+          .rotate()
+          .resize(400)
+          .toFile(filePath, async (err, info) => {
+            if (err) console.log(err);
+            appData.file = {
+              preview: filePath,
+              filename: req.file.filename,
+            };
+            appData.status = true;
+            console.log(appData);
+            res.status(200).json(appData);
+          });
+      } else if (typeImage === "driver-license") {
+        await connect.query(
+          "INSERT INTO users_list_files SET user_id = ?,name = ?,type_file = ?",
+          [userInfo.id, req.file.filename, "driver-license"]
+        );
+        sharp(req.file.path)
+          .rotate()
+          .resize(400)
+          .toFile(filePath, async (err, info) => {
+            appData.file = {
+              preview: filePath,
+              filename: req.file.filename,
+            };
+            appData.status = true;
+            console.log(appData);
+            res.status(200).json(appData);
+          });
+      }
+    } catch (err) {
+      appData.status = false;
+      appData.error = err.message;
+      console.log(err.message);
+      res.status(200).json(appData);
+    } finally {
+      if (connect) {
+        connect.release();
+      }
     }
   }
-});
+);
 
 module.exports = users;
