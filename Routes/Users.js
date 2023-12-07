@@ -1918,7 +1918,7 @@ users.get('/getMyOrdersDriver', async (req, res) => {
         merchantData = [];
     try {
 
-        const merchantCargos = await axios.get('http://192.168.1.218:3000/api/v1/cargo/all-driver');
+        const merchantCargos = await axios.get('https://merchant.tirgo.io/api/v1/cargo/all-driver');
         if(merchantCargos.data.success) {
           merchantData = merchantCargos.data.data.map((el) => {
                 return {
