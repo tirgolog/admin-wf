@@ -34,11 +34,11 @@ app.get("/", function (req, res) {
 });
 
 var minioClient = new Minio.Client({
-  endPoint: "localhost",
+  endPoint: "185.183.243.223",
   port: 9000,
   useSSL: false,
-  accessKey: "TkLzCg9YAzvYhLtQLUBr",
-  secretKey: "GXdc3nTAFoNU6UVxfEIepdb1Y1mf3bgzuBwDP22J",
+  accessKey: "4iC87KDCglhYTPZGpA0D",
+  secretKey: "1EnXPZiSEdHrJluSPgYLMQXuxbcSJF3TWIiklZDs",
 });
 
 minioClient.bucketExists("tirgo", function (error) {
@@ -46,14 +46,6 @@ minioClient.bucketExists("tirgo", function (error) {
     return console.log(error);
   }
 });
-try {
-  var publicUrl = minioClient.protocol + '//' + minioClient.host + ':' + minioClient.port + '/' + 'tirgo' + '/' + '1.jpg'
-  console.log(publicUrl)
-  // Send the presigned URL back to the user
- 
-} catch (error) {
-  
-}
 
 // Enable CORS for Socket.io
 io.origins("*:*"); // Adjust this based on your requirements
