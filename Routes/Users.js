@@ -16,7 +16,8 @@ const
     sendpulse = require("sendpulse-api"),
     crypto = require('crypto'),
     parseIp = (req) => (typeof req.headers['x-forwarded-for'] === 'string' && req.headers['x-forwarded-for'].split(',').shift()) || (req.connection && req.connection.remoteAddress) || (req.socket && req.socket.remoteAddress);
-
+    const axios = require('axios');
+const { finishOrderDriver } = require('./rabbit');
     // Multer configuration
     const storage = multer.diskStorage({
         destination: function (req, file, cb) {
@@ -563,6 +564,7 @@ users.post('/codeverifyClient', async (req, res) => {
         }
     }
 });
+
 users.use((req, res, next) => {
     let token = req.body.token || req.headers['token'] || (req.headers.authorization && req.headers.authorization.split(' ')[1]);
     let appData = {};
@@ -1335,25 +1337,55 @@ users.post('/acceptOrderDriver', async (req, res) => {
         orderid = req.body.orderid,
         price = req.body.price,
         dates = req.body.dates,
+        isMerchant = req.body.isMerchant,
         one_day = 0,
         two_day = 0,
         three_day = 0,
         userInfo = jwt.decode(req.headers.authorization.split(' ')[1]);
     try {
+        const amqp = require('amqplib');
+        const connection = await amqp.connect('amqp://localhost');
+        const channel = await connection.createChannel();
+        await channel.assertQueue('acceptOrderDriver');
         if (dates.includes(0)) one_day = 1
         if (dates.includes(1)) two_day = 1
         if (dates.includes(2)) three_day = 1
         connect = await database.connection.getConnection();
-        const [rows] = await connect.query('INSERT INTO orders_accepted SET user_id = ?,order_id = ?,price = ?,one_day = ?,two_day = ?,three_day = ?',
-            [userInfo.id,orderid,price,one_day,two_day,three_day]);
+        const [rows] = await connect.query('INSERT INTO orders_accepted SET user_id = ?,order_id = ?,price = ?,one_day = ?,two_day = ?,three_day = ?, ismerchant = ?',
+            [userInfo.id,orderid,price,one_day,two_day,three_day,isMerchant]);
         if (rows.affectedRows){
+            console.log('keld')
             socket.updateAllList('update-all-list','1')
+            channel.sendToQueue('acceptOrderDriver', Buffer.from('request'));
             appData.status = true;
         }else {
             appData.error = 'Невозможно принять заказ';
         }
         res.status(200).json(appData);
     } catch (err) {
+        appData.status = false;
+        appData.error = err;
+        console.log(err)
+        res.status(403).json(appData);
+    } finally {
+        if (connect) {
+            connect.release()
+        }
+    }
+});
+
+users.get('/getAcceptedOrdersDriver', async (req, res) => {
+    let connect,
+        appData = {status: true,timestamp: new Date().getTime()};
+        merchantData = [];
+    try {
+
+        connect = await database.connection.getConnection();
+        // appData.data = await connect.query('select * from orders_accepted where ismerchant = true left join')
+        appData.data = await connect.query('SELECT ul.name, ul.phone, ul.city, ul.country, ul.id as user_id, oa.order_id as orderid, oa.price as priceorder,oa.status_order FROM orders_accepted oa LEFT JOIN users_list ul ON ul.id = oa.user_id where ismerchant = true');
+        res.status(200).json(appData);
+    } catch (err) {
+        console.log(err)
         appData.status = false;
         appData.error = err;
         res.status(403).json(appData);
@@ -1363,6 +1395,7 @@ users.post('/acceptOrderDriver', async (req, res) => {
         }
     }
 });
+
 users.post('/cancelOrderDriver', async (req, res) => {
     let connect,
         appData = {status: false,timestamp: new Date().getTime()},
@@ -1507,6 +1540,7 @@ users.post('/fonishOrderDriver', async (req, res) => {
         info = {},
         location = '',
         orderid = req.body.id;
+        const isMerchant = req.body.isMerchant;
     try {
         connect = await database.connection.getConnection();
         info = await getCityFromLatLng(lat,lng)
@@ -1516,7 +1550,7 @@ users.post('/fonishOrderDriver', async (req, res) => {
         console.log(info)
         console.log(location)
         const [orderInfo] = await connect.query('SELECT r.* FROM routes r LEFT JOIN orders o ON o.route_id = r.id WHERE o.id = ? LIMIT 1',[orderid]);
-        if (orderInfo.length){
+        if (orderInfo.length || isMerchant){
             console.log(orderInfo[0].to_city)
             if (orderInfo[0].to_city === location){
                 const [rows] = await connect.query('UPDATE orders SET status = 2,end_driver = 1 WHERE id = ?', [orderid]);
@@ -1547,6 +1581,56 @@ users.post('/fonishOrderDriver', async (req, res) => {
         }
     }
 });
+
+users.post('/finishMerchantOrderDriver', async (req, res) => {
+    let connect,
+        appData = {status: false,timestamp: new Date().getTime()},
+        userInfo = jwt.decode(req.headers.authorization.split(' ')[1]),
+        location = ' ',
+        orderid = req.body.id.split('M').length > 1 ? req.body.id.split('M')[1] : req.body.id,
+        lat = req.body.lat,
+        lng = req.body.lng,
+        to_city = req.body.toCity;
+      
+        const amqp = require('amqplib');
+        const connection = await amqp.connect('amqp://localhost');
+        const channel = await connection.createChannel();
+
+        
+    try {
+        const info = await getCityFromLatLng(lat,lng)
+        location = info.city + ', ' + info.country;
+        connect = await database.connection.getConnection();
+            if (to_city === location){
+                const [rows] = await connect.query('UPDATE orders_accepted SET status_order = 2 WHERE order_id = ?', [orderid]);
+                if (rows.affectedRows){
+                    channel.sendToQueue('finishOrderDriver', Buffer.from(orderid));
+                    socket.updateAllList('update-all-list','1')
+                    appData.status = true;
+                }else {
+                    appData.error = 'Что то пошло не так';
+                }
+            }else {
+                appData.status = true;
+                socket.updateAllList('update-all-list','1')
+                channel.sendToQueue('finishOrderDriver', Buffer.from(orderid));
+                await connect.query('UPDATE orders_accepted SET status_order = 2 WHERE order_id = ?', [orderid]);
+                await connect.query('UPDATE users_list SET dirty = dirty + 1 WHERE id = ?', [userInfo.id]);
+                appData.error = 'К сожалению вы находитесь не в . Данный заказ закрыт. Вы получили одно предупреждение.';
+            }
+        res.status(200).json(appData);
+    } catch (err) {
+        console.log(err)
+        appData.status = false;
+        appData.error = err;
+        res.status(403).json(appData);
+    } finally {
+        if (connect) {
+            connect.release()
+        }
+    }
+});
+
 users.get('/getMyTrack', async (req, res) => {
     let connect,
         appData = {status: false,timestamp: new Date().getTime()},
@@ -1831,8 +1915,53 @@ users.get('/getMyOrdersDriver', async (req, res) => {
         userInfo = jwt.decode(req.headers.authorization.split(' ')[1]),
         transportstypes = '',
         appData = {status: false,timestamp: new Date().getTime()};
+        merchantData = [];
     try {
-     
+
+        const merchantCargos = await axios.get('http://192.168.1.218:3000/api/v1/cargo/all-driver');
+        if(merchantCargos.data.success) {
+          merchantData = merchantCargos.data.data.map((el) => {
+                return {
+                    id: el.id,
+                    isMerchant: true,
+                    usernameorder: el.createdBy?.username,
+                    userphoneorder: el.createdBy?.phoneNumber,
+                    route: { from_city: el.sendLocation, to_city: el.cargoDeliveryLocation },
+                    add_two_days: '',
+                    adr: el.isDangrousCargo,
+                    comment: '',
+                    comment_client: '',
+                    cubic: '',
+                    currency: el.currency?.name,
+                    date_create: el.createdAt,
+                    date_send: el.sendCargoDate,
+                    driver_id: el.driverId,
+                    end_client: '',
+                    end_date: '',
+                    end_driver: '',
+                    height_box: el.cargoHeight,
+                    length_box: el.cargoLength,
+                    loading: '',
+                    mode: '',
+                    no_cash: el.isCashlessPayment,
+                    orders_accepted: el.acceptedOrders,
+                    price: el.offeredPrice,
+                    raiting_driver: '',
+                    raiting_user: '',
+                    route_id: '',
+                    save_order: '',
+                    secure_transaction: false,
+                    status: el.status,
+                    transport_type: el.transportType?.name,
+                    transport_types: el.transportTypes,
+                    type_cargo: el.cargoType?.code,
+                    user_id: el.clientId,
+                    weight: el.cargoWeight,
+                    width_box: el.cargoWidth,
+                }
+            })
+        }
+
         connect = await database.connection.getConnection();
         const [transports] = await connect.query('SELECT * FROM users_transport WHERE user_id = ? AND active = 1',[userInfo.id]);
         for (let transport of transports){
@@ -1842,15 +1971,20 @@ users.get('/getMyOrdersDriver', async (req, res) => {
         transportstypes = transportstypes.substring(0, transportstypes.length - 1);
         let [rows] = await connect.query('SELECT o.*,ul.name as usernameorder,ul.phone as userphoneorder FROM orders o LEFT JOIN users_list ul ON o.user_id = ul.id WHERE o.status <> 3 ORDER BY o.id DESC',[transportstypes,transportstypes]);
           if (rows.length){
-            appData.data = await Promise.all(rows.map(async (item) => {
+            appData.data = await Promise.all([...merchantData, ...rows].map(async (item) => {
                 let newItem = item;
-                const [orders_accepted] = await connect.query('SELECT ul.*,oa.price as priceorder,oa.status_order FROM orders_accepted oa LEFT JOIN users_list ul ON ul.id = oa.user_id WHERE oa.order_id = ?',[item.id]);
+                if(!item.isMerchant) {
+                    newItem.transport_types = JSON.parse(item.transport_types)
+                }
+                const [orders_accepted] = await connect.query('SELECT ul.*,oa.price as priceorder,oa.status_order FROM orders_accepted oa LEFT JOIN users_list ul ON ul.id = oa.user_id WHERE oa.order_id = ?',[item.isMerchant ? +item.id.split('M')[1] : item.id]);
                 newItem.orders_accepted = await Promise.all(orders_accepted.map(async (item2) => {
                     let newItemUsers = item2;
                     return newItemUsers;
                 }));
-                const [route] = await connect.query('SELECT * FROM routes WHERE id = ? LIMIT 1',[item.route_id]);
-                newItem.route = route[0];
+                if(!item.isMerchant) {
+                    const [route] = await connect.query('SELECT * FROM routes WHERE id = ? LIMIT 1',[item.route_id]);
+                    newItem.route = route[0];
+                }
                 return newItem;
             }));
             appData.status = true;
@@ -1869,6 +2003,7 @@ users.get('/getMyOrdersDriver', async (req, res) => {
         }
     }
 });
+
 users.get('/getMyArchiveOrdersDriver', async (req, res) => {
     let connect,
         userInfo = jwt.decode(req.headers.authorization.split(' ')[1]),
