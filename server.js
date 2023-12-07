@@ -25,7 +25,7 @@ const
     Admin = require('./Routes/Admin'),
     Reborn = require('./Routes/Reborn'),
     Merchant = require('./Routes/Merchant'),
-    port = 4000;
+    port = 7790;
 
 process.env.SECRET_KEY = "tirgoserverkey";
 process.env.FILES_PATCH = "/var/www/html/";
@@ -93,6 +93,6 @@ require('./Routes/rabbit.js')
 http.on('listening',function(){
     console.log('ok, server is running');
 });
-http.listen(port,'localhost', function(){
+http.listen(port, function(){
     console.log('tirgo server listening on port ' + port);
 });
