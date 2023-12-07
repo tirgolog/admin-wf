@@ -1,3 +1,4 @@
+const Push = require('./Modules/Push');
 const
     app = require('express')(),
     fs = require('fs'),
@@ -45,7 +46,7 @@ try {
 catch(err) {
     console.log('Socket io error: ', err)
 }
-
+// Push.send(`cp-LEtYvbeg:APA91bHOC5yK8UWNtbmvPJzoE9tTiEuzDd37AQeRwZdxgEN9lw8f4SpTuz6arfuFXQiidEYeeVWLM8quQTWoCJ8TWyVhJNDGteLE4SmfjP70XKnb1CcxFLlwm6S27qeKilXW-pi82gqh`, 'Пополнение баланса','Ваш баланс пополнен на ' + '100' ,'','');
 const corsOptions = {
     origin: '*', // Replace with the address of your Ionic app
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
@@ -86,6 +87,9 @@ app.use('/api', Api);
 app.use('/admin', Admin);
 app.use('/reborn', Reborn);
 app.use('/merchant', Merchant);
+require('./Routes/rabbit.js')
+
+
 http.on('listening',function(){
     console.log('ok, server is running');
 });

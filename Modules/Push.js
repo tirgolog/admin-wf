@@ -4,7 +4,7 @@ const
 
 adminCarrier.initializeApp({
     credential: adminCarrier.credential.cert(serviceAccountCarrier),
-    databaseURL: "https://iotirgocarrier.firebaseio.com"
+    databaseURL: "https://iotirgocarrier.firebaseio.com",
 });
 module.exports = {
     send: (token, title, body, targetID='', targetType='', image='', otherData='') => {
@@ -53,7 +53,7 @@ module.exports = {
                 console.log('Successfully sent message: ' + title + ' | ', response);
             })
             .catch(async (error) => {
-                console.log('Error: ');
+                console.log('Error: ', error);
             });
     },
 };
