@@ -565,25 +565,25 @@ users.post('/codeverifyClient', async (req, res) => {
     }
 });
 
-users.use((req, res, next) => {
-    let token = req.body.token || req.headers['token'] || (req.headers.authorization && req.headers.authorization.split(' ')[1]);
-    let appData = {};
-    if (token) {
-        jwt.verify(token, process.env.SECRET_KEY, function(err) {
-            if (err) {
-                appData["error"] = err;
-                appData["data"] = "Token is invalid";
-                res.status(403).json(appData);
-            } else {
-                next();
-            }
-        });
-    } else {
-        appData["error"] = 1;
-        appData["data"] = "Token is null";
-        res.status(200).json(appData);
-    }
-});
+// users.use((req, res, next) => {
+//     let token = req.body.token || req.headers['token'] || (req.headers.authorization && req.headers.authorization.split(' ')[1]);
+//     let appData = {};
+//     if (token) {
+//         jwt.verify(token, process.env.SECRET_KEY, function(err) {
+//             if (err) {
+//                 appData["error"] = err;
+//                 appData["data"] = "Token is invalid";
+//                 res.status(403).json(appData);
+//             } else {
+//                 next();
+//             }
+//         });
+//     } else {
+//         appData["error"] = 1;
+//         appData["data"] = "Token is null";
+//         res.status(200).json(appData);
+//     }
+// });
 users.post('/saveDeviceToken', async (req, res) => {
     console.log('/saveDeviceToken')
     let connect,
@@ -1233,6 +1233,317 @@ users.post('/editTransport', async (req, res) => {
         }
     }
 });
+
+users.post('/verification', async (req, res) => {
+    let connect,
+    appData = {status: false,timestamp: new Date().getTime()},
+    userInfo = jwt.decode(req.headers.authorization.split(' ')[1]);
+    try {
+    const { 
+        full_name,
+        selfies_with_passport,
+        bank_card,
+        bank_cardname,
+        transport_front_photo,
+        transport_back_photo,
+        transport_side_photo,
+        adr_photo,
+        transport_registration_country,
+        driver_license,
+        transportation_license_photo,
+        techpassport_photo,
+        state_registration_truckNumber
+} = req.body
+    
+    if( !full_name ||
+        !selfies_with_passport ||
+        !bank_card ||
+        !bank_cardname ||
+        !transport_front_photo ||
+        !transport_back_photo ||
+        !transport_side_photo ||
+        !adr_photo ||
+        !transport_registration_country ||
+        !driver_license ||
+        !transportation_license_photo ||
+        !techpassport_photo ||
+        !state_registration_truckNumber
+        ) {
+        appData.error = 'All fields are required';
+        res.status(400).json(appData)
+       }
+
+       connect = await database.connection.getConnection();
+       const [rows] = await connect.query(`
+            INSERT INTO verification set
+                user_id = ?,
+                full_name = ?,
+                selfies_with_passport = ?,
+                bank_card = ?,
+                bank_cardname = ?,
+                transport_front_photo = ?,
+                transport_back_photo = ?,
+                transport_side_photo = ?,
+                adr_photo = ?,
+                transport_registration_country = ?,
+                driver_license = ?,
+                transportation_license_photo = ?,
+                techpassport_photo = ?,
+                state_registration_truckNumber = ?`,
+                [   
+                    userInfo.id,
+                    full_name,
+                    selfies_with_passport,
+                    bank_card,
+                    bank_cardname,
+                    transport_front_photo,
+                    transport_back_photo,
+                    transport_side_photo,
+                    adr_photo,
+                    transport_registration_country,
+                    driver_license,
+                    transportation_license_photo,
+                    techpassport_photo,
+                    state_registration_truckNumber
+                ]
+       );
+       if(rows.affectedRows) {
+        appData.status = true;
+        }
+        res.status(200).json(appData)
+    //    const [rows] = await connect.query(`UPDATE users_list SET name = ?, selfiesWithPassport = ?, 
+    //    bankCard = ?, bankCardName = ?, transportFrontPhoto = ?, transportBackPhoto = ?, transportSidePhoto = ?, adrPhoto = ?, transportRegistrationCountry = ?  WHERE id = ?`, 
+    //    [fullName, selfiesWithPassport, bankCard, bankCardName, transportFrontPhoto, transportBackPhoto, transportSidePhoto, adrPhoto, transportRegistrationCountry, userInfo.id]);
+    //    if (rows.affectedRows){
+    //     await connect.query('UPDATE users_transport set state_number = ? where user_id = ?', [stateRegistrationTruckNumber, userInfo.id])
+    //     await connect.query('INSERT INTO users_transport_files SET transport_id = ?,file_patch = ?,name = ?,type_file = ?', 
+    //     [transportId, 'https://admin.tirgo.io/file/'+transportationLicensePhoto, transportationLicensePhoto,'license_files'],
+    //     [transportId, 'https://admin.tirgo.io/file/'+driverLicense, driverLicense,'license_files'],
+    //     [transportId, 'https://admin.tirgo.io/file/'+techPassportPhoto, techPassportPhoto,'tech_passport_files']);
+    //    }
+    } catch(err) {
+        console.log(err)
+        appData.error = 'Internal error';
+        res.status(403).json(appData)
+    }
+});
+
+users.put('/update-verification', async (req, res) => {
+    let connect,
+    appData = {status: false,timestamp: new Date().getTime()},
+    userInfo = jwt.decode(req.headers.authorization.split(' ')[1]);
+    try {
+        connect = await database.connection.getConnection();
+    const { 
+        id,
+        full_name,
+        selfies_with_passport,
+        bank_card,
+        bank_cardname,
+        transport_front_photo,
+        transport_back_photo,
+        transport_side_photo,
+        adr_photo,
+        transport_registration_country,
+        driver_license,
+        transportation_license_photo,
+        techpassport_photo,
+        state_registration_truckNumber
+} = req.body
+    
+    if( !id ||
+        !full_name ||
+        !selfies_with_passport ||
+        !bank_card ||
+        !bank_cardname ||
+        !transport_front_photo ||
+        !transport_back_photo ||
+        !transport_side_photo ||
+        !adr_photo ||
+        !transport_registration_country ||
+        !driver_license ||
+        !transportation_license_photo ||
+        !techpassport_photo ||
+        !state_registration_truckNumber
+        ) {
+        appData.error = 'All fields are required';
+        res.status(400).json(appData)
+       }
+
+       connect = await database.connection.getConnection();
+       const [rows] = await connect.query(`
+            UPDATE verification set
+                userId = ?,
+                fullName = ?,
+                selfiesWithPassport = ?,
+                bankCard = ?,
+                bankCardName = ?,
+                transportFrontPhoto = ?,
+                transportBackPhoto = ?,
+                transportSidePhoto = ?,
+                adrPhoto = ?,
+                transportRegistrationCountry = ?,
+                driverLicense = ?,
+                transportationLicensePhoto = ?,
+                techPassportPhoto = ?,
+                stateRegistrationTruckNumber = ? where id = ?`,
+                [   
+                    userInfo.id,
+                    full_name,
+                    selfies_with_passport,
+                    bank_card,
+                    bank_cardname,
+                    transport_front_photo,
+                    transport_back_photo,
+                    transport_side_photo,
+                    adr_photo,
+                    transport_registration_country,
+                    driver_license,
+                    transportation_license_photo,
+                    techpassport_photo,
+                    state_registration_truckNumber,
+                    id
+                ]
+       );
+       if(rows.affectedRows) {
+        appData.status = true;
+        }
+        res.status(200).json(appData)
+    } catch(err) {
+        console.log(err)
+        appData.error = 'Internal error';
+        res.status(403).json(appData)
+    }
+});
+
+users.patch('/verify-driver', async (req, res) => {
+    let connect,
+    appData = {status: false,timestamp: new Date().getTime()};
+    try {
+        connect = await database.connection.getConnection();
+        const { 
+            id,
+        } = req.query;
+        if(!id) {
+            appData.error = 'VerificationId is required';
+            res.status(400).json(appData);
+        }
+        const [rows] = await connect.query('UPDATE verification SET verified = 1 WHERE id = ?', [id]);
+        if(rows.affectedRows) {
+            appData.status = true;
+            res.status(200).json(appData)
+        }
+    }
+    catch(err) {
+        console.log(err)
+        appData.error = 'Internal error';
+        res.status(403).json(appData)
+    }
+})
+
+users.delete('/delete-verification', async (req, res) => {
+    let connect,
+    appData = {status: false,timestamp: new Date().getTime()};
+    try {
+        connect = await database.connection.getConnection();
+        const { 
+            id,
+        } = req.query
+        if(!id) {
+            appData.error('VerificationId is required');
+            res.status(400).json(appData);
+        }
+        const [rows] = await connect.query('DELETE FROM verification WHERE id = ?', [id]);
+        if(rows.affectedRows) {
+            appData.status = true;
+            res.status(200).json(appData)
+        }
+    }
+    catch(err) {
+        console.log(err)
+        appData.error = 'Internal error';
+        res.status(403).json(appData)
+    }
+})
+
+users.get('/verified-verifications', async(req, res) => {
+    let connect,
+    appData = {status: false,timestamp: new Date().getTime()},
+    userInfo = jwt.decode(req.headers.authorization.split(' ')[1]);
+    try {
+        connect = await database.connection.getConnection();
+      const [rows] = await connect.query(`SELECT 
+        id,
+        full_name,
+        selfies_with_passport,
+        bank_card,
+        bank_cardname,
+        transport_front_photo,
+        transport_back_photo,
+        transport_side_photo,
+        adr_photo,
+        transport_registration_country,
+        driver_license,
+        transportation_license_photo,
+        techpassport_photo,
+        state_registration_truckNumber
+        from verification where verified = 1`);
+        if (rows.length){
+            appData.status = true;
+            appData.data = rows;
+            res.status(200).json(appData)
+        } else {
+            appData.status = true;
+            appData.data = [];
+            res.status(204).json(appData)
+        }
+       
+    } catch(err) {
+     appData.status = false;
+     appData.error = err;
+     res.status(403).json(appData);
+    }
+})
+
+users.get('/unverified-verifications', async(req, res) => {
+    let connect,
+    appData = {status: false,timestamp: new Date().getTime()},
+    userInfo = jwt.decode(req.headers.authorization.split(' ')[1]);
+    try {
+      connect = await database.connection.getConnection();
+      const [rows] = await  connect.query(`SELECT 
+        id,
+        full_name,
+        selfies_with_passport,
+        bank_card,
+        bank_cardname,
+        transport_front_photo,
+        transport_back_photo,
+        transport_side_photo,
+        adr_photo,
+        transport_registration_country,
+        driver_license,
+        transportation_license_photo,
+        techpassport_photo,
+        state_registration_truckNumber
+        from verification where verified = 0`);
+        if (rows.length){
+            appData.status = true;
+            appData.data = rows;
+            res.status(200).json(appData)
+        } else {
+            appData.status = true;
+            appData.data = [];
+            res.status(204).json(appData)
+        }
+       
+    } catch(err) {
+        console.log(err)
+     appData.status = false;
+     appData.error = err;
+     res.status(403).json(appData);
+    }
+})
 
 users.post('/setAdrUser', async (req, res) => {
     let connect,
