@@ -698,28 +698,28 @@ users.post("/codeverifyClient", async (req, res) => {
   }
 });
 
-users.use((req, res, next) => {
-  let token =
-    req.body.token ||
-    req.headers["token"] ||
-    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-  let appData = {};
-  if (token) {
-    jwt.verify(token, process.env.SECRET_KEY, function (err) {
-      if (err) {
-        appData["error"] = err;
-        appData["data"] = "Token is invalid";
-        res.status(403).json(appData);
-      } else {
-        next();
-      }
-    });
-  } else {
-    appData["error"] = 1;
-    appData["data"] = "Token is null";
-    res.status(200).json(appData);
-  }
-});
+// users.use((req, res, next) => {
+//   let token =
+//     req.body.token ||
+//     req.headers["token"] ||
+//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+//   let appData = {};
+//   if (token) {
+//     jwt.verify(token, process.env.SECRET_KEY, function (err) {
+//       if (err) {
+//         appData["error"] = err;
+//         appData["data"] = "Token is invalid";
+//         res.status(403).json(appData);
+//       } else {
+//         next();
+//       }
+//     });
+//   } else {
+//     appData["error"] = 1;
+//     appData["data"] = "Token is null";
+//     res.status(200).json(appData);
+//   }
+// });
 users.post("/saveDeviceToken", async (req, res) => {
   console.log("/saveDeviceToken");
   let connect,
@@ -1956,27 +1956,29 @@ users.post("/delPhotoUser", async (req, res) => {
     appData = { status: false, timestamp: new Date().getTime() },
     file = req.body.filename,
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
-  try {
-    connect = await database.connection.getConnection();
-    const [rows] = await connect.query(
-      "UPDATE users_list_files SET active = 0 WHERE name = ? AND user_id = ?",
-      [file, userInfo.id]
-    );
-    if (rows.affectedRows) {
-      appData.status = true;
-    } else {
-      appData.error = "Невозможно удалить изображение";
+  minioClient.removeObject("tirgo", req.body.filename).then(async () => {
+    try {
+      connect = await database.connection.getConnection();
+      const [rows] = await connect.query(
+        "UPDATE users_list_files SET active = 0 WHERE name = ? AND user_id = ?",
+        [file, userInfo.id]
+      );
+      if (rows.affectedRows) {
+        appData.status = true;
+      } else {
+        appData.error = "Невозможно удалить изображение";
+      }
+      res.status(200).json(appData);
+    } catch (err) {
+      appData.status = false;
+      appData.error = err;
+      res.status(403).json(appData);
+    } finally {
+      if (connect) {
+        connect.release();
+      }
     }
-    res.status(200).json(appData);
-  } catch (err) {
-    appData.status = false;
-    appData.error = err;
-    res.status(403).json(appData);
-  } finally {
-    if (connect) {
-      connect.release();
-    }
-  }
+  });
 });
 users.post("/fonishOrderDriver", async (req, res) => {
   let connect,
@@ -2930,7 +2932,7 @@ users.post(
       appData = { status: false },
       typeUser = req.body.typeUser,
       typeImage = req.body.typeImage;
-    const filePath = minioClient.protocol +"//"+minioClient.host + ":" +minioClient.port +"/" +"tirgo" + "/" + req.file.originalname;
+    const filePath = minioClient.protocol +"//" +minioClient.host +":" +minioClient.port +"/" + "tirgo" +"/" +req.file.originalname;
     minioClient.putObject(
       "tirgo",
       req.file.originalname,
