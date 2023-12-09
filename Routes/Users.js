@@ -2210,7 +2210,7 @@ users.post("/acceptDriverClient", async (req, res) => {
       if (check_secure.length) {
         await connect.query(
           "UPDATE secure_transaction SET dirverid = ? WHERE orderid = ?",
-          [id, check_secure[0].id]
+          [id, check_secure[0].orderid]
         );
         await connect.query(
           "UPDATE users_list SET balance = balance - ? WHERE id = ?",
