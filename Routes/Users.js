@@ -3335,6 +3335,24 @@ users.post("/uploadImage", upload.single("file"), async (req, res) => {
           res.status(200).json(appData);
         });
     }
+    else if (typeImage === "verification") {
+      await connect.query(
+        "INSERT INTO users_list_files SET user_id = ?,name = ?,type_file = ?",
+        [userInfo.id, req.file.originalname, "driver-license"]
+      );
+      sharp(req.file.originalname)
+        .rotate()
+        .resize(400)
+        .toFile(filePath, async (err, info) => {
+          appData.file = {
+            preview: filePath,
+            filename: req.file.originalname,
+          };
+          appData.status = true;
+          console.log(appData);
+          res.status(200).json(appData);
+        });
+    }
   } catch (err) {
     appData.status = false;
     appData.error = err.message;
