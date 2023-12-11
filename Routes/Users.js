@@ -429,11 +429,11 @@ async function getCityFromLatLng(lat, lng) {
 users.post("/findCity", async (req, res) => {
   console.log(req.body);
   let query = {
-      query: req.body.query,
-      count: 10,
-      restrict_value: true,
-      locations: [{ country: "*" }],
-    },
+    query: req.body.query,
+    count: 10,
+    restrict_value: true,
+    locations: [{ country: "*" }],
+  },
     appData = { status: false },
     options = {
       method: "POST",
@@ -881,6 +881,30 @@ users.post("/verifyNewContact", async (req, res) => {
     }
   }
 });
+
+users.get("/getMerchantBalance", async function (req, res) {
+  let connect,
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]),
+    appData = { status: false, timestamp: new Date().getTime() };
+  const clientId = req.query.clientId;
+  try {
+    connect = await database.connection.getConnection();
+    const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where userid = ? and status <> 3`, [clientId]);
+    const [activeBalance] = await connect.query(`SELECT * from secure_transaction where userid = ? and status = 3`, [clientId]);
+    const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+    const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+    appData.data = { totalFrozenAmount, totalActiveAmount };
+    res.status(200).json(appData)
+  } catch (err) {
+    appData.message = err.message;
+    res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 users.get("/checkSession", async function (req, res) {
   let connect,
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]),
@@ -893,20 +917,26 @@ users.get("/checkSession", async function (req, res) {
     );
     if (rows.length) {
       const [config] = await connect.query("SELECT * FROM config LIMIT 1");
+      const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where driverid = ? and status <> 3`, [row[0]?.id]);
+      const [activeBalance] = await connect.query(`SELECT * from secure_transaction where driverid = ? and status = 3`, [row[0]?.id]);
+      const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+      const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       appData.user = rows[0];
+      appData.user.balance = totalActiveAmount ? totalActiveAmount : 0;
+      appData.user.balance__off = totalFrozenAmount ? totalFrozenAmount : 0;
       appData.user.config = config[0];
       appData.user.avatar = fs.existsSync(
         process.env.FILES_PATCH +
-          "tirgo/drivers/" +
-          userInfo.id +
-          "/" +
-          rows[0].avatar
+        "tirgo/drivers/" +
+        userInfo.id +
+        "/" +
+        rows[0].avatar
       )
         ? process.env.SERVER_URL +
-          "tirgo/drivers/" +
-          userInfo.id +
-          "/" +
-          rows[0].avatar
+        "tirgo/drivers/" +
+        userInfo.id +
+        "/" +
+        rows[0].avatar
         : null;
       const [files] = await connect.query(
         "SELECT *,name as filename FROM users_list_files WHERE user_id = ? AND active = 1",
@@ -917,16 +947,16 @@ users.get("/checkSession", async function (req, res) {
           let newItem = item;
           newItem.preview = fs.existsSync(
             process.env.FILES_PATCH +
-              "tirgo/drivers/" +
-              userInfo.id +
-              "/" +
-              item.filename
+            "tirgo/drivers/" +
+            userInfo.id +
+            "/" +
+            item.filename
           )
             ? process.env.SERVER_URL +
-              "tirgo/drivers/" +
-              userInfo.id +
-              "/" +
-              item.filename
+            "tirgo/drivers/" +
+            userInfo.id +
+            "/" +
+            item.filename
             : null;
           return newItem;
         })
@@ -938,9 +968,9 @@ users.get("/checkSession", async function (req, res) {
         [
           userInfo.id,
           "Произведен вход " +
-            req.headers["user-agent"].split("(")[1].replace(")", "") +
-            ",IP: " +
-            parseIp(req).replace("::ffff:", ""),
+          req.headers["user-agent"].split("(")[1].replace(")", "") +
+          ",IP: " +
+          parseIp(req).replace("::ffff:", ""),
         ]
       );
       socket.updateActivity("update-activity", "1");
@@ -972,16 +1002,16 @@ users.get("/checkSessionClient", async function (req, res) {
       appData.user.config = config;
       appData.user.avatar = fs.existsSync(
         process.env.FILES_PATCH +
-          "tirgo/clients/" +
-          userInfo.id +
-          "/" +
-          rows[0].avatar
+        "tirgo/clients/" +
+        userInfo.id +
+        "/" +
+        rows[0].avatar
       )
         ? process.env.SERVER_URL +
-          "tirgo/clients/" +
-          userInfo.id +
-          "/" +
-          rows[0].avatar
+        "tirgo/clients/" +
+        userInfo.id +
+        "/" +
+        rows[0].avatar
         : null;
       const [files] = await connect.query(
         "SELECT * FROM users_list_files WHERE user_id = ?",
@@ -992,16 +1022,16 @@ users.get("/checkSessionClient", async function (req, res) {
           let newItem = item;
           newItem.image = fs.existsSync(
             process.env.FILES_PATCH +
-              "tirgo/drivers/" +
-              userInfo.id +
-              "/" +
-              item.name
+            "tirgo/drivers/" +
+            userInfo.id +
+            "/" +
+            item.name
           )
             ? process.env.SERVER_URL +
-              "tirgo/drivers/" +
-              userInfo.id +
-              "/" +
-              item.name
+            "tirgo/drivers/" +
+            userInfo.id +
+            "/" +
+            item.name
             : null;
           return newItem;
         })
@@ -1013,9 +1043,9 @@ users.get("/checkSessionClient", async function (req, res) {
         [
           userInfo.id,
           "Произведен вход " +
-            req.headers["user-agent"].split("(")[1].replace(")", "") +
-            ",IP: " +
-            parseIp(req).replace("::ffff:", ""),
+          req.headers["user-agent"].split("(")[1].replace(")", "") +
+          ",IP: " +
+          parseIp(req).replace("::ffff:", ""),
         ]
       );
       socket.updateActivity("update-activity", "1");
@@ -1643,10 +1673,10 @@ users.post("/editTransport", async (req, res) => {
 
 users.post('/verification', async (req, res) => {
   let connect,
-  appData = {status: false,timestamp: new Date().getTime()},
-  userInfo = jwt.decode(req.headers.authorization.split(' ')[1]);
+    appData = { status: false, timestamp: new Date().getTime() },
+    userInfo = jwt.decode(req.headers.authorization.split(' ')[1]);
   try {
-  const { 
+    const {
       full_name,
       selfies_with_passport,
       bank_card,
@@ -1660,9 +1690,9 @@ users.post('/verification', async (req, res) => {
       transportation_license_photo,
       techpassport_photo,
       state_registration_truckNumber
-} = req.body
-  
-  if( !full_name ||
+    } = req.body
+
+    if (!full_name ||
       !selfies_with_passport ||
       !bank_card ||
       !bank_cardname ||
@@ -1675,13 +1705,13 @@ users.post('/verification', async (req, res) => {
       !transportation_license_photo ||
       !techpassport_photo ||
       !state_registration_truckNumber
-      ) {
+    ) {
       appData.error = 'All fields are required';
       res.status(400).json(appData)
-     }
+    }
 
-     connect = await database.connection.getConnection();
-     const [rows] = await connect.query(`
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(`
           INSERT INTO verification set
               user_id = ?,
               full_name = ?,
@@ -1697,51 +1727,51 @@ users.post('/verification', async (req, res) => {
               transportation_license_photo = ?,
               techpassport_photo = ?,
               state_registration_truckNumber = ?`,
-              [   
-                  userInfo.id,
-                  full_name,
-                  selfies_with_passport,
-                  bank_card,
-                  bank_cardname,
-                  transport_front_photo,
-                  transport_back_photo,
-                  transport_side_photo,
-                  adr_photo,
-                  transport_registration_country,
-                  driver_license,
-                  transportation_license_photo,
-                  techpassport_photo,
-                  state_registration_truckNumber
-              ]
-     );
-     if(rows.affectedRows) {
+      [
+        userInfo.id,
+        full_name,
+        selfies_with_passport,
+        bank_card,
+        bank_cardname,
+        transport_front_photo,
+        transport_back_photo,
+        transport_side_photo,
+        adr_photo,
+        transport_registration_country,
+        driver_license,
+        transportation_license_photo,
+        techpassport_photo,
+        state_registration_truckNumber
+      ]
+    );
+    if (rows.affectedRows) {
       appData.status = true;
-      }
-      res.status(200).json(appData)
-  //    const [rows] = await connect.query(`UPDATE users_list SET name = ?, selfiesWithPassport = ?, 
-  //    bankCard = ?, bankCardName = ?, transportFrontPhoto = ?, transportBackPhoto = ?, transportSidePhoto = ?, adrPhoto = ?, transportRegistrationCountry = ?  WHERE id = ?`, 
-  //    [fullName, selfiesWithPassport, bankCard, bankCardName, transportFrontPhoto, transportBackPhoto, transportSidePhoto, adrPhoto, transportRegistrationCountry, userInfo.id]);
-  //    if (rows.affectedRows){
-  //     await connect.query('UPDATE users_transport set state_number = ? where user_id = ?', [stateRegistrationTruckNumber, userInfo.id])
-  //     await connect.query('INSERT INTO users_transport_files SET transport_id = ?,file_patch = ?,name = ?,type_file = ?', 
-  //     [transportId, 'https://admin.tirgo.io/file/'+transportationLicensePhoto, transportationLicensePhoto,'license_files'],
-  //     [transportId, 'https://admin.tirgo.io/file/'+driverLicense, driverLicense,'license_files'],
-  //     [transportId, 'https://admin.tirgo.io/file/'+techPassportPhoto, techPassportPhoto,'tech_passport_files']);
-  //    }
-  } catch(err) {
-      console.log(err)
-      appData.error = 'Internal error';
-      res.status(403).json(appData)
+    }
+    res.status(200).json(appData)
+    //    const [rows] = await connect.query(`UPDATE users_list SET name = ?, selfiesWithPassport = ?, 
+    //    bankCard = ?, bankCardName = ?, transportFrontPhoto = ?, transportBackPhoto = ?, transportSidePhoto = ?, adrPhoto = ?, transportRegistrationCountry = ?  WHERE id = ?`, 
+    //    [fullName, selfiesWithPassport, bankCard, bankCardName, transportFrontPhoto, transportBackPhoto, transportSidePhoto, adrPhoto, transportRegistrationCountry, userInfo.id]);
+    //    if (rows.affectedRows){
+    //     await connect.query('UPDATE users_transport set state_number = ? where user_id = ?', [stateRegistrationTruckNumber, userInfo.id])
+    //     await connect.query('INSERT INTO users_transport_files SET transport_id = ?,file_patch = ?,name = ?,type_file = ?', 
+    //     [transportId, 'https://admin.tirgo.io/file/'+transportationLicensePhoto, transportationLicensePhoto,'license_files'],
+    //     [transportId, 'https://admin.tirgo.io/file/'+driverLicense, driverLicense,'license_files'],
+    //     [transportId, 'https://admin.tirgo.io/file/'+techPassportPhoto, techPassportPhoto,'tech_passport_files']);
+    //    }
+  } catch (err) {
+    console.log(err)
+    appData.error = 'Internal error';
+    res.status(403).json(appData)
   }
 });
 
 users.put('/update-verification', async (req, res) => {
   let connect,
-  appData = {status: false,timestamp: new Date().getTime()},
-  userInfo = jwt.decode(req.headers.authorization.split(' ')[1]);
+    appData = { status: false, timestamp: new Date().getTime() },
+    userInfo = jwt.decode(req.headers.authorization.split(' ')[1]);
   try {
-      connect = await database.connection.getConnection();
-  const { 
+    connect = await database.connection.getConnection();
+    const {
       id,
       full_name,
       selfies_with_passport,
@@ -1756,9 +1786,9 @@ users.put('/update-verification', async (req, res) => {
       transportation_license_photo,
       techpassport_photo,
       state_registration_truckNumber
-} = req.body
-  
-  if( !id ||
+    } = req.body
+
+    if (!id ||
       !full_name ||
       !selfies_with_passport ||
       !bank_card ||
@@ -1772,13 +1802,13 @@ users.put('/update-verification', async (req, res) => {
       !transportation_license_photo ||
       !techpassport_photo ||
       !state_registration_truckNumber
-      ) {
+    ) {
       appData.error = 'All fields are required';
       res.status(400).json(appData)
-     }
+    }
 
-     connect = await database.connection.getConnection();
-     const [rows] = await connect.query(`
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(`
           UPDATE verification set
               userId = ?,
               fullName = ?,
@@ -1794,91 +1824,91 @@ users.put('/update-verification', async (req, res) => {
               transportationLicensePhoto = ?,
               techPassportPhoto = ?,
               stateRegistrationTruckNumber = ? where id = ?`,
-              [   
-                  userInfo.id,
-                  full_name,
-                  selfies_with_passport,
-                  bank_card,
-                  bank_cardname,
-                  transport_front_photo,
-                  transport_back_photo,
-                  transport_side_photo,
-                  adr_photo,
-                  transport_registration_country,
-                  driver_license,
-                  transportation_license_photo,
-                  techpassport_photo,
-                  state_registration_truckNumber,
-                  id
-              ]
-     );
-     if(rows.affectedRows) {
+      [
+        userInfo.id,
+        full_name,
+        selfies_with_passport,
+        bank_card,
+        bank_cardname,
+        transport_front_photo,
+        transport_back_photo,
+        transport_side_photo,
+        adr_photo,
+        transport_registration_country,
+        driver_license,
+        transportation_license_photo,
+        techpassport_photo,
+        state_registration_truckNumber,
+        id
+      ]
+    );
+    if (rows.affectedRows) {
       appData.status = true;
-      }
-      res.status(200).json(appData)
-  } catch(err) {
-      console.log(err)
-      appData.error = 'Internal error';
-      res.status(403).json(appData)
+    }
+    res.status(200).json(appData)
+  } catch (err) {
+    console.log(err)
+    appData.error = 'Internal error';
+    res.status(403).json(appData)
   }
 });
 
 users.patch('/verify-driver', async (req, res) => {
   let connect,
-  appData = {status: false,timestamp: new Date().getTime()};
+    appData = { status: false, timestamp: new Date().getTime() };
   try {
-      connect = await database.connection.getConnection();
-      const { 
-          id,
-      } = req.query;
-      if(!id) {
-          appData.error = 'VerificationId is required';
-          res.status(400).json(appData);
-      }
-      const [rows] = await connect.query('UPDATE verification SET verified = 1 WHERE id = ?', [id]);
-      if(rows.affectedRows) {
-          appData.status = true;
-          res.status(200).json(appData)
-      }
+    connect = await database.connection.getConnection();
+    const {
+      id,
+    } = req.query;
+    if (!id) {
+      appData.error = 'VerificationId is required';
+      res.status(400).json(appData);
+    }
+    const [rows] = await connect.query('UPDATE verification SET verified = 1 WHERE id = ?', [id]);
+    if (rows.affectedRows) {
+      appData.status = true;
+      res.status(200).json(appData)
+    }
   }
-  catch(err) {
-      console.log(err)
-      appData.error = 'Internal error';
-      res.status(403).json(appData)
+  catch (err) {
+    console.log(err)
+    appData.error = 'Internal error';
+    res.status(403).json(appData)
   }
 })
 
 users.delete('/delete-verification', async (req, res) => {
   let connect,
-  appData = {status: false,timestamp: new Date().getTime()};
+    appData = { status: false, timestamp: new Date().getTime() };
   try {
-      connect = await database.connection.getConnection();
-      const { 
-          id,
-      } = req.query
-      if(!id) {
-          appData.error('VerificationId is required');
-          res.status(400).json(appData);
-      }
-      const [rows] = await connect.query('DELETE FROM verification WHERE id = ?', [id]);
-      if(rows.affectedRows) {
-          appData.status = true;
-          res.status(200).json(appData)
-      }
+    connect = await database.connection.getConnection();
+    const {
+      id,
+    } = req.query
+    if (!id) {
+      appData.error('VerificationId is required');
+      res.status(400).json(appData);
+    }
+    const [rows] = await connect.query('DELETE FROM verification WHERE id = ?', [id]);
+    if (rows.affectedRows) {
+      appData.status = true;
+      res.status(200).json(appData)
+    }
   }
-  catch(err) {
-      console.log(err)
-      appData.error = 'Internal error';
-      res.status(403).json(appData)
+  catch (err) {
+    console.log(err)
+    appData.error = 'Internal error';
+    res.status(403).json(appData)
   }
 })
 
-users.get('/verified-verifications', async(req, res) => {
+users.get('/verified-verifications', async (req, res) => {
   let connect,
-  appData = {status: false,timestamp: new Date().getTime()},
-  userInfo = jwt.decode(req.headers.authorization.split(' ')[1]);
+    appData = { status: false, timestamp: new Date().getTime() },
+    userInfo = jwt.decode(req.headers.authorization.split(' ')[1]);
   try {
-      connect = await database.connection.getConnection();
+    connect = await database.connection.getConnection();
     const [rows] = await connect.query(`SELECT 
       id,
       full_name,
@@ -1895,30 +1925,30 @@ users.get('/verified-verifications', async(req, res) => {
       techpassport_photo,
       state_registration_truckNumber
       from verification where verified = 1`);
-      if (rows.length){
-          appData.status = true;
-          appData.data = rows;
-          res.status(200).json(appData)
-      } else {
-          appData.status = true;
-          appData.data = [];
-          res.status(204).json(appData)
-      }
-     
-  } catch(err) {
-   appData.status = false;
-   appData.error = err;
-   res.status(403).json(appData);
+    if (rows.length) {
+      appData.status = true;
+      appData.data = rows;
+      res.status(200).json(appData)
+    } else {
+      appData.status = true;
+      appData.data = [];
+      res.status(204).json(appData)
+    }
+
+  } catch (err) {
+    appData.status = false;
+    appData.error = err;
+    res.status(403).json(appData);
   }
 })
 
-users.get('/unverified-verifications', async(req, res) => {
+users.get('/unverified-verifications', async (req, res) => {
   let connect,
-  appData = {status: false,timestamp: new Date().getTime()},
-  userInfo = jwt.decode(req.headers.authorization.split(' ')[1]);
+    appData = { status: false, timestamp: new Date().getTime() },
+    userInfo = jwt.decode(req.headers.authorization.split(' ')[1]);
   try {
     connect = await database.connection.getConnection();
-    const [rows] = await  connect.query(`SELECT 
+    const [rows] = await connect.query(`SELECT 
       id,
       full_name,
       selfies_with_passport,
@@ -1934,21 +1964,21 @@ users.get('/unverified-verifications', async(req, res) => {
       techpassport_photo,
       state_registration_truckNumber
       from verification where verified = 0`);
-      if (rows.length){
-          appData.status = true;
-          appData.data = rows;
-          res.status(200).json(appData)
-      } else {
-          appData.status = true;
-          appData.data = [];
-          res.status(204).json(appData)
-      }
-     
-  } catch(err) {
-      console.log(err)
-   appData.status = false;
-   appData.error = err;
-   res.status(403).json(appData);
+    if (rows.length) {
+      appData.status = true;
+      appData.data = rows;
+      res.status(200).json(appData)
+    } else {
+      appData.status = true;
+      appData.data = [];
+      res.status(204).json(appData)
+    }
+
+  } catch (err) {
+    console.log(err)
+    appData.status = false;
+    appData.error = err;
+    res.status(403).json(appData);
   }
 })
 
@@ -2072,6 +2102,13 @@ users.post("/acceptOrderDriver", async (req, res) => {
     two_day = 0,
     three_day = 0,
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+  pricePlus = 0;
+  if (req.body.isSafe) {
+    let x = +price;
+    let y = x / 0.88;
+    let t = (12 / 100) * y;
+    pricePlus = x + t + 100;
+  }
   try {
     const amqp = require("amqplib");
     const connection = await amqp.connect("amqp://localhost");
@@ -2082,8 +2119,8 @@ users.post("/acceptOrderDriver", async (req, res) => {
     if (dates.includes(2)) three_day = 1;
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "INSERT INTO orders_accepted SET user_id = ?,order_id = ?,price = ?,one_day = ?,two_day = ?,three_day = ?, ismerchant = ?",
-      [userInfo.id, orderid, price, one_day, two_day, three_day, isMerchant]
+      "INSERT INTO orders_accepted SET user_id = ?,order_id = ?,price = ?, additional_price = ?,one_day = ?,two_day = ?,three_day = ?, ismerchant = ?",
+      [userInfo.id, orderid, price, pricePlus, one_day, two_day, three_day, isMerchant]
     );
     if (rows.affectedRows) {
       console.log("keld");
@@ -2114,7 +2151,7 @@ users.get("/getAcceptedOrdersDriver", async (req, res) => {
     connect = await database.connection.getConnection();
     // appData.data = await connect.query('select * from orders_accepted where ismerchant = true left join')
     appData.data = await connect.query(
-      "SELECT ul.name, ul.phone, ul.city, ul.country, ul.id as user_id, oa.order_id as orderid, oa.price as priceorder,oa.status_order FROM orders_accepted oa LEFT JOIN users_list ul ON ul.id = oa.user_id where ismerchant = true"
+      "SELECT ul.name, ul.phone, ul.city, ul.country, ul.id as user_id, oa.order_id as orderid, oa.price as priceorder, oa.additional_price, oa.status_order FROM orders_accepted oa LEFT JOIN users_list ul ON ul.id = oa.user_id where ismerchant = true"
     );
     res.status(200).json(appData);
   } catch (err) {
@@ -2203,24 +2240,24 @@ users.post("/acceptDriverClient", async (req, res) => {
     );
     if (rows.affectedRows) {
       appData.status = true;
-      const [check_secure] = await connect.query(
-        "SELECT * FROM secure_transaction WHERE orderid = ? LIMIT 1",
-        [orderid]
-      );
-      if (check_secure.length) {
-        await connect.query(
-          "UPDATE secure_transaction SET dirverid = ? WHERE orderid = ?",
-          [id, check_secure[0].orderid]
-        );
-        await connect.query(
-          "UPDATE users_list SET balance = balance - ? WHERE id = ?",
-          [price_off, userInfo.id]
-        );
-        await connect.query(
-          "UPDATE users_list SET balance_off = balance + ? WHERE id = ?",
-          [price_off, id]
-        );
-      }
+      // const [check_secure] = await connect.query(
+      //   "SELECT * FROM secure_transaction WHERE orderid = ? LIMIT 1",
+      //   [orderid]
+      // );
+      // if (check_secure.length) {
+      //   await connect.query(
+      //     "UPDATE secure_transaction SET dirverid = ? WHERE orderid = ?",
+      //     [id, check_secure[0].orderid]
+      //   );
+      //   await connect.query(
+      //     "UPDATE users_list SET balance = balance - ? WHERE id = ?",
+      //     [price_off, userInfo.id]
+      //   );
+      //   await connect.query(
+      //     "UPDATE users_list SET balance_off = balance + ? WHERE id = ?",
+      //     [price_off, id]
+      //   );
+      // }
       await connect.query(
         "UPDATE orders SET status = 1,driver_id = ? WHERE id = ? AND user_id = ?",
         [id, orderid, userInfo.id]
@@ -2392,6 +2429,10 @@ users.post("/finishMerchantOrderDriver", async (req, res) => {
         [orderid]
       );
       if (rows.affectedRows) {
+        connect.query(
+          "UPDATE secure_transaction SET status = 1 WHERE order_id = ?",
+          [orderid]
+        );
         channel.sendToQueue("finishOrderDriver", Buffer.from(orderid));
         socket.updateAllList("update-all-list", "1");
         appData.status = true;
@@ -2400,6 +2441,10 @@ users.post("/finishMerchantOrderDriver", async (req, res) => {
       }
     } else {
       appData.status = true;
+      connect.query(
+        "UPDATE secure_transaction SET status = 1 WHERE order_id = ?",
+        [orderid]
+      );
       socket.updateAllList("update-all-list", "1");
       channel.sendToQueue("finishOrderDriver", Buffer.from(orderid));
       await connect.query(
@@ -2449,16 +2494,16 @@ users.get("/getMyTrack", async (req, res) => {
               let docks = item2;
               docks.preview = fs.existsSync(
                 process.env.FILES_PATCH +
-                  "tirgo/drivers/" +
-                  userInfo.id +
-                  "/" +
-                  item2.filename
+                "tirgo/drivers/" +
+                userInfo.id +
+                "/" +
+                item2.filename
               )
                 ? process.env.SERVER_URL +
-                  "tirgo/drivers/" +
-                  userInfo.id +
-                  "/" +
-                  item2.filename
+                "tirgo/drivers/" +
+                userInfo.id +
+                "/" +
+                item2.filename
                 : null;
               return docks;
             })
@@ -2728,16 +2773,16 @@ users.get("/getMyOrdersClient", async (req, res) => {
               newItemUsers.contacts = contacts;
               newItemUsers.avatar = fs.existsSync(
                 process.env.FILES_PATCH +
-                  "tirgo/drivers/" +
-                  item2.id +
-                  "/" +
-                  item2.avatar
+                "tirgo/drivers/" +
+                item2.id +
+                "/" +
+                item2.avatar
               )
                 ? process.env.SERVER_URL +
-                  "tirgo/drivers/" +
-                  item2.id +
-                  "/" +
-                  item2.avatar
+                "tirgo/drivers/" +
+                item2.id +
+                "/" +
+                item2.avatar
                 : null;
               newItemUsers.trucks = await Promise.all(
                 trucks.map(async (truck) => {
@@ -2751,16 +2796,16 @@ users.get("/getMyOrdersClient", async (req, res) => {
                       let docks = filetruck;
                       docks.preview = fs.existsSync(
                         process.env.FILES_PATCH +
-                          "tirgo/drivers/" +
-                          item2.id +
-                          "/" +
-                          filetruck.name
+                        "tirgo/drivers/" +
+                        item2.id +
+                        "/" +
+                        filetruck.name
                       )
                         ? process.env.SERVER_URL +
-                          "tirgo/drivers/" +
-                          item2.id +
-                          "/" +
-                          filetruck.name
+                        "tirgo/drivers/" +
+                        item2.id +
+                        "/" +
+                        filetruck.name
                         : null;
                       return docks;
                     })
