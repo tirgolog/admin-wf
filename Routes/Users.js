@@ -2103,11 +2103,18 @@ users.post("/acceptOrderDriver", async (req, res) => {
     three_day = 0,
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   pricePlus = 0;
-  if (req.body.isSafe) {
-    let x = +price;
-    let y = x / 0.88;
-    let t = (12 / 100) * y;
-    pricePlus = x + t + 100;
+  if (isMerchant) {
+    orderid = orderid.split('M')[1] ? orderid.split('M')[1] : orderid;
+    const merchantCargos = await axios.get(
+      "https://merchant.tirgo.io/api/v1/cargo/id?id=" + orderid
+    );
+    if (merchantCargos.data.success && merchantCargos.data?.data?.isSafe) {
+      let x = +price;
+      let y = x / 0.88;
+      let t = (12 / 100) * y;
+      pricePlus = x + t + 100;
+    }
+
   }
   try {
     const amqp = require("amqplib");
