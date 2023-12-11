@@ -1744,6 +1744,7 @@ users.post("/verification", async (req, res) => {
   try {
     const {
       full_name,
+      phone,
       selfies_with_passport,
       bank_card,
       bank_cardname,
@@ -1760,6 +1761,7 @@ users.post("/verification", async (req, res) => {
 
     if (
       !full_name ||
+      !phone ||
       !selfies_with_passport ||
       !bank_card ||
       !bank_cardname ||
@@ -1783,6 +1785,7 @@ users.post("/verification", async (req, res) => {
           INSERT INTO verification set
               user_id = ?,
               full_name = ?,
+              phone = ?,
               selfies_with_passport = ?,
               bank_card = ?,
               bank_cardname = ?,
@@ -1798,6 +1801,7 @@ users.post("/verification", async (req, res) => {
       [
         userInfo.id,
         full_name,
+        phone,
         selfies_with_passport,
         bank_card,
         bank_cardname,
@@ -1842,6 +1846,7 @@ users.put("/update-verification", async (req, res) => {
     const {
       id,
       full_name,
+      phone,
       selfies_with_passport,
       bank_card,
       bank_cardname,
@@ -1859,6 +1864,7 @@ users.put("/update-verification", async (req, res) => {
     if (
       !id ||
       !full_name ||
+      !phone ||
       !selfies_with_passport ||
       !bank_card ||
       !bank_cardname ||
@@ -1882,6 +1888,7 @@ users.put("/update-verification", async (req, res) => {
           UPDATE verification set
               userId = ?,
               fullName = ?,
+              phone = ?,
               selfiesWithPassport = ?,
               bankCard = ?,
               bankCardName = ?,
@@ -1897,6 +1904,7 @@ users.put("/update-verification", async (req, res) => {
       [
         userInfo.id,
         full_name,
+        phone, 
         selfies_with_passport,
         bank_card,
         bank_cardname,
@@ -1982,6 +1990,7 @@ users.get("/verified-verifications", async (req, res) => {
     const [rows] = await connect.query(`SELECT 
       id,
       full_name,
+      phone,
       selfies_with_passport,
       bank_card,
       bank_cardname,
@@ -2020,6 +2029,7 @@ users.get("/unverified-verifications", async (req, res) => {
     const [rows] = await connect.query(`SELECT 
       id,
       full_name,
+      phone,
       selfies_with_passport,
       bank_card,
       bank_cardname,
