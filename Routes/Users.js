@@ -801,28 +801,28 @@ users.post("/codeverifyClient", async (req, res) => {
   }
 });
 
-// users.use((req, res, next) => {
-//   let token =
-//     req.body.token ||
-//     req.headers["token"] ||
-//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-//   let appData = {};
-//   if (token) {
-//     jwt.verify(token, process.env.SECRET_KEY, function (err) {
-//       if (err) {
-//         appData["error"] = err;
-//         appData["data"] = "Token is invalid";
-//         res.status(403).json(appData);
-//       } else {
-//         next();
-//       }
-//     });
-//   } else {
-//     appData["error"] = 1;
-//     appData["data"] = "Token is null";
-//     res.status(200).json(appData);
-//   }
-// });
+users.use((req, res, next) => {
+  let token =
+    req.body.token ||
+    req.headers["token"] ||
+    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+  let appData = {};
+  if (token) {
+    jwt.verify(token, process.env.SECRET_KEY, function (err) {
+      if (err) {
+        appData["error"] = err;
+        appData["data"] = "Token is invalid";
+        res.status(403).json(appData);
+      } else {
+        next();
+      }
+    });
+  } else {
+    appData["error"] = 1;
+    appData["data"] = "Token is null";
+    res.status(200).json(appData);
+  }
+});
 users.post("/saveDeviceToken", async (req, res) => {
   console.log("/saveDeviceToken");
   let connect,
