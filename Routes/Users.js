@@ -2104,7 +2104,6 @@ users.post("/acceptOrderDriver", async (req, res) => {
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   pricePlus = 0;
   if (isMerchant) {
-    orderid = orderid.split('M')[1] ? orderid.split('M')[1] : orderid;
     const merchantCargos = await axios.get(
       "https://merchant.tirgo.io/api/v1/cargo/id?id=" + orderid
     );
