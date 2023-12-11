@@ -16,12 +16,12 @@
             amount = data.amount,
             addAmount = data.additionalAmount,
             isSafe = data.isSafe;
-        console.log(`acceptDriverOffer: id ${id} orderId ${orderid}`)
+        console.log(`acceptDriverOffer: driverId ${driverId} orderId ${orderid}`)
 
         try {
             connect = await database.connection.getConnection();
             await connect.query('DELETE FROM orders_accepted WHERE user_id <> ? AND order_id = ?', [driverId, orderid]);
-            const [rows] = await connect.query('UPDATE orders_accepted SET status_order = 1 WHERE order_id = ? AND user_id = ?', [orderid, id]);
+            const [rows] = await connect.query('UPDATE orders_accepted SET status_order = 1 WHERE order_id = ? AND user_id = ?', [orderid, driverId]);
             if (rows.affectedRows) {
                 if (isSafe) {
                     connect.query(`INSERT INTO secure_transaction set userid = ?, dirverid = ?, orderid = ?, amount = ?, additional_amount = ?`, [clientId, driverId, orderid, amount, addAmount]);
