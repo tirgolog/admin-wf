@@ -20,11 +20,11 @@
 
         try {
             connect = await database.connection.getConnection();
-            await connect.query('DELETE FROM orders_accepted WHERE user_id <> ? AND order_id = ?', [driverid, orderid]);
+            await connect.query('DELETE FROM orders_accepted WHERE user_id <> ? AND order_id = ?', [driverId, orderid]);
             const [rows] = await connect.query('UPDATE orders_accepted SET status_order = 1 WHERE order_id = ? AND user_id = ?', [orderid, id]);
             if (rows.affectedRows) {
                 if (isSafe) {
-                    connect.query(`INSERT INTO secure_transaction set userid = ?, driverid = ?, orderid = ?, amount = ?, additional_amount = ?`, [clientId, driverId, orderid, amount, addAmount]);
+                    connect.query(`INSERT INTO secure_transaction set userid = ?, dirverid = ?, orderid = ?, amount = ?, additional_amount = ?`, [clientId, driverId, orderid, amount, addAmount]);
                 }
                 socket.updateAllList('update-all-list', '1')
             } else {
