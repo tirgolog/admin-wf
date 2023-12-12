@@ -823,6 +823,7 @@ users.use((req, res, next) => {
     res.status(200).json(appData);
   }
 });
+
 users.post("/saveDeviceToken", async (req, res) => {
   console.log("/saveDeviceToken");
   let connect,
@@ -989,7 +990,12 @@ users.get("/checkSession", async function (req, res) {
     );
     if (rows.length) {
       const [config] = await connect.query("SELECT * FROM config LIMIT 1");
+      const [verification] = await connect.query(
+        "SELECT * FROM verification WHERE user_id = ? LIMIT 1",
+        [rows[0].id]
+      );
       appData.user = rows[0];
+      appData.user.driver_verification = verification[0].verified;
       appData.user.config = config[0];
       appData.user.avatar = fs.existsSync(
         process.env.FILES_PATCH +
@@ -1755,7 +1761,8 @@ users.post("/verification", async (req, res) => {
       transport_registration_country,
       driver_license,
       transportation_license_photo,
-      techpassport_photo,
+      techpassport_photo1,
+      techpassport_photo2,
       state_registration_truckNumber,
     } = req.body;
 
@@ -1772,7 +1779,8 @@ users.post("/verification", async (req, res) => {
       !transport_registration_country ||
       !driver_license ||
       !transportation_license_photo ||
-      !techpassport_photo ||
+      !techpassport_photo1 ||
+      !techpassport_photo2 ||
       !state_registration_truckNumber
     ) {
       appData.error = "All fields are required";
@@ -1796,7 +1804,8 @@ users.post("/verification", async (req, res) => {
               transport_registration_country = ?,
               driver_license = ?,
               transportation_license_photo = ?,
-              techpassport_photo = ?,
+              techpassport_photo1 = ?,
+              techpassport_photo2 = ?,
               state_registration_truckNumber = ?`,
       [
         userInfo.id,
@@ -1812,7 +1821,8 @@ users.post("/verification", async (req, res) => {
         transport_registration_country,
         driver_license,
         transportation_license_photo,
-        techpassport_photo,
+        techpassport_photo1,
+        techpassport_photo2,
         state_registration_truckNumber,
       ]
     );
@@ -1857,7 +1867,8 @@ users.put("/update-verification", async (req, res) => {
       transport_registration_country,
       driver_license,
       transportation_license_photo,
-      techpassport_photo,
+      techpassport_photo1,
+      techpassport_photo2,
       state_registration_truckNumber,
     } = req.body;
 
@@ -1875,7 +1886,8 @@ users.put("/update-verification", async (req, res) => {
       !transport_registration_country ||
       !driver_license ||
       !transportation_license_photo ||
-      !techpassport_photo ||
+      !techpassport_photo1 ||
+      !techpassport_photo2 ||
       !state_registration_truckNumber
     ) {
       appData.error = "All fields are required";
@@ -1899,12 +1911,13 @@ users.put("/update-verification", async (req, res) => {
               transportRegistrationCountry = ?,
               driverLicense = ?,
               transportationLicensePhoto = ?,
-              techPassportPhoto = ?,
+              techPassportPhoto1 = ?,
+              techPassportPhoto2 = ?,
               stateRegistrationTruckNumber = ? where id = ?`,
       [
         userInfo.id,
         full_name,
-        phone, 
+        phone,
         selfies_with_passport,
         bank_card,
         bank_cardname,
@@ -1915,7 +1928,8 @@ users.put("/update-verification", async (req, res) => {
         transport_registration_country,
         driver_license,
         transportation_license_photo,
-        techpassport_photo,
+        techpassport_photo1,
+        techpassport_photo2,
         state_registration_truckNumber,
         id,
       ]
@@ -1936,7 +1950,7 @@ users.patch("/verify-driver", async (req, res) => {
     appData = { status: false, timestamp: new Date().getTime() };
   try {
     connect = await database.connection.getConnection();
-    const { id } = req.query;
+    const { id } = req.body;
     if (!id) {
       appData.error = "VerificationId is required";
       res.status(400).json(appData);
@@ -2001,7 +2015,8 @@ users.get("/verified-verifications", async (req, res) => {
       transport_registration_country,
       driver_license,
       transportation_license_photo,
-      techpassport_photo,
+      techpassport_photo1,
+      techpassport_photo2,
       state_registration_truckNumber
       from verification where verified = 1`);
     if (rows.length) {
@@ -2040,7 +2055,8 @@ users.get("/unverified-verifications", async (req, res) => {
       transport_registration_country,
       driver_license,
       transportation_license_photo,
-      techpassport_photo,
+      techpassport_photo1,
+      techpassport_photo2,
       state_registration_truckNumber
       from verification where verified = 0`);
     if (rows.length) {
@@ -2909,112 +2925,113 @@ users.get("/getMyOrdersDriver", async (req, res) => {
     transportstypes = "",
     appData = { status: false, timestamp: new Date().getTime() };
   merchantData = [];
-  try {
-    const merchantCargos = await axios.get(
-      "https://merchant.tirgo.io/api/v1/cargo/all-driver"
-    );
-    if (merchantCargos.data.success) {
-      merchantData = merchantCargos.data.data.map((el) => {
-        return {
-          id: el.id,
-          isMerchant: true,
-          usernameorder: el.createdBy?.username,
-          userphoneorder: el.createdBy?.phoneNumber,
-          route: {
-            from_city: el.sendLocation,
-            to_city: el.cargoDeliveryLocation,
-          },
-          add_two_days: "",
-          adr: el.isDangrousCargo,
-          comment: "",
-          comment_client: "",
-          cubic: "",
-          currency: el.currency?.name,
-          date_create: el.createdAt,
-          date_send: el.sendCargoDate,
-          driver_id: el.driverId,
-          end_client: "",
-          end_date: "",
-          end_driver: "",
-          height_box: el.cargoHeight,
-          length_box: el.cargoLength,
-          loading: "",
-          mode: "",
-          no_cash: el.isCashlessPayment,
-          orders_accepted: el.acceptedOrders,
-          price: el.offeredPrice,
-          raiting_driver: "",
-          raiting_user: "",
-          route_id: "",
-          save_order: "",
-          secure_transaction: false,
-          status: el.status,
-          transport_type: el.transportType?.name,
-          transport_types: el.transportTypes,
-          type_cargo: el.cargoType?.code,
-          user_id: el.clientId,
-          weight: el.cargoWeight,
-          width_box: el.cargoWidth,
-        };
-      });
-    }
+  // try {
+  //   const merchantCargos = await axios.get(
+  //     "https://merchant.tirgo.io/api/v1/cargo/all-driver"
+  //   );
+  //   if (merchantCargos.data.success) {
+  //     merchantData = merchantCargos.data.data.map((el) => {
+  //       return {
+  //         id: el.id,
+  //         isMerchant: true,
+  //         usernameorder: el.createdBy?.username,
+  //         userphoneorder: el.createdBy?.phoneNumber,
+  //         route: {
+  //           from_city: el.sendLocation,
+  //           to_city: el.cargoDeliveryLocation,
+  //         },
+  //         add_two_days: "",
+  //         adr: el.isDangrousCargo,
+  //         comment: "",
+  //         comment_client: "",
+  //         cubic: "",
+  //         currency: el.currency?.name,
+  //         date_create: el.createdAt,
+  //         date_send: el.sendCargoDate,
+  //         driver_id: el.driverId,
+  //         end_client: "",
+  //         end_date: "",
+  //         end_driver: "",
+  //         height_box: el.cargoHeight,
+  //         length_box: el.cargoLength,
+  //         loading: "",
+  //         mode: "",
+  //         no_cash: el.isCashlessPayment,
+  //         orders_accepted: el.acceptedOrders,
+  //         price: el.offeredPrice,
+  //         raiting_driver: "",
+  //         raiting_user: "",
+  //         route_id: "",
+  //         save_order: "",
+  //         secure_transaction: false,
+  //         status: el.status,
+  //         transport_type: el.transportType?.name,
+  //         transport_types: el.transportTypes,
+  //         type_cargo: el.cargoType?.code,
+  //         user_id: el.clientId,
+  //         weight: el.cargoWeight,
+  //         width_box: el.cargoWidth,
+  //       };
+  //     });
+  //   }
 
-    connect = await database.connection.getConnection();
-    const [transports] = await connect.query(
-      "SELECT * FROM users_transport WHERE user_id = ? AND active = 1",
-      [userInfo.id]
-    );
-    for (let transport of transports) {
-      transportstypes = transportstypes + transport.type + ",";
-    }
-    transportstypes = transportstypes + "22,";
-    transportstypes = transportstypes.substring(0, transportstypes.length - 1);
-    let [rows] = await connect.query(
-      "SELECT o.*,ul.name as usernameorder,ul.phone as userphoneorder FROM orders o LEFT JOIN users_list ul ON o.user_id = ul.id WHERE o.status <> 3 ORDER BY o.id DESC",
-      [transportstypes, transportstypes]
-    );
-    if (rows.length) {
-      appData.data = await Promise.all(
-        [...merchantData, ...rows].map(async (item) => {
-          let newItem = item;
-          if (!item.isMerchant) {
-            newItem.transport_types = JSON.parse(item.transport_types);
-          }
-          const [orders_accepted] = await connect.query(
-            "SELECT ul.*,oa.price as priceorder,oa.status_order FROM orders_accepted oa LEFT JOIN users_list ul ON ul.id = oa.user_id WHERE oa.order_id = ?",
-            [item.isMerchant ? +item.id.split("M")[1] : item.id]
-          );
-          newItem.orders_accepted = await Promise.all(
-            orders_accepted.map(async (item2) => {
-              let newItemUsers = item2;
-              return newItemUsers;
-            })
-          );
-          if (!item.isMerchant) {
-            const [route] = await connect.query(
-              "SELECT * FROM routes WHERE id = ? LIMIT 1",
-              [item.route_id]
-            );
-            newItem.route = route[0];
-          }
-          return newItem;
-        })
-      );
-      appData.status = true;
-    } else {
-      appData.error = "Нет заказов";
-    }
-    res.status(200).json(appData);
-  } catch (err) {
-    console.log(err);
-    appData.status = false;
-    appData.error = err;
-    res.status(403).json(appData);
-  } finally {
-    if (connect) {
-      connect.release();
-    }
-  }
+  //   connect = await database.connection.getConnection();
+  //   const [transports] = await connect.query(
+  //     "SELECT * FROM users_transport WHERE user_id = ? AND active = 1",
+  //     [userInfo.id]
+  //   );
+  //   for (let transport of transports) {
+  //     transportstypes = transportstypes + transport.type + ",";
+  //   }
+  //   transportstypes = transportstypes + "22,";
+  //   transportstypes = transportstypes.substring(0, transportstypes.length - 1);
+  //   let [rows] = await connect.query(
+  //     "SELECT o.*,ul.name as usernameorder,ul.phone as userphoneorder FROM orders o LEFT JOIN users_list ul ON o.user_id = ul.id WHERE o.status <> 3 ORDER BY o.id DESC",
+  //     [transportstypes, transportstypes]
+  //   );
+  //   if (rows.length) {
+  //     appData.data = await Promise.all(
+  //       [...merchantData, ...rows].map(async (item) => {
+  //         let newItem = item;
+  //         if (!item.isMerchant) {
+  //           newItem.transport_types = JSON.parse(item.transport_types);
+  //         }
+  //         const [orders_accepted] = await connect.query(
+  //           "SELECT ul.*,oa.price as priceorder,oa.status_order FROM orders_accepted oa LEFT JOIN users_list ul ON ul.id = oa.user_id WHERE oa.order_id = ?",
+  //           [item.isMerchant ? +item.id.split("M")[1] : item.id]
+  //         );
+  //         newItem.orders_accepted = await Promise.all(
+  //           orders_accepted.map(async (item2) => {
+  //             let newItemUsers = item2;
+  //             return newItemUsers;
+  //           })
+  //         );
+  //         if (!item.isMerchant) {
+  //           const [route] = await connect.query(
+  //             "SELECT * FROM routes WHERE id = ? LIMIT 1",
+  //             [item.route_id]
+  //           );
+  //           newItem.route = route[0];
+  //         }
+  //         return newItem;
+  //       })
+  //     );
+  //     appData.status = true;
+  //   } else {
+  //     appData.error = "Нет заказов";
+  //   }
+  //   res.status(200).json(appData);
+  // } catch (err) {
+  //   console.log(err);
+  //   appData.status = false;
+  //   appData.error = err;
+  //   res.status(403).json(appData);
+  // } finally {
+  //   if (connect) {
+  //     connect.release();
+  //   }
+  // }
+  res.status(200).json(appData);
 });
 
 users.get("/getMyArchiveOrdersDriver", async (req, res) => {
