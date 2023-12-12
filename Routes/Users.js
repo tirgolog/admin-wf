@@ -429,11 +429,11 @@ async function getCityFromLatLng(lat, lng) {
 users.post("/findCity", async (req, res) => {
   console.log(req.body);
   let query = {
-      query: req.body.query,
-      count: 10,
-      restrict_value: true,
-      locations: [{ country: "*" }],
-    },
+    query: req.body.query,
+    count: 10,
+    restrict_value: true,
+    locations: [{ country: "*" }],
+  },
     appData = { status: false },
     options = {
       method: "POST",
@@ -978,6 +978,30 @@ users.post("/verifyNewContact", async (req, res) => {
     }
   }
 });
+
+users.get("/getMerchantBalance", async function (req, res) {
+  let connect,
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]),
+    appData = { status: false, timestamp: new Date().getTime() };
+  const clientId = req.query.clientId;
+  try {
+    connect = await database.connection.getConnection();
+    const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where userid = ? and status <> 3`, [clientId]);
+    const [activeBalance] = await connect.query(`SELECT * from secure_transaction where userid = ? and status = 3`, [clientId]);
+    const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+    const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+    appData.data = { totalFrozenAmount, totalActiveAmount };
+    res.status(200).json(appData)
+  } catch (err) {
+    appData.message = err.message;
+    res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 users.get("/checkSession", async function (req, res) {
   let connect,
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]),
@@ -990,25 +1014,28 @@ users.get("/checkSession", async function (req, res) {
     );
     if (rows.length) {
       const [config] = await connect.query("SELECT * FROM config LIMIT 1");
-      const [verification] = await connect.query(
-        "SELECT * FROM verification WHERE user_id = ? LIMIT 1",
-        [rows[0].id]
-      );
+      const [verification] = await connect.query("SELECT * FROM verification WHERE user_id = ? LIMIT 1",[rows[0].id]);
+      const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status <> 3`, [rows[0]?.id]);
+      const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 3`, [rows[0]?.id]);
+      const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+      const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       appData.user = rows[0];
       appData.user.driver_verification = verification[0].verified;
+      appData.user.balance = totalActiveAmount ? totalActiveAmount : 0;
+      appData.user.balance__off = totalFrozenAmount ? totalFrozenAmount : 0;
       appData.user.config = config[0];
       appData.user.avatar = fs.existsSync(
         process.env.FILES_PATCH +
-          "tirgo/drivers/" +
-          userInfo.id +
-          "/" +
-          rows[0].avatar
+        "tirgo/drivers/" +
+        userInfo.id +
+        "/" +
+        rows[0].avatar
       )
         ? process.env.SERVER_URL +
-          "tirgo/drivers/" +
-          userInfo.id +
-          "/" +
-          rows[0].avatar
+        "tirgo/drivers/" +
+        userInfo.id +
+        "/" +
+        rows[0].avatar
         : null;
       const [files] = await connect.query(
         "SELECT *,name as filename FROM users_list_files WHERE user_id = ? AND active = 1",
@@ -1019,16 +1046,16 @@ users.get("/checkSession", async function (req, res) {
           let newItem = item;
           newItem.preview = fs.existsSync(
             process.env.FILES_PATCH +
-              "tirgo/drivers/" +
-              userInfo.id +
-              "/" +
-              item.filename
+            "tirgo/drivers/" +
+            userInfo.id +
+            "/" +
+            item.filename
           )
             ? process.env.SERVER_URL +
-              "tirgo/drivers/" +
-              userInfo.id +
-              "/" +
-              item.filename
+            "tirgo/drivers/" +
+            userInfo.id +
+            "/" +
+            item.filename
             : null;
           return newItem;
         })
@@ -1040,9 +1067,9 @@ users.get("/checkSession", async function (req, res) {
         [
           userInfo.id,
           "Произведен вход " +
-            req.headers["user-agent"].split("(")[1].replace(")", "") +
-            ",IP: " +
-            parseIp(req).replace("::ffff:", ""),
+          req.headers["user-agent"].split("(")[1].replace(")", "") +
+          ",IP: " +
+          parseIp(req).replace("::ffff:", ""),
         ]
       );
       socket.updateActivity("update-activity", "1");
@@ -1074,16 +1101,16 @@ users.get("/checkSessionClient", async function (req, res) {
       appData.user.config = config;
       appData.user.avatar = fs.existsSync(
         process.env.FILES_PATCH +
-          "tirgo/clients/" +
-          userInfo.id +
-          "/" +
-          rows[0].avatar
+        "tirgo/clients/" +
+        userInfo.id +
+        "/" +
+        rows[0].avatar
       )
         ? process.env.SERVER_URL +
-          "tirgo/clients/" +
-          userInfo.id +
-          "/" +
-          rows[0].avatar
+        "tirgo/clients/" +
+        userInfo.id +
+        "/" +
+        rows[0].avatar
         : null;
       const [files] = await connect.query(
         "SELECT * FROM users_list_files WHERE user_id = ?",
@@ -1094,16 +1121,16 @@ users.get("/checkSessionClient", async function (req, res) {
           let newItem = item;
           newItem.image = fs.existsSync(
             process.env.FILES_PATCH +
-              "tirgo/drivers/" +
-              userInfo.id +
-              "/" +
-              item.name
+            "tirgo/drivers/" +
+            userInfo.id +
+            "/" +
+            item.name
           )
             ? process.env.SERVER_URL +
-              "tirgo/drivers/" +
-              userInfo.id +
-              "/" +
-              item.name
+            "tirgo/drivers/" +
+            userInfo.id +
+            "/" +
+            item.name
             : null;
           return newItem;
         })
@@ -1115,9 +1142,9 @@ users.get("/checkSessionClient", async function (req, res) {
         [
           userInfo.id,
           "Произведен вход " +
-            req.headers["user-agent"].split("(")[1].replace(")", "") +
-            ",IP: " +
-            parseIp(req).replace("::ffff:", ""),
+          req.headers["user-agent"].split("(")[1].replace(")", "") +
+          ",IP: " +
+          parseIp(req).replace("::ffff:", ""),
         ]
       );
       socket.updateActivity("update-activity", "1");
@@ -1746,7 +1773,7 @@ users.post("/editTransport", async (req, res) => {
 users.post("/verification", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
-    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+    userInfo = jwt.decode(req.headers.authorization.split(' ')[1]);
   try {
     const {
       full_name,
@@ -2196,6 +2223,19 @@ users.post("/acceptOrderDriver", async (req, res) => {
     two_day = 0,
     three_day = 0,
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+  pricePlus = 0;
+  if (isMerchant) {
+    const merchantCargos = await axios.get(
+      "https://merchant.tirgo.io/api/v1/cargo/id?id=" + orderid
+    );
+    if (merchantCargos.data.success && merchantCargos.data?.data?.isSafe) {
+      let x = +price;
+      let y = x / 0.88;
+      let t = (12 / 100) * y;
+      pricePlus = x + t + 100;
+    }
+
+  }
   try {
     const amqp = require("amqplib");
     const connection = await amqp.connect("amqp://localhost");
@@ -2206,8 +2246,8 @@ users.post("/acceptOrderDriver", async (req, res) => {
     if (dates.includes(2)) three_day = 1;
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "INSERT INTO orders_accepted SET user_id = ?,order_id = ?,price = ?,one_day = ?,two_day = ?,three_day = ?, ismerchant = ?",
-      [userInfo.id, orderid, price, one_day, two_day, three_day, isMerchant]
+      "INSERT INTO orders_accepted SET user_id = ?,order_id = ?,price = ?, additional_price = ?,one_day = ?,two_day = ?,three_day = ?, ismerchant = ?",
+      [userInfo.id, orderid, price, pricePlus, one_day, two_day, three_day, isMerchant]
     );
     if (rows.affectedRows) {
       console.log("keld");
@@ -2238,7 +2278,7 @@ users.get("/getAcceptedOrdersDriver", async (req, res) => {
     connect = await database.connection.getConnection();
     // appData.data = await connect.query('select * from orders_accepted where ismerchant = true left join')
     appData.data = await connect.query(
-      "SELECT ul.name, ul.phone, ul.city, ul.country, ul.id as user_id, oa.order_id as orderid, oa.price as priceorder,oa.status_order FROM orders_accepted oa LEFT JOIN users_list ul ON ul.id = oa.user_id where ismerchant = true"
+      "SELECT ul.name, ul.phone, ul.city, ul.country, ul.id as user_id, oa.order_id as orderid, oa.price as priceorder, oa.additional_price, oa.status_order FROM orders_accepted oa LEFT JOIN users_list ul ON ul.id = oa.user_id where ismerchant = true"
     );
     res.status(200).json(appData);
   } catch (err) {
@@ -2327,24 +2367,24 @@ users.post("/acceptDriverClient", async (req, res) => {
     );
     if (rows.affectedRows) {
       appData.status = true;
-      const [check_secure] = await connect.query(
-        "SELECT * FROM secure_transaction WHERE orderid = ? LIMIT 1",
-        [orderid]
-      );
-      if (check_secure.length) {
-        await connect.query(
-          "UPDATE secure_transaction SET dirverid = ? WHERE orderid = ?",
-          [id, check_secure[0].id]
-        );
-        await connect.query(
-          "UPDATE users_list SET balance = balance - ? WHERE id = ?",
-          [price_off, userInfo.id]
-        );
-        await connect.query(
-          "UPDATE users_list SET balance_off = balance + ? WHERE id = ?",
-          [price_off, id]
-        );
-      }
+      // const [check_secure] = await connect.query(
+      //   "SELECT * FROM secure_transaction WHERE orderid = ? LIMIT 1",
+      //   [orderid]
+      // );
+      // if (check_secure.length) {
+      //   await connect.query(
+      //     "UPDATE secure_transaction SET dirverid = ? WHERE orderid = ?",
+      //     [id, check_secure[0].orderid]
+      //   );
+      //   await connect.query(
+      //     "UPDATE users_list SET balance = balance - ? WHERE id = ?",
+      //     [price_off, userInfo.id]
+      //   );
+      //   await connect.query(
+      //     "UPDATE users_list SET balance_off = balance + ? WHERE id = ?",
+      //     [price_off, id]
+      //   );
+      // }
       await connect.query(
         "UPDATE orders SET status = 1,driver_id = ? WHERE id = ? AND user_id = ?",
         [id, orderid, userInfo.id]
@@ -2516,6 +2556,10 @@ users.post("/finishMerchantOrderDriver", async (req, res) => {
         [orderid]
       );
       if (rows.affectedRows) {
+        connect.query(
+          "UPDATE secure_transaction SET status = 1 WHERE order_id = ?",
+          [orderid]
+        );
         channel.sendToQueue("finishOrderDriver", Buffer.from(orderid));
         socket.updateAllList("update-all-list", "1");
         appData.status = true;
@@ -2524,6 +2568,10 @@ users.post("/finishMerchantOrderDriver", async (req, res) => {
       }
     } else {
       appData.status = true;
+      connect.query(
+        "UPDATE secure_transaction SET status = 1 WHERE order_id = ?",
+        [orderid]
+      );
       socket.updateAllList("update-all-list", "1");
       channel.sendToQueue("finishOrderDriver", Buffer.from(orderid));
       await connect.query(
@@ -2573,16 +2621,16 @@ users.get("/getMyTrack", async (req, res) => {
               let docks = item2;
               docks.preview = fs.existsSync(
                 process.env.FILES_PATCH +
-                  "tirgo/drivers/" +
-                  userInfo.id +
-                  "/" +
-                  item2.filename
+                "tirgo/drivers/" +
+                userInfo.id +
+                "/" +
+                item2.filename
               )
                 ? process.env.SERVER_URL +
-                  "tirgo/drivers/" +
-                  userInfo.id +
-                  "/" +
-                  item2.filename
+                "tirgo/drivers/" +
+                userInfo.id +
+                "/" +
+                item2.filename
                 : null;
               return docks;
             })
@@ -2852,16 +2900,16 @@ users.get("/getMyOrdersClient", async (req, res) => {
               newItemUsers.contacts = contacts;
               newItemUsers.avatar = fs.existsSync(
                 process.env.FILES_PATCH +
-                  "tirgo/drivers/" +
-                  item2.id +
-                  "/" +
-                  item2.avatar
+                "tirgo/drivers/" +
+                item2.id +
+                "/" +
+                item2.avatar
               )
                 ? process.env.SERVER_URL +
-                  "tirgo/drivers/" +
-                  item2.id +
-                  "/" +
-                  item2.avatar
+                "tirgo/drivers/" +
+                item2.id +
+                "/" +
+                item2.avatar
                 : null;
               newItemUsers.trucks = await Promise.all(
                 trucks.map(async (truck) => {
@@ -2875,16 +2923,16 @@ users.get("/getMyOrdersClient", async (req, res) => {
                       let docks = filetruck;
                       docks.preview = fs.existsSync(
                         process.env.FILES_PATCH +
-                          "tirgo/drivers/" +
-                          item2.id +
-                          "/" +
-                          filetruck.name
+                        "tirgo/drivers/" +
+                        item2.id +
+                        "/" +
+                        filetruck.name
                       )
                         ? process.env.SERVER_URL +
-                          "tirgo/drivers/" +
-                          item2.id +
-                          "/" +
-                          filetruck.name
+                        "tirgo/drivers/" +
+                        item2.id +
+                        "/" +
+                        filetruck.name
                         : null;
                       return docks;
                     })
