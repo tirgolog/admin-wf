@@ -1022,7 +1022,7 @@ users.get("/checkSession", async function (req, res) {
       appData.user = rows[0];
       appData.user.driver_verification = verification[0]?.verified;
       appData.user.balance = totalActiveAmount ? totalActiveAmount : 0;
-      appData.user.balance__off = totalFrozenAmount ? totalFrozenAmount : 0;
+      appData.user.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
       appData.user.config = config[0];
       appData.user.avatar = fs.existsSync(
         process.env.FILES_PATCH +
