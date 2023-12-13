@@ -3051,7 +3051,7 @@ users.get("/getMyOrdersDriver", async (req, res) => {
           raiting_user: "",
           route_id: "",
           save_order: "",
-          secure_transaction: false,
+          secure_transaction: el.isSafe,
           status: el.status,
           transport_type: el.transportType?.name,
           transport_types: el.transportTypes,
