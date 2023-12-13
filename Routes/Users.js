@@ -2557,7 +2557,7 @@ users.post("/finishMerchantOrderDriver", async (req, res) => {
       );
       if (rows.affectedRows) {
         connect.query(
-          "UPDATE secure_transaction SET status = 1 WHERE order_id = ?",
+          "UPDATE secure_transaction SET status = 1 WHERE orderid = ?",
           [orderid]
         );
         channel.sendToQueue("finishOrderDriver", Buffer.from(orderid));
@@ -2569,7 +2569,7 @@ users.post("/finishMerchantOrderDriver", async (req, res) => {
     } else {
       appData.status = true;
       connect.query(
-        "UPDATE secure_transaction SET status = 1 WHERE order_id = ?",
+        "UPDATE secure_transaction SET status = 1 WHERE orderid = ?",
         [orderid]
       );
       socket.updateAllList("update-all-list", "1");
