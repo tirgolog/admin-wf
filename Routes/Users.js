@@ -1770,6 +1770,43 @@ users.post("/editTransport", async (req, res) => {
   }
 });
 
+users.post("/finish-merchant-cargo", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() },
+    userInfo = jwt.decode(req.headers.authorization.split(' ')[1]);
+  try {
+    const {
+      orderId,
+    } = req.body;
+
+    if (
+      !orderId
+    ) {
+      appData.error = "orderId is required";
+      res.status(400).json(appData);
+    }
+
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      `
+          UPDATE orders_accepted set
+              status = 3 where orderid = ? AND ismerchant = true`,
+      [
+        orderId,
+      ]
+    );
+    if (rows.affectedRows) {
+      appData.status = true;
+    }
+    res.status(200).json(appData);
+    //    }
+  } catch (err) {
+    console.log(err);
+    appData.error = "Internal error";
+    res.status(403).json(appData);
+  }
+});
+
 users.post("/verification", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
