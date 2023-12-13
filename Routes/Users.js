@@ -2056,6 +2056,7 @@ users.get("/verified-verifications", async (req, res) => {
       res.status(204).json(appData);
     }
   } catch (err) {
+    console.lg(err)
     appData.status = false;
     appData.error = err;
     res.status(403).json(appData);
@@ -3535,5 +3536,25 @@ users.post("/uploadImage", upload.single("file"), async (req, res) => {
     }
   }
 });
+
+// users.post("/createOrderClient", async (req, res) => {
+//   let connect,
+//     appData = { status: false, timestamp: new Date().getTime() },
+//     data = req.body.data,
+//     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+//   try {
+//     console.log(data);
+//     connect = await database.connection.getConnection();
+
+//   } catch (err) {
+//     appData.status = false;
+//     appData.error = err;
+//     res.status(403).json(appData);
+//   } finally {
+//     if (connect) {
+//       connect.release();
+//     }
+//   }
+// });
 
 module.exports = users;
