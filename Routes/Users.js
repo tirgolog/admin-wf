@@ -1790,7 +1790,7 @@ users.post("/finish-merchant-cargo", async (req, res) => {
     const [rows] = await connect.query(
       `
           UPDATE orders_accepted set
-              status = 3 where orderid = ? AND ismerchant = true`,
+              status = 3 where order_id = ? AND ismerchant = true`,
       [
         orderId,
       ]
