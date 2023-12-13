@@ -1789,8 +1789,9 @@ users.post("/finish-merchant-cargo", async (req, res) => {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
       `
-          UPDATE orders_accepted set
-              status = 3 where order_id = ? AND ismerchant = true`,
+      UPDATE orders_accepted
+      SET status_order = 3
+      WHERE order_id = ? AND ismerchant = true`,
       [
         orderId,
       ]
