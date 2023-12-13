@@ -2030,6 +2030,7 @@ users.get("/verified-verifications", async (req, res) => {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(`SELECT 
       id,
+      user_id,
       full_name,
       phone,
       selfies_with_passport,
@@ -2070,6 +2071,7 @@ users.get("/unverified-verifications", async (req, res) => {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(`SELECT 
       id,
+      user_id,
       full_name,
       phone,
       selfies_with_passport,
