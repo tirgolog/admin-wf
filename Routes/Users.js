@@ -3668,7 +3668,7 @@ users.get("/driver/withdrawals", async (req, res) => {
   }
 });
 
-users.path('/verify-withdrawal/verify/:id', async (req, res) => {
+users.patch('/verify-withdrawal/verify/:id', async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
     withdrawId = req.params.id;
