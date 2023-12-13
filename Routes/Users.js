@@ -1020,7 +1020,7 @@ users.get("/checkSession", async function (req, res) {
       const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       appData.user = rows[0];
-      appData.user.driver_verification = verification[0].verified;
+      appData.user.driver_verification = verification[0]?.verified;
       appData.user.balance = totalActiveAmount ? totalActiveAmount : 0;
       appData.user.balance__off = totalFrozenAmount ? totalFrozenAmount : 0;
       appData.user.config = config[0];
