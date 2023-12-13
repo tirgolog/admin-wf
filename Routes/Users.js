@@ -3574,24 +3574,136 @@ users.post("/uploadImage", upload.single("file"), async (req, res) => {
   }
 });
 
-// users.post("/createOrderClient", async (req, res) => {
-//   let connect,
-//     appData = { status: false, timestamp: new Date().getTime() },
-//     data = req.body.data,
-//     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
-//   try {
-//     console.log(data);
-//     connect = await database.connection.getConnection();
+users.post("/driver-balance/withdraw", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() },
+    userId = req.body.userId,
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+  try {
+    console.log(userId);
+    connect = await database.connection.getConnection();
 
-//   } catch (err) {
-//     appData.status = false;
-//     appData.error = err;
-//     res.status(403).json(appData);
-//   } finally {
-//     if (connect) {
-//       connect.release();
-//     }
-//   }
-// });
+    
+    const [row] = await connect.query(
+       `SELECT *
+       FROM users_list
+       WHERE users_list.id = ? AND users_list.user_type = 1 AND users_list.ban <> 1 AND users_list.deleted <> 1;
+       `,
+      [userId]
+    );
+    if(row[0]) {
+      const user = row[0];
+      
+      await connect.query(
+        "INSERT INTO driver_withdrawal SET driver_id = ?, withdraw_type = 'Вывод средств', status = 0",
+        [
+          user.id
+        ]
+      );
+      appData.status = true;
+      socket.updateAllList('driver-withdrawal', '1')
+      res.status(200).json(appData);
+
+    } else {
+      appData.status = false;
+      appData.error = 'User not found';
+      res.status(200).json(appData);
+    }
+
+
+  } catch (err) {
+    appData.status = false;
+    appData.error = err;
+    res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+users.get("/driver/withdrawals", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() },
+    userId = req.body.userId,
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+  try {
+    console.log(userId);
+    connect = await database.connection.getConnection();
+
+    
+    const [rows] = await connect.query(
+       `SELECT 
+            wd.*,
+            ul.name,
+            ul.phone,
+            ul.balance,
+            v.bank_card,
+            ul.id as driver_id
+        FROM driver_withdraw wd
+        LEFT JOIN users_list ul ON wd.driver_id = ul.id
+        LEFT JOIN verification v ON ul.id = v.user_id
+        WHERE ul.id = ? AND ul.user_type = 1 AND ul.ban <> 1 AND ul.deleted <> 1 AND wd.status = 0;
+       `,
+      [userId]
+    );
+
+    if(rows.affectedRows) {
+      appData.status = true;
+      appData.data = rows;
+      res.status(200).json(appData);
+    } else {
+      appData.status = false;
+      res.status(500).json(appData);
+    }
+
+  } catch (err) {
+    appData.status = false;
+    appData.error = err;
+    res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+users.path('/verify-withdrawal/verify/:id', async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() },
+    withdrawId = req.params.id;
+
+  try {
+    connect = await database.connection.getConnection();
+
+    const [withdrawal] = await connect.query(
+      "SELECT * FROM driver_withdrawal WHERE id = ? AND status = 0",
+      [withdrawId]
+    );
+
+    if (withdrawal[0]) {
+      // Update the withdrawal status to '1' (verified)
+      await connect.query(
+        "UPDATE driver_withdrawal SET status = 1 WHERE id = ?",
+        [withdrawId]
+      );
+
+      appData.status = true;
+      res.status(200).json(appData);
+    } else {
+      appData.status = false;
+      appData.error = 'Withdrawal not found or already verified';
+      res.status(200).json(appData);
+    }
+  } catch (err) {
+    appData.status = false;
+    appData.error = err;
+    res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
 
 module.exports = users;
