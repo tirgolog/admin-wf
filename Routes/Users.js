@@ -2973,113 +2973,112 @@ users.get("/getMyOrdersDriver", async (req, res) => {
     transportstypes = "",
     appData = { status: false, timestamp: new Date().getTime() };
   merchantData = [];
-  // try {
-  //   const merchantCargos = await axios.get(
-  //     "https://merchant.tirgo.io/api/v1/cargo/all-driver"
-  //   );
-  //   if (merchantCargos.data.success) {
-  //     merchantData = merchantCargos.data.data.map((el) => {
-  //       return {
-  //         id: el.id,
-  //         isMerchant: true,
-  //         usernameorder: el.createdBy?.username,
-  //         userphoneorder: el.createdBy?.phoneNumber,
-  //         route: {
-  //           from_city: el.sendLocation,
-  //           to_city: el.cargoDeliveryLocation,
-  //         },
-  //         add_two_days: "",
-  //         adr: el.isDangrousCargo,
-  //         comment: "",
-  //         comment_client: "",
-  //         cubic: "",
-  //         currency: el.currency?.name,
-  //         date_create: el.createdAt,
-  //         date_send: el.sendCargoDate,
-  //         driver_id: el.driverId,
-  //         end_client: "",
-  //         end_date: "",
-  //         end_driver: "",
-  //         height_box: el.cargoHeight,
-  //         length_box: el.cargoLength,
-  //         loading: "",
-  //         mode: "",
-  //         no_cash: el.isCashlessPayment,
-  //         orders_accepted: el.acceptedOrders,
-  //         price: el.offeredPrice,
-  //         raiting_driver: "",
-  //         raiting_user: "",
-  //         route_id: "",
-  //         save_order: "",
-  //         secure_transaction: false,
-  //         status: el.status,
-  //         transport_type: el.transportType?.name,
-  //         transport_types: el.transportTypes,
-  //         type_cargo: el.cargoType?.code,
-  //         user_id: el.clientId,
-  //         weight: el.cargoWeight,
-  //         width_box: el.cargoWidth,
-  //       };
-  //     });
-  //   }
+  try {
+    const merchantCargos = await axios.get(
+      "https://merchant.tirgo.io/api/v1/cargo/all-driver"
+    );
+    if (merchantCargos.data.success) {
+      merchantData = merchantCargos.data.data.map((el) => {
+        return {
+          id: el.id,
+          isMerchant: true,
+          usernameorder: el.createdBy?.username,
+          userphoneorder: el.createdBy?.phoneNumber,
+          route: {
+            from_city: el.sendLocation,
+            to_city: el.cargoDeliveryLocation,
+          },
+          add_two_days: "",
+          adr: el.isDangrousCargo,
+          comment: "",
+          comment_client: "",
+          cubic: "",
+          currency: el.currency?.name,
+          date_create: el.createdAt,
+          date_send: el.sendCargoDate,
+          driver_id: el.driverId,
+          end_client: "",
+          end_date: "",
+          end_driver: "",
+          height_box: el.cargoHeight,
+          length_box: el.cargoLength,
+          loading: "",
+          mode: "",
+          no_cash: el.isCashlessPayment,
+          orders_accepted: el.acceptedOrders,
+          price: el.offeredPrice,
+          raiting_driver: "",
+          raiting_user: "",
+          route_id: "",
+          save_order: "",
+          secure_transaction: false,
+          status: el.status,
+          transport_type: el.transportType?.name,
+          transport_types: el.transportTypes,
+          type_cargo: el.cargoType?.code,
+          user_id: el.clientId,
+          weight: el.cargoWeight,
+          width_box: el.cargoWidth,
+        };
+      });
+    }
 
-  //   connect = await database.connection.getConnection();
-  //   const [transports] = await connect.query(
-  //     "SELECT * FROM users_transport WHERE user_id = ? AND active = 1",
-  //     [userInfo.id]
-  //   );
-  //   for (let transport of transports) {
-  //     transportstypes = transportstypes + transport.type + ",";
-  //   }
-  //   transportstypes = transportstypes + "22,";
-  //   transportstypes = transportstypes.substring(0, transportstypes.length - 1);
-  //   let [rows] = await connect.query(
-  //     "SELECT o.*,ul.name as usernameorder,ul.phone as userphoneorder FROM orders o LEFT JOIN users_list ul ON o.user_id = ul.id WHERE o.status <> 3 ORDER BY o.id DESC",
-  //     [transportstypes, transportstypes]
-  //   );
-  //   if (rows.length) {
-  //     appData.data = await Promise.all(
-  //       [...merchantData, ...rows].map(async (item) => {
-  //         let newItem = item;
-  //         if (!item.isMerchant) {
-  //           newItem.transport_types = JSON.parse(item.transport_types);
-  //         }
-  //         const [orders_accepted] = await connect.query(
-  //           "SELECT ul.*,oa.price as priceorder,oa.status_order FROM orders_accepted oa LEFT JOIN users_list ul ON ul.id = oa.user_id WHERE oa.order_id = ?",
-  //           [item.isMerchant ? +item.id.split("M")[1] : item.id]
-  //         );
-  //         newItem.orders_accepted = await Promise.all(
-  //           orders_accepted.map(async (item2) => {
-  //             let newItemUsers = item2;
-  //             return newItemUsers;
-  //           })
-  //         );
-  //         if (!item.isMerchant) {
-  //           const [route] = await connect.query(
-  //             "SELECT * FROM routes WHERE id = ? LIMIT 1",
-  //             [item.route_id]
-  //           );
-  //           newItem.route = route[0];
-  //         }
-  //         return newItem;
-  //       })
-  //     );
-  //     appData.status = true;
-  //   } else {
-  //     appData.error = "Нет заказов";
-  //   }
-  //   res.status(200).json(appData);
-  // } catch (err) {
-  //   console.log(err);
-  //   appData.status = false;
-  //   appData.error = err;
-  //   res.status(403).json(appData);
-  // } finally {
-  //   if (connect) {
-  //     connect.release();
-  //   }
-  // }
-  res.status(200).json(appData);
+    connect = await database.connection.getConnection();
+    const [transports] = await connect.query(
+      "SELECT * FROM users_transport WHERE user_id = ? AND active = 1",
+      [userInfo.id]
+    );
+    for (let transport of transports) {
+      transportstypes = transportstypes + transport.type + ",";
+    }
+    transportstypes = transportstypes + "22,";
+    transportstypes = transportstypes.substring(0, transportstypes.length - 1);
+    let [rows] = await connect.query(
+      "SELECT o.*,ul.name as usernameorder,ul.phone as userphoneorder FROM orders o LEFT JOIN users_list ul ON o.user_id = ul.id WHERE o.status <> 3 ORDER BY o.id DESC",
+      [transportstypes, transportstypes]
+    );
+    if (rows.length) {
+      appData.data = await Promise.all(
+        [...merchantData, ...rows].map(async (item) => {
+          let newItem = item;
+          if (!item.isMerchant) {
+            newItem.transport_types = JSON.parse(item.transport_types);
+          }
+          const [orders_accepted] = await connect.query(
+            "SELECT ul.*,oa.price as priceorder,oa.status_order FROM orders_accepted oa LEFT JOIN users_list ul ON ul.id = oa.user_id WHERE oa.order_id = ?",
+            [item.isMerchant ? +item.id.split("M")[1] : item.id]
+          );
+          newItem.orders_accepted = await Promise.all(
+            orders_accepted.map(async (item2) => {
+              let newItemUsers = item2;
+              return newItemUsers;
+            })
+          );
+          if (!item.isMerchant) {
+            const [route] = await connect.query(
+              "SELECT * FROM routes WHERE id = ? LIMIT 1",
+              [item.route_id]
+            );
+            newItem.route = route[0];
+          }
+          return newItem;
+        })
+      );
+      appData.status = true;
+    } else {
+      appData.error = "Нет заказов";
+    }
+    res.status(200).json(appData);
+  } catch (err) {
+    console.log(err);
+    appData.status = false;
+    appData.error = err;
+    res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
 });
 
 users.get("/getMyArchiveOrdersDriver", async (req, res) => {
