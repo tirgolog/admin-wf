@@ -3648,7 +3648,7 @@ users.get("/driver/withdrawals", async (req, res) => {
         FROM driver_withdrawal wd
         LEFT JOIN users_list ul ON wd.driver_id = ul.id
         LEFT JOIN verification v ON ul.id = v.user_id
-        WHERE ul.user_type = 1 AND ul.ban <> 1 AND ul.deleted <> 1 AND wd.status = 0;
+        WHERE ul.user_type = 1 AND ul.ban <> 1 AND ul.deleted <> 1;
        `);
        
        if(rows.length) {
