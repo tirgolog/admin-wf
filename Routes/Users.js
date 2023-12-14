@@ -1013,8 +1013,8 @@ users.get("/checkSession", async function (req, res) {
     if (rows.length) {
       const [config] = await connect.query("SELECT * FROM config LIMIT 1");
       const [verification] = await connect.query("SELECT * FROM verification WHERE user_id = ? LIMIT 1",[rows[0].id]);
-      const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status <> 3`, [rows[0]?.id]);
-      const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 3`, [rows[0]?.id]);
+      const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status <> 2`, [rows[0]?.id]);
+      const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [rows[0]?.id]);
       const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       appData.user = rows[0];
