@@ -3692,7 +3692,7 @@ users.patch('/verify-withdrawal/verify/:id', async (req, res) => {
 
   try {
     connect = await database.connection.getConnection();
-    if(!id) {
+    if(!withdrawId) {
       appData.status = false;
       appData.error = 'Id is required';
       res.status(400).json(appData);
@@ -3717,6 +3717,7 @@ users.patch('/verify-withdrawal/verify/:id', async (req, res) => {
       res.status(200).json(appData);
     }
   } catch (err) {
+    console.log(err)
     appData.status = false;
     appData.error = err;
     res.status(403).json(appData);
