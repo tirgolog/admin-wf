@@ -986,11 +986,9 @@ users.get("/getMerchantBalance", async function (req, res) {
   const clientId = req.query.clientId;
   try {
     connect = await database.connection.getConnection();
-    const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where userid = ? and status <> 3`, [clientId]);
-    const [activeBalance] = await connect.query(`SELECT * from secure_transaction where userid = ? and status = 3`, [clientId]);
-    const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-    const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-    appData.data = { totalFrozenAmount, totalActiveAmount };
+    const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where userid = ? and status <> 2`, [clientId]);
+    const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + (secure.amount + secure.additional_amount), 0);
+    appData.data = { totalFrozenAmount };
     res.status(200).json(appData)
   } catch (err) {
     appData.message = err.message;
@@ -1016,8 +1014,12 @@ users.get("/checkSession", async function (req, res) {
       const [config] = await connect.query("SELECT * FROM config LIMIT 1");
       const [verification] = await connect.query("SELECT * FROM verification WHERE user_id = ? LIMIT 1",[rows[0].id]);
       const [transport] = await connect.query("SELECT * FROM  users_transport WHERE user_id = ? LIMIT 1",[rows[0].id]);
-      const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status <> 3`, [rows[0]?.id]);
-      const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 3`, [rows[0]?.id]);
+      const [withdrawalsProccess] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ? and status = 0`, [rows[0]?.id]);
+      const [withdrawals] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ?`, [rows[0]?.id]);
+      const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status <> 2`, [rows[0]?.id]);
+      const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [rows[0]?.id]);
+      const totalWithdrawalAmountProcess = withdrawalsProccess.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+      const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       appData.user = rows[0];
@@ -1025,6 +1027,10 @@ users.get("/checkSession", async function (req, res) {
       appData.user.driver_verification = verification[0].verified;
       appData.user.balance = totalActiveAmount ? totalActiveAmount : 0;
       appData.user.balance__off = totalFrozenAmount ? totalFrozenAmount : 0;
+      appData.user.driver_verification = verification[0]?.verified;
+      appData.user.balance = totalActiveAmount ? totalActiveAmount - totalWithdrawalAmount : 0;
+      appData.user.balance_in_proccess = totalWithdrawalAmountProcess ? totalWithdrawalAmountProcess : 0;
+      appData.user.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
       appData.user.config = config[0];
       appData.user.avatar = fs.existsSync(
         process.env.FILES_PATCH +
@@ -1079,6 +1085,7 @@ users.get("/checkSession", async function (req, res) {
       res.status(200).json(appData);
     }
   } catch (err) {
+    console.log(err)
     appData.message = err.message;
     res.status(403).json(appData);
   } finally {
@@ -1772,6 +1779,49 @@ users.post("/editTransport", async (req, res) => {
   }
 });
 
+users.post("/finish-merchant-cargo", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() },
+    userInfo = jwt.decode(req.headers.authorization.split(' ')[1]);
+  try {
+    const {
+      orderId,
+    } = req.body;
+
+    if (
+      !orderId
+    ) {
+      appData.error = "orderId is required";
+      res.status(400).json(appData);
+    }
+
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      `
+      UPDATE orders_accepted
+      SET status_order = 3
+      WHERE order_id = ? AND ismerchant = true`,
+      [
+        orderId,
+      ]
+    );
+    if (rows.affectedRows) {
+      appData.status = true;
+
+      connect.query(
+        "UPDATE secure_transaction SET status = 2 WHERE orderid = ?",
+        [orderId]
+      );
+    }
+    res.status(200).json(appData);
+    //    }
+  } catch (err) {
+    console.log(err);
+    appData.error = "Internal error";
+    res.status(403).json(appData);
+  }
+});
+
 users.post("/verification", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
@@ -2076,6 +2126,7 @@ users.get("/verified-verifications", async (req, res) => {
       res.status(204).json(appData);
     }
   } catch (err) {
+    console.lg(err)
     appData.status = false;
     appData.error = err;
     res.status(403).json(appData);
@@ -2580,7 +2631,7 @@ users.post("/finishMerchantOrderDriver", async (req, res) => {
       );
       if (rows.affectedRows) {
         connect.query(
-          "UPDATE secure_transaction SET status = 1 WHERE order_id = ?",
+          "UPDATE secure_transaction SET status = 1 WHERE orderid = ?",
           [orderid]
         );
         channel.sendToQueue("finishOrderDriver", Buffer.from(orderid));
@@ -2592,7 +2643,7 @@ users.post("/finishMerchantOrderDriver", async (req, res) => {
     } else {
       appData.status = true;
       connect.query(
-        "UPDATE secure_transaction SET status = 1 WHERE order_id = ?",
+        "UPDATE secure_transaction SET status = 1 WHERE orderid = ?",
         [orderid]
       );
       socket.updateAllList("update-all-list", "1");
@@ -3034,7 +3085,7 @@ users.get("/getMyOrdersDriver", async (req, res) => {
           raiting_user: "",
           route_id: "",
           save_order: "",
-          secure_transaction: false,
+          secure_transaction: el.isSafe,
           status: el.status,
           transport_type: el.transportType?.name,
           transport_types: el.transportTypes,
@@ -3042,6 +3093,7 @@ users.get("/getMyOrdersDriver", async (req, res) => {
           user_id: el.clientId,
           weight: el.cargoWeight,
           width_box: el.cargoWidth,
+          created_at: el.createdAt
         };
       });
     }
@@ -3552,6 +3604,147 @@ users.post("/uploadImage", upload.single("file"), async (req, res) => {
     appData.error = err.message;
     console.log(err.message);
     res.status(200).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+users.post("/driver-balance/withdraw", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() },
+    userId = req.body.userId,
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+  try {
+    console.log(userId);
+    connect = await database.connection.getConnection();
+    const [row] = await connect.query(
+      `SELECT *
+      FROM users_list
+      WHERE users_list.id = ? AND users_list.user_type = 1 AND users_list.ban <> 1 AND users_list.deleted <> 1;
+      `,
+      [userId]
+      );
+      if(row[0]) {
+        const user = row[0];
+        const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [user.id]);
+        const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+      
+      await connect.query(
+        "INSERT INTO driver_withdrawal SET driver_id = ?,amount = ?, withdraw_type = 'Вывод средств', status = 0",
+        [
+          user.id,
+          totalActiveAmount
+        ]
+      );
+      appData.status = true;
+      socket.updateAllList('driver-withdrawal', '1')
+      res.status(200).json(appData);
+
+    } else {
+      appData.status = false;
+      appData.error = 'User not found';
+      res.status(200).json(appData);
+    }
+
+
+  } catch (err) {
+    appData.status = false;
+    appData.error = err;
+    res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+users.get("/driver/withdrawals", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() },
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+  try {
+    connect = await database.connection.getConnection();
+
+    
+    const [rows] = await connect.query(
+       `SELECT 
+            wd.*,
+            ul.name,
+            ul.phone,
+            ul.balance,
+            v.bank_card,
+            ul.id as driver_id
+        FROM driver_withdrawal wd
+        LEFT JOIN users_list ul ON wd.driver_id = ul.id
+        LEFT JOIN verification v ON ul.id = v.user_id
+        WHERE ul.user_type = 1 AND ul.ban <> 1 AND ul.deleted <> 1;
+       `);
+       
+       if(rows.length) {
+      for(let el of rows) {
+        const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [el.driver_id]);
+        const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+        el.balance = totalActiveAmount ? totalActiveAmount : 0;
+      }
+      appData.status = true;
+      appData.data = rows;
+      res.status(200).json(appData);
+    } else {
+      appData.status = false;
+      res.status(204).json(appData);
+    }
+
+
+  } catch (err) {
+    console.log(err)
+    appData.status = false;
+    appData.error = err;
+    res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+users.patch('/verify-withdrawal/verify/:id', async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() },
+    withdrawId = req.params.id;
+
+  try {
+    connect = await database.connection.getConnection();
+    if(!withdrawId) {
+      appData.status = false;
+      appData.error = 'Id is required';
+      res.status(400).json(appData);
+    }
+    const [withdrawal] = await connect.query(
+      "SELECT * FROM driver_withdrawal WHERE id = ? AND status = 0",
+      [withdrawId]
+    );
+
+    if (withdrawal[0]) {
+      // Update the withdrawal status to '1' (verified)
+      await connect.query(
+        "UPDATE driver_withdrawal SET status = 1 WHERE id = ?",
+        [withdrawId]
+      );
+
+      appData.status = true;
+      res.status(200).json(appData);
+    } else {
+      appData.status = false;
+      appData.error = 'Withdrawal not found or already verified';
+      res.status(200).json(appData);
+    }
+  } catch (err) {
+    console.log(err)
+    appData.status = false;
+    appData.error = err;
+    res.status(403).json(appData);
   } finally {
     if (connect) {
       connect.release();
