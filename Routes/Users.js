@@ -3642,22 +3642,21 @@ users.get("/driver/withdrawals", async (req, res) => {
             wd.*,
             ul.name,
             ul.phone,
-            st.balance,
+            ul.balance,
             v.bank_card,
             ul.id as driver_id
         FROM driver_withdrawal wd
         LEFT JOIN users_list ul ON wd.driver_id = ul.id
         LEFT JOIN verification v ON ul.id = v.user_id
-        LEFT JOIN secure_transaction st ON wd.driver_id = st.dirverid
         WHERE ul.user_type = 1 AND ul.ban <> 1 AND ul.deleted <> 1 AND wd.status = 0;
        `);
        
        if(rows.length) {
-      // for(let el of rows) {
-      //   const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [el.driver_id]);
-      //   const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      //   el.balance = totalActiveAmount ? totalActiveAmount : 0;
-      // }
+      for(let el of rows) {
+        const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [el.driver_id]);
+        const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+        el.balance = totalActiveAmount ? totalActiveAmount : 0;
+      }
       appData.status = true;
       appData.data = rows;
       res.status(200).json(appData);
