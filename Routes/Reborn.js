@@ -95,6 +95,34 @@ reborn.post('/getAllDriversList', async (req, res) => {
     }
 });
 
+reborn.get('/driver/orders', async (req, res) => {
+    let connect,
+        id = req.query.id,
+        appData = {status: false};
+        if(!id) {
+            appData.error = 'Id is required';
+            res.status(400).json(appData);
+        }
+    try {
+        connect = await database.connection.getConnection();
+       [rows] = await connect.query('SELECT * from orders WHERE driver_id = ?',
+        [id]);
+        if (rows.length){
+            appData.data = rows
+            appData.status = true;
+        }
+        res.status(200).json(appData);
+    } catch (e) {
+        console.log(e)
+        appData.error = e.message;
+        res.status(400).json(appData);
+    } finally {
+        if (connect) {
+            connect.release()
+        }
+    }
+});
+
 reborn.post('/getUserInfo', async (req, res) => {
     let connect,
         id = req.body.id ? req.body.id:'',
