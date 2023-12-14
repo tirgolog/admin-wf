@@ -3697,6 +3697,10 @@ users.patch('/verify-withdrawal/verify/:id', async (req, res) => {
         "UPDATE driver_withdrawal SET status = 1 WHERE id = ?",
         [withdrawId]
       );
+      connect.query(
+        "UPDATE secure_transaction SET status = 3 WHERE orderid = ?",
+        [withdrawal[0]?.driver_id]
+      );
 
       appData.status = true;
       res.status(200).json(appData);
