@@ -3646,8 +3646,7 @@ users.get("/driver/withdrawals", async (req, res) => {
         LEFT JOIN verification v ON ul.id = v.user_id
         WHERE ul.user_type = 1 AND ul.ban <> 1 AND ul.deleted <> 1 AND wd.status = 0;
        `);
-
-    if(rows.affectedRows) {
+    if(rows.length) {
       appData.status = true;
       appData.data = rows;
       res.status(200).json(appData);
