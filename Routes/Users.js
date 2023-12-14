@@ -3650,9 +3650,12 @@ users.get("/driver/withdrawals", async (req, res) => {
         LEFT JOIN verification v ON ul.id = v.user_id
         WHERE ul.user_type = 1 AND ul.ban <> 1 AND ul.deleted <> 1 AND wd.status = 0;
        `);
+       const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [rows[0]?.id]);
+       const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
     if(rows.length) {
       appData.status = true;
-      appData.data = rows;
+      appData.data = rows[0];
+      appData.data['balance'] = totalActiveAmount ? totalActiveAmount : 0;
       res.status(200).json(appData);
     } else {
       appData.status = false;
