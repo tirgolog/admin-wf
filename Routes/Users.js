@@ -3628,10 +3628,8 @@ users.post("/driver-balance/withdraw", async (req, res) => {
 users.get("/driver/withdrawals", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
-    userId = req.body.userId,
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   try {
-    console.log(userId);
     connect = await database.connection.getConnection();
 
     
@@ -3646,10 +3644,8 @@ users.get("/driver/withdrawals", async (req, res) => {
         FROM driver_withdrawal wd
         LEFT JOIN users_list ul ON wd.driver_id = ul.id
         LEFT JOIN verification v ON ul.id = v.user_id
-        WHERE ul.id = ? AND ul.user_type = 1 AND ul.ban <> 1 AND ul.deleted <> 1 AND wd.status = 0;
-       `,
-      [userId]
-    );
+        WHERE ul.user_type = 1 AND ul.ban <> 1 AND ul.deleted <> 1 AND wd.status = 0;
+       `);
 
     if(rows.affectedRows) {
       appData.status = true;
@@ -3661,6 +3657,7 @@ users.get("/driver/withdrawals", async (req, res) => {
     }
 
   } catch (err) {
+    console.log(err)
     appData.status = false;
     appData.error = err;
     res.status(403).json(appData);
