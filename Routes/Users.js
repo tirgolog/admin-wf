@@ -3653,7 +3653,7 @@ users.get("/driver/withdrawals", async (req, res) => {
        
        if(rows.length) {
          rows.forEach(async(el) => {
-        const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [el.id]);
+        const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [el.driver_id]);
         const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
         el.balance = totalActiveAmount ? totalActiveAmount : 0;
       })
