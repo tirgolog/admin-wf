@@ -3658,7 +3658,7 @@ users.get("/driver/withdrawals", async (req, res) => {
         el.balance = totalActiveAmount ? totalActiveAmount : 0;
       })
       appData.status = true;
-      appData.data = rows[0];
+      appData.data = rows;
       res.status(200).json(appData);
     } else {
       appData.status = false;
