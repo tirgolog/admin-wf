@@ -3652,7 +3652,7 @@ users.get("/driver/withdrawals", async (req, res) => {
       res.status(200).json(appData);
     } else {
       appData.status = false;
-      res.status(500).json(appData);
+      res.status(204).json(appData);
     }
 
   } catch (err) {
