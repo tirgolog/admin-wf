@@ -1032,7 +1032,6 @@ users.get("/checkSession", async function (req, res) {
       appData.user.balance_in_proccess = totalWithdrawalAmountProcess;
       appData.user.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
       appData.user.config = config[0];
-      console.log(appData.user)
       appData.user.avatar = fs.existsSync(
         process.env.FILES_PATCH +
         "tirgo/drivers/" +
