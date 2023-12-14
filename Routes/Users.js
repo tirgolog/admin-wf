@@ -1013,13 +1013,18 @@ users.get("/checkSession", async function (req, res) {
     if (rows.length) {
       const [config] = await connect.query("SELECT * FROM config LIMIT 1");
       const [verification] = await connect.query("SELECT * FROM verification WHERE user_id = ? LIMIT 1",[rows[0].id]);
+      const [withdrawalsProccess] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ? and status = 0`, [rows[0]?.id]);
+      const [withdrawals] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ?`, [rows[0]?.id]);
       const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status <> 2`, [rows[0]?.id]);
       const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [rows[0]?.id]);
+      const totalWithdrawalAmountProcess = withdrawalsProccess.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+      const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       appData.user = rows[0];
       appData.user.driver_verification = verification[0]?.verified;
-      appData.user.balance = totalActiveAmount ? totalActiveAmount : 0;
+      appData.user.balance = totalActiveAmount ? totalActiveAmount - totalWithdrawalAmount : 0;
+      appData.user.balance_in_proccess = totalWithdrawalAmountProcess ? totalWithdrawalAmountProcess : 0;
       appData.user.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
       appData.user.config = config[0];
       appData.user.avatar = fs.existsSync(
@@ -3699,8 +3704,8 @@ users.patch('/verify-withdrawal/verify/:id', async (req, res) => {
     if (withdrawal[0]) {
       // Update the withdrawal status to '1' (verified)
       await connect.query(
-        "UPDATE driver_withdrawal SET status = 1, issued_balance = ? WHERE id = ?",
-        [withdrawId, balance]
+        "UPDATE driver_withdrawal SET status = 1 WHERE id = ?",
+        [withdrawId]
       );
 
       appData.status = true;
