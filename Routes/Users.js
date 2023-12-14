@@ -1013,6 +1013,7 @@ users.get("/checkSession", async function (req, res) {
     if (rows.length) {
       const [config] = await connect.query("SELECT * FROM config LIMIT 1");
       const [verification] = await connect.query("SELECT * FROM verification WHERE user_id = ? LIMIT 1",[rows[0].id]);
+      const [transport] = await connect.query("SELECT * FROM  users_transport WHERE user_id = ? LIMIT 1",[rows[0].id]);
       const [withdrawalsProccess] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ? and status = 0`, [rows[0]?.id]);
       const [withdrawals] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ?`, [rows[0]?.id]);
       const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status <> 2`, [rows[0]?.id]);
@@ -1022,6 +1023,10 @@ users.get("/checkSession", async function (req, res) {
       const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       appData.user = rows[0];
+      appData.user.transport = transport[0];
+      appData.user.driver_verification = verification[0].verified;
+      appData.user.balance = totalActiveAmount ? totalActiveAmount : 0;
+      appData.user.balance__off = totalFrozenAmount ? totalFrozenAmount : 0;
       appData.user.driver_verification = verification[0]?.verified;
       appData.user.balance = totalActiveAmount ? totalActiveAmount - totalWithdrawalAmount : 0;
       appData.user.balance_in_proccess = totalWithdrawalAmountProcess;
@@ -1839,6 +1844,8 @@ users.post("/verification", async (req, res) => {
       techpassport_photo1,
       techpassport_photo2,
       state_registration_truckNumber,
+      type,
+      brand_name
     } = req.body;
 
     if (
@@ -1856,7 +1863,9 @@ users.post("/verification", async (req, res) => {
       !transportation_license_photo ||
       !techpassport_photo1 ||
       !techpassport_photo2 ||
-      !state_registration_truckNumber
+      !state_registration_truckNumber||
+      !type||
+      !brand_name
     ) {
       appData.error = "All fields are required";
       res.status(400).json(appData);
@@ -1881,7 +1890,9 @@ users.post("/verification", async (req, res) => {
               transportation_license_photo = ?,
               techpassport_photo1 = ?,
               techpassport_photo2 = ?,
-              state_registration_truckNumber = ?`,
+              state_registration_truckNumber = ?,
+              type = ?,
+              brand_name = ?`,
       [
         userInfo.id,
         full_name,
@@ -1899,6 +1910,8 @@ users.post("/verification", async (req, res) => {
         techpassport_photo1,
         techpassport_photo2,
         state_registration_truckNumber,
+        type,
+        brand_name
       ]
     );
     if (rows.affectedRows) {
@@ -1944,7 +1957,9 @@ users.put("/update-verification", async (req, res) => {
       transportation_license_photo,
       techpassport_photo1,
       techpassport_photo2,
-      state_registration_truckNumber,
+      state_registration_truckNumber, 
+      type,
+      brand_name
     } = req.body;
 
     if (
@@ -1963,7 +1978,9 @@ users.put("/update-verification", async (req, res) => {
       !transportation_license_photo ||
       !techpassport_photo1 ||
       !techpassport_photo2 ||
-      !state_registration_truckNumber
+      !state_registration_truckNumber||
+      !type||
+      !brand_name
     ) {
       appData.error = "All fields are required";
       res.status(400).json(appData);
@@ -1988,7 +2005,10 @@ users.put("/update-verification", async (req, res) => {
               transportationLicensePhoto = ?,
               techPassportPhoto1 = ?,
               techPassportPhoto2 = ?,
-              stateRegistrationTruckNumber = ? where id = ?`,
+              stateRegistrationTruckNumber = ? ,
+              type = ?,
+              brand_name = ?
+              where id = ?`,
       [
         userInfo.id,
         full_name,
@@ -2093,7 +2113,9 @@ users.get("/verified-verifications", async (req, res) => {
       transportation_license_photo,
       techpassport_photo1,
       techpassport_photo2,
-      state_registration_truckNumber
+      state_registration_truckNumber,
+      type, 
+      brand_name
       from verification where verified = 1`);
     if (rows.length) {
       appData.status = true;
@@ -2135,7 +2157,9 @@ users.get("/unverified-verifications", async (req, res) => {
       transportation_license_photo,
       techpassport_photo1,
       techpassport_photo2,
-      state_registration_truckNumber
+      state_registration_truckNumber,
+      type,
+      brand_name
       from verification where verified = 0`);
     if (rows.length) {
       appData.status = true;
