@@ -1021,14 +1021,13 @@ users.get("/checkSession", async function (req, res) {
       const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      console.log(totalWithdrawalAmountProcess,totalWithdrawalAmount )
       appData.user = rows[0];
       appData.user.driver_verification = verification[0]?.verified;
       appData.user.balance = totalActiveAmount ? totalActiveAmount - totalWithdrawalAmount : 0;
       appData.user.balance_in_proccess = totalWithdrawalAmountProcess;
-      console.log(appData.user.balance_in_proccess, totalWithdrawalAmountProcess)
       appData.user.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
       appData.user.config = config[0];
+      console.log(appData.user)
       appData.user.avatar = fs.existsSync(
         process.env.FILES_PATCH +
         "tirgo/drivers/" +
