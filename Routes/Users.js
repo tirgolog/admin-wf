@@ -3589,22 +3589,23 @@ users.post("/driver-balance/withdraw", async (req, res) => {
   try {
     console.log(userId);
     connect = await database.connection.getConnection();
-
-    
     const [row] = await connect.query(
-       `SELECT *
-       FROM users_list
-       WHERE users_list.id = ? AND users_list.user_type = 1 AND users_list.ban <> 1 AND users_list.deleted <> 1;
-       `,
+      `SELECT *
+      FROM users_list
+      WHERE users_list.id = ? AND users_list.user_type = 1 AND users_list.ban <> 1 AND users_list.deleted <> 1;
+      `,
       [userId]
-    );
-    if(row[0]) {
-      const user = row[0];
+      );
+      if(row[0]) {
+        const user = row[0];
+        const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [user.id]);
+        const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       
       await connect.query(
-        "INSERT INTO driver_withdrawal SET driver_id = ?, withdraw_type = 'Вывод средств', status = 0",
+        "INSERT INTO driver_withdrawal SET driver_id = ?,amount = ?, withdraw_type = 'Вывод средств', status = 0",
         [
-          user.id
+          user.id,
+          totalActiveAmount
         ]
       );
       appData.status = true;
@@ -3685,7 +3686,11 @@ users.patch('/verify-withdrawal/verify/:id', async (req, res) => {
 
   try {
     connect = await database.connection.getConnection();
-
+    if(!id) {
+      appData.status = false;
+      appData.error = 'Id is required';
+      res.status(400).json(appData);
+    }
     const [withdrawal] = await connect.query(
       "SELECT * FROM driver_withdrawal WHERE id = ? AND status = 0",
       [withdrawId]
@@ -3694,12 +3699,8 @@ users.patch('/verify-withdrawal/verify/:id', async (req, res) => {
     if (withdrawal[0]) {
       // Update the withdrawal status to '1' (verified)
       await connect.query(
-        "UPDATE driver_withdrawal SET status = 1 WHERE id = ?",
-        [withdrawId]
-      );
-      connect.query(
-        "UPDATE secure_transaction SET status = 3 WHERE orderid = ?",
-        [withdrawal[0]?.driver_id]
+        "UPDATE driver_withdrawal SET status = 1, issued_balance = ? WHERE id = ?",
+        [withdrawId, balance]
       );
 
       appData.status = true;
