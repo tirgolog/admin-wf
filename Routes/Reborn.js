@@ -155,10 +155,10 @@ reborn.post('/getAllTrackingDrivers', async (req, res) => {
     try {
         connect = await database.connection.getConnection();
         if (!typetransport){
-            [rows] = await connect.query('SELECT users_list.*, o.* AS orders FROM users_list LEFT JOIN orders o on o.driver_id = users_list.id WHERE user_type = 1 AND id LIKE ? AND IFNULL(name, ?) LIKE ? AND IFNULL(phone, ?) LIKE ? AND IFNULL(iso_code, ?) LIKE ? AND status LIKE ? AND lat is not null ORDER BY id DESC',
+            [rows] = await connect.query('SELECT * FROM users_list WHERE user_type = 1 AND id LIKE ? AND IFNULL(name, ?) LIKE ? AND IFNULL(phone, ?) LIKE ? AND IFNULL(iso_code, ?) LIKE ? AND status LIKE ? AND lat is not null ORDER BY id DESC',
                 [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',indentificator ? '%'+indentificator+'%':'%',status ? '%'+status+'%':'%']);
         }else {
-            [rows] = await connect.query('SELECT ul.* FROM users_transport ut LEFT JOIN users_list ul ON ul.id = ut.user_id LEFT JOIN orders o on o.driver_id = users_list.id WHERE ut.type = ? AND ul.user_type = 1 AND ul.id LIKE ? AND IFNULL(ul.name, ?) LIKE ? AND IFNULL(ul.phone, ?) LIKE ? AND IFNULL(ul.iso_code, ?) LIKE ? AND status LIKE ? AND lat is not null ORDER BY ul.id DESC',
+            [rows] = await connect.query('SELECT ul.* FROM users_transport ut LEFT JOIN users_list ul ON ul.id = ut.user_id WHERE ut.type = ? AND ul.user_type = 1 AND ul.id LIKE ? AND IFNULL(ul.name, ?) LIKE ? AND IFNULL(ul.phone, ?) LIKE ? AND IFNULL(ul.iso_code, ?) LIKE ? AND status LIKE ? AND lat is not null ORDER BY ul.id DESC',
                 [+typetransport,id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',indentificator ? '%'+indentificator+'%':'%',status ? '%'+status+'%':'%']);
         }
         if (rows.length){
