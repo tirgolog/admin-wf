@@ -3655,6 +3655,7 @@ users.get("/driver/withdrawals", async (req, res) => {
       res.status(204).json(appData);
     }
 
+    
   } catch (err) {
     console.log(err)
     appData.status = false;
