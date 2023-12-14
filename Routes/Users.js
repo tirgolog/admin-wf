@@ -1080,6 +1080,7 @@ users.get("/checkSession", async function (req, res) {
       res.status(200).json(appData);
     }
   } catch (err) {
+    console.log(err)
     appData.message = err.message;
     res.status(403).json(appData);
   } finally {
