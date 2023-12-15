@@ -2325,7 +2325,7 @@ users.post("/acceptOrderDriver", async (req, res) => {
       let x = +price;
       let y = x / 0.88;
       let t = (12 / 100) * y;
-      pricePlus = x + t + 100;
+      pricePlus = t + 100;
     }
 
   }
