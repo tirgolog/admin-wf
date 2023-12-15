@@ -986,7 +986,7 @@ users.get("/getMerchantBalance", async function (req, res) {
   const clientId = req.query.clientId;
   try {
     connect = await database.connection.getConnection();
-    const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where userid = ? and status <> 2`, [clientId]);
+    const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where userid = ?`, [clientId]);
     const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + (secure.amount + secure.additional_amount), 0);
     appData.data = { totalFrozenAmount };
     res.status(200).json(appData)
