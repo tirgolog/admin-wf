@@ -1024,7 +1024,6 @@ users.get("/checkSession", async function (req, res) {
       const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       appData.user = rows[0];
       appData.user.transport = transport[0];
-      appData.user.balance = totalActiveAmount ? totalActiveAmount : 0;
       appData.user.driver_verification = verification[0]?.verified;
       appData.user.balance = totalActiveAmount ? totalActiveAmount - totalWithdrawalAmount : 0;
       appData.user.balance_in_proccess = totalWithdrawalAmountProcess;
@@ -1779,8 +1778,8 @@ users.post("/editTransport", async (req, res) => {
 
 users.post("/finish-merchant-cargo", async (req, res) => {
   let connect,
-    appData = { status: false, timestamp: new Date().getTime() },
-    userInfo = jwt.decode(req.headers.authorization.split(' ')[1]);
+    appData = { status: false, timestamp: new Date().getTime() };
+
   try {
     const {
       orderId,
@@ -1806,10 +1805,32 @@ users.post("/finish-merchant-cargo", async (req, res) => {
     if (rows.affectedRows) {
       appData.status = true;
 
+      const [orders_accepted] = await connect.query(
+        `
+        SELECT user_id  orders_accepted
+        WHERE order_id = ? AND ismerchant = true`,
+        [
+          orderId,
+        ]
+      );
+
       connect.query(
         "UPDATE secure_transaction SET status = 2 WHERE orderid = ?",
         [orderId]
       );
+      const [withdrawalsProccess] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ? and status = 0`, [orders_accepted[0]?.user_id]);
+      const [withdrawals] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ?`, [orders_accepted[0]?.user_id]);
+      const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status <> 2`, [orders_accepted[0]?.user_id]);
+      const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [orders_accepted[0]?.user_id]);
+      const totalWithdrawalAmountProcess = withdrawalsProccess.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+      const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+      const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+      const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+      const user = {};
+            user.balance = totalActiveAmount ? totalActiveAmount - totalWithdrawalAmount : 0;
+            user.balance_in_proccess = totalWithdrawalAmountProcess;
+            user.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
+      socket.updateAllList("update-driver-balance", JSON.stringify(user));
     }
     res.status(200).json(appData);
     //    }
