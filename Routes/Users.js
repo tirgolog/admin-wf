@@ -1807,7 +1807,7 @@ users.post("/finish-merchant-cargo", async (req, res) => {
 
       const [orders_accepted] = await connect.query(
         `
-        SELECT user_id  orders_accepted
+        SELECT user_id FROM orders_accepted
         WHERE order_id = ? AND ismerchant = true`,
         [
           orderId,
