@@ -807,20 +807,24 @@ users.use((req, res, next) => {
     req.headers["token"] ||
     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
   let appData = {};
+  
   if (token) {
-    jwt.verify(token, process.env.SECRET_KEY, function (err) {
+    jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
       if (err) {
+        console.error('JWT Verification Error:', err);
         appData["error"] = err;
         appData["data"] = "Token is invalid";
-        res.status(403).json(appData);
+        res.status(401).json(appData);
       } else {
+        // Attach user information from the decoded token to the request
+        req.user = decoded;
         next();
       }
     });
   } else {
     appData["error"] = 1;
     appData["data"] = "Token is null";
-    res.status(200).json(appData);
+    res.status(401).json(appData);
   }
 });
 
