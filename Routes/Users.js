@@ -3714,6 +3714,7 @@ users.post("/driver-balance/withdraw", async (req, res) => {
         balance_off: totalFrozenAmount ? totalFrozenAmount : 0,
       }  
       socket.updateAllList("update-driver-balance", JSON.stringify(obj));
+      socket.updateAllList("update-driver-withdraw-request", '1');
       res.status(200).json(appData);
 
     } else {
