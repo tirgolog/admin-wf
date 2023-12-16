@@ -190,11 +190,19 @@ reborn.post('/getAllTrackingDrivers', async (req, res) => {
                 [+typetransport,id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',indentificator ? '%'+indentificator+'%':'%',status ? '%'+status+'%':'%']);
         }
         if (rows.length){
-            appData.data = rows;
+            appData.data = await Promise.all(rows.map(async (row) => {
+                let newUser = row;
+                const [orders] = await connect.query('SELECT * FROM orders_accepted oa LEFT JOIN orders o ON oa.order_id = o.id WHERE oa.user_id = ?', [row.id]);
+                newUser.orders = orders;
+                const [contacts] = await connect.query('SELECT * FROM users_contacts WHERE user_id = ?', [row.id]);
+                newUser.contacts = contacts;
+                return newUser;
+            }))
             appData.status = true;
         }
         res.status(200).json(appData);
     } catch (e) {
+        console.log('Error while getting all trecking drivers: ', e)
         appData.error = e.message;
         res.status(400).json(appData);
     } finally {
