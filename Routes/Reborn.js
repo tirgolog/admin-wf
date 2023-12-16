@@ -192,6 +192,8 @@ reborn.post('/getAllTrackingDrivers', async (req, res) => {
         if (rows.length){
             appData.data = await Promise.all(rows.map(async (row) => {
                 let newUser = row;
+                const [truck_types] = await connect.query('SELECT type FROM users_transport WHERE user_id = ?',[row.id]);
+                newUser.truck_types = truck_types;
                 const [orders] = await connect.query('SELECT * FROM orders_accepted oa LEFT JOIN orders o ON oa.order_id = o.id WHERE oa.user_id = ?', [row.id]);
                 newUser.orders = orders;
                 const [contacts] = await connect.query('SELECT * FROM users_contacts WHERE user_id = ?', [row.id]);
