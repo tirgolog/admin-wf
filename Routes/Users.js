@@ -3681,11 +3681,11 @@ users.post("/driver-balance/withdraw", async (req, res) => {
       );
       if(row[0]) {
         const user = row[0];
-        const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [user.id]);
-        const [withdrawals] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ?`, [row[0]?.id]);
-        const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-        const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-        const amount = totalActiveAmount - totalWithdrawalAmount;
+        let [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [user.id]);
+        let [withdrawals] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ?`, [row[0]?.id]);
+        let totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+        let totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+        let amount = totalActiveAmount - totalWithdrawalAmount;
         if(amount <= 0) {
         appData.status = false;
         appData.error = 'No enough balance';
@@ -3700,7 +3700,10 @@ users.post("/driver-balance/withdraw", async (req, res) => {
       );
       appData.status = true;
 
-
+      [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [user.id]);
+      [withdrawals] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ?`, [row[0]?.id]);
+      totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+      totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       const [withdrawalsProccess] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ? and status = 0`, [user.id]);
       const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status <> 2`, [user.id]);
       const totalWithdrawalAmountProcess = withdrawalsProccess.reduce((accumulator, secure) => accumulator + secure.amount, 0);
