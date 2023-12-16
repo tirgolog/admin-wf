@@ -3681,7 +3681,9 @@ users.post("/driver-balance/withdraw", async (req, res) => {
         const [withdrawals] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ?`, [rows[0]?.id]);
         const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
         const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      if(totalActiveAmount - totalWithdrawalAmount <= 0) {
+        const amount = totalActiveAmount - totalWithdrawalAmount;
+        console.log('Withdrawal', amount, totalActiveAmount, totalWithdrawalAmount)
+        if(amount <= 0) {
         appData.status = false;
         appData.error = 'No enough balance';
         res.status(400).json(appData);
@@ -3690,7 +3692,7 @@ users.post("/driver-balance/withdraw", async (req, res) => {
         "INSERT INTO driver_withdrawal SET driver_id = ?,amount = ?, withdraw_type = 'Вывод средств', status = 0",
         [
           user.id,
-          totalActiveAmount - totalWithdrawalAmount
+          amount
         ]
       );
       appData.status = true;
