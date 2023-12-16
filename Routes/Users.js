@@ -1023,12 +1023,13 @@ users.get("/checkSession", async function (req, res) {
       const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       console.log(totalWithdrawalAmountProcess,totalWithdrawalAmount )
+      console.log(verification[0]?.send_verification)
       appData.user = rows[0];
       appData.user.transport = transport[0];
-      appData.user.driver_verification = verification[0].verified;
       appData.user.balance = totalActiveAmount ? totalActiveAmount : 0;
       appData.user.balance__off = totalFrozenAmount ? totalFrozenAmount : 0;
       appData.user.driver_verification = verification[0]?.verified;
+      appData.user.send_verification = verification[0]?.send_verification;
       appData.user.balance = totalActiveAmount ? totalActiveAmount - totalWithdrawalAmount : 0;
       appData.user.balance_in_proccess = totalWithdrawalAmountProcess;
       console.log(appData.user.balance_in_proccess, totalWithdrawalAmountProcess)
@@ -1893,7 +1894,9 @@ users.post("/verification", async (req, res) => {
               techpassport_photo2 = ?,
               state_registration_truckNumber = ?,
               type = ?,
-              brand_name = ?`,
+              brand_name = ?
+              send_verification = ?
+              `,
       [
         userInfo.id,
         full_name,
@@ -1912,7 +1915,8 @@ users.post("/verification", async (req, res) => {
         techpassport_photo2,
         state_registration_truckNumber,
         type,
-        brand_name
+        brand_name,
+        1
       ]
     );
     if (rows.affectedRows) {
