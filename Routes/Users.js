@@ -1913,7 +1913,7 @@ users.post("/verification", async (req, res) => {
               techpassport_photo2 = ?,
               state_registration_truckNumber = ?,
               type = ?,
-              brand_name = ?
+              brand_name = ?,
               send_verification = ?
               `,
       [
@@ -3678,7 +3678,7 @@ users.post("/driver-balance/withdraw", async (req, res) => {
       if(row[0]) {
         const user = row[0];
         const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [user.id]);
-        const [withdrawals] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ?`, [rows[0]?.id]);
+        const [withdrawals] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ?`, [row[0]?.id]);
         const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
         const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
         const amount = totalActiveAmount - totalWithdrawalAmount;
