@@ -2135,6 +2135,30 @@ users.get("/verified-verifications", async (req, res) => {
   }
 });
 
+users.get("/verified-driver", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() },
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(`select * from verification  WHERE verified = 1 and  user_id = ?`,[userInfo.id]);
+    if (rows.length) {
+      appData.status = true;
+      appData.data = rows;
+      res.status(200).json(appData);
+    } else {
+      appData.status = true;
+      appData.data = [];
+      res.status(204).json(appData);
+    }
+  } catch (err) {
+    console.log(err)
+    appData.status = false;
+    appData.error = err;
+    res.status(403).json(appData);
+  }
+});
+
 users.get("/unverified-verifications", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
