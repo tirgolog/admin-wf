@@ -1027,6 +1027,7 @@ users.get("/checkSession", async function (req, res) {
       appData.user = rows[0];
       appData.user.transport = transport[0];
       appData.user.driver_verification = verification[0]?.verified;
+      appData.user.send_verification = verification[0]?.send_verification;
       appData.user.balance = totalActiveAmount ? totalActiveAmount - totalWithdrawalAmount : 0;
       appData.user.balance_in_proccess = totalWithdrawalAmountProcess;
       appData.user.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
@@ -1912,7 +1913,9 @@ users.post("/verification", async (req, res) => {
               techpassport_photo2 = ?,
               state_registration_truckNumber = ?,
               type = ?,
-              brand_name = ?`,
+              brand_name = ?
+              send_verification = ?
+              `,
       [
         userInfo.id,
         full_name,
@@ -1931,7 +1934,8 @@ users.post("/verification", async (req, res) => {
         techpassport_photo2,
         state_registration_truckNumber,
         type,
-        brand_name
+        brand_name,
+        1
       ]
     );
     if (rows.affectedRows) {
@@ -2148,6 +2152,30 @@ users.get("/verified-verifications", async (req, res) => {
     }
   } catch (err) {
     console.lg(err)
+    appData.status = false;
+    appData.error = err;
+    res.status(403).json(appData);
+  }
+});
+
+users.get("/verified-driver", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() },
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(`select * from verification  WHERE verified = 1 and  user_id = ?`,[userInfo.id]);
+    if (rows.length) {
+      appData.status = true;
+      appData.data = rows;
+      res.status(200).json(appData);
+    } else {
+      appData.status = true;
+      appData.data = [];
+      res.status(204).json(appData);
+    }
+  } catch (err) {
+    console.log(err)
     appData.status = false;
     appData.error = err;
     res.status(403).json(appData);
