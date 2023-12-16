@@ -4,13 +4,13 @@ const
     app = require('express')(),
     fs = require('fs'),
     path = require('path'),
-    options = {
-        key: fs.readFileSync('private.key'),
-        cert: fs.readFileSync('certificate.crt'),
-        ca: fs.readFileSync('ca_bundle.crt'),
-        requestCert: true,
-        rejectUnauthorized: false
-    },
+    // options = {
+    //     key: fs.readFileSync('private.key'),
+    //     cert: fs.readFileSync('certificate.crt'),
+    //     ca: fs.readFileSync('ca_bundle.crt'),
+    //     requestCert: true,
+    //     rejectUnauthorized: false
+    // },
     http = require('http').createServer(app),
     io = require('socket.io')(http, {
         cors: {
