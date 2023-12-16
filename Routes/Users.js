@@ -1024,10 +1024,6 @@ users.get("/checkSession", async function (req, res) {
       const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      console.log('totalActiveAmount', totalActiveAmount)
-      console.log('totalWithdrawalAmount', totalWithdrawalAmount)
-      console.log('totalWithdrawalAmountProcess', totalWithdrawalAmountProcess)
-      console.log('totalFrozenAmount', totalFrozenAmount)
       appData.user = rows[0];
       appData.user.transport = transport[0];
       appData.user.driver_verification = verification[0]?.verified;
@@ -3746,8 +3742,11 @@ users.get("/driver/withdrawals", async (req, res) => {
        if(rows.length) {
       for(let el of rows) {
         const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [el.driver_id]);
+        const [withdrawals] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ?`, [el.driver_id]);
+        const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
         const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-        el.balance = totalActiveAmount ? totalActiveAmount : 0;
+        
+        el.balance = totalActiveAmount ? (totalActiveAmount - totalWithdrawalAmount) : 0;
       }
       appData.status = true;
       appData.data = rows;
