@@ -362,7 +362,7 @@ reborn.post('/getActivityUsers', async (req, res) => {
         appData = {status: false};
     try {
         connect = await database.connection.getConnection();
-        const [rows] = await connect.query('SELECT ua.*,ul.name FROM users_activity ua LEFT JOIN users_list ul ON ul.id = ua.userid ORDER BY ua.date DESC LIMIT ?, ?',[from,limit]);
+        const [rows] = await connect.query('SELECT ua.*,ul.* FROM users_activity ua LEFT JOIN users_list ul ON ul.id = ua.userid ORDER BY ua.date DESC LIMIT ?, ?',[from,limit]);
         const [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_activity ORDER BY date DESC');
         if (rows.length){
             appData.data_count = rows_count[0].allcount

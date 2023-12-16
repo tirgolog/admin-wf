@@ -986,9 +986,11 @@ users.get("/getMerchantBalance", async function (req, res) {
   const clientId = req.query.clientId;
   try {
     connect = await database.connection.getConnection();
+    const [removalBalance] = await connect.query(`SELECT * from secure_transaction where userid = ? and status = 2`, [clientId]);
     const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where userid = ? and status <> 2`, [clientId]);
+    const totalRemovalAmount = removalBalance.reduce((accumulator, secure) => accumulator + (secure.amount + secure.additional_amount), 0);
     const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + (secure.amount + secure.additional_amount), 0);
-    appData.data = { totalFrozenAmount };
+    appData.data = { totalFrozenAmount, totalRemovalAmount };
     res.status(200).json(appData)
   } catch (err) {
     appData.message = err.message;
@@ -1022,17 +1024,12 @@ users.get("/checkSession", async function (req, res) {
       const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      console.log(totalWithdrawalAmountProcess,totalWithdrawalAmount )
-      console.log(verification[0]?.send_verification)
       appData.user = rows[0];
       appData.user.transport = transport[0];
-      appData.user.balance = totalActiveAmount ? totalActiveAmount : 0;
-      appData.user.balance__off = totalFrozenAmount ? totalFrozenAmount : 0;
       appData.user.driver_verification = verification[0]?.verified;
       appData.user.send_verification = verification[0]?.send_verification;
       appData.user.balance = totalActiveAmount ? totalActiveAmount - totalWithdrawalAmount : 0;
       appData.user.balance_in_proccess = totalWithdrawalAmountProcess;
-      console.log(appData.user.balance_in_proccess, totalWithdrawalAmountProcess)
       appData.user.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
       appData.user.config = config[0];
       appData.user.avatar = fs.existsSync(
@@ -1784,8 +1781,8 @@ users.post("/editTransport", async (req, res) => {
 
 users.post("/finish-merchant-cargo", async (req, res) => {
   let connect,
-    appData = { status: false, timestamp: new Date().getTime() },
-    userInfo = jwt.decode(req.headers.authorization.split(' ')[1]);
+    appData = { status: false, timestamp: new Date().getTime() };
+
   try {
     const {
       orderId,
@@ -1811,10 +1808,32 @@ users.post("/finish-merchant-cargo", async (req, res) => {
     if (rows.affectedRows) {
       appData.status = true;
 
+      const [orders_accepted] = await connect.query(
+        `
+        SELECT user_id FROM orders_accepted
+        WHERE order_id = ? AND ismerchant = true`,
+        [
+          orderId,
+        ]
+      );
+
       connect.query(
         "UPDATE secure_transaction SET status = 2 WHERE orderid = ?",
         [orderId]
       );
+      const [withdrawalsProccess] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ? and status = 0`, [orders_accepted[0]?.user_id]);
+      const [withdrawals] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ?`, [orders_accepted[0]?.user_id]);
+      const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status <> 2`, [orders_accepted[0]?.user_id]);
+      const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [orders_accepted[0]?.user_id]);
+      const totalWithdrawalAmountProcess = withdrawalsProccess.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+      const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+      const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+      const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+      const user = {};
+            user.balance = totalActiveAmount ? totalActiveAmount - totalWithdrawalAmount : 0;
+            user.balance_in_proccess = totalWithdrawalAmountProcess;
+            user.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
+      socket.updateAllList("update-driver-balance", JSON.stringify(user));
     }
     res.status(200).json(appData);
     //    }
@@ -2336,7 +2355,7 @@ users.post("/acceptOrderDriver", async (req, res) => {
       let x = +price;
       let y = x / 0.88;
       let t = (12 / 100) * y;
-      pricePlus = x + t + 100;
+      pricePlus = t + 100;
     }
 
   }
@@ -3659,13 +3678,19 @@ users.post("/driver-balance/withdraw", async (req, res) => {
       if(row[0]) {
         const user = row[0];
         const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [user.id]);
+        const [withdrawals] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ?`, [rows[0]?.id]);
         const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      
+        const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+      if(totalActiveAmount - totalWithdrawalAmount <= 0) {
+        appData.status = false;
+        appData.error = 'No enough balance';
+        res.status(400).json(appData);
+      }
       await connect.query(
         "INSERT INTO driver_withdrawal SET driver_id = ?,amount = ?, withdraw_type = 'Вывод средств', status = 0",
         [
           user.id,
-          totalActiveAmount
+          totalActiveAmount - totalWithdrawalAmount
         ]
       );
       appData.status = true;
