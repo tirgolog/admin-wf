@@ -3701,14 +3701,15 @@ users.post("/driver-balance/withdraw", async (req, res) => {
       appData.status = true;
 
 
-      const [withdrawalsProccess] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ? and status = 0`, [orders_accepted[0]?.user_id]);
-      const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status <> 2`, [orders_accepted[0]?.user_id]);
+      const [withdrawalsProccess] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ? and status = 0`, [user.id]);
+      const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status <> 2`, [user.id]);
       const totalWithdrawalAmountProcess = withdrawalsProccess.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      const obj = {};
-            obj.balance = totalActiveAmount ? totalActiveAmount - totalWithdrawalAmount : 0;
-            obj.balance_in_proccess = totalWithdrawalAmountProcess;
-            obj.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
+      const obj = {
+        balance: totalActiveAmount ? totalActiveAmount - totalWithdrawalAmount : 0,
+        balance_in_proccess: totalWithdrawalAmountProcess,
+        balance_off: totalFrozenAmount ? totalFrozenAmount : 0,
+      }  
       socket.updateAllList("update-driver-balance", JSON.stringify(obj));
       res.status(200).json(appData);
 
@@ -3717,9 +3718,9 @@ users.post("/driver-balance/withdraw", async (req, res) => {
       appData.error = 'User not found';
       res.status(200).json(appData);
     }
-
-
+    
   } catch (err) {
+    console.log(err)
     appData.status = false;
     appData.error = err;
     res.status(403).json(appData);
