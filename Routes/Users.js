@@ -1854,6 +1854,7 @@ users.post("/verification", async (req, res) => {
     userInfo = jwt.decode(req.headers.authorization.split(' ')[1]);
   try {
     const {
+      user_id,
       full_name,
       phone,
       selfies_with_passport,
@@ -1971,6 +1972,7 @@ users.put("/update-verification", async (req, res) => {
     connect = await database.connection.getConnection();
     const {
       id,
+      user_id,
       full_name,
       phone,
       selfies_with_passport,
@@ -1985,11 +1987,10 @@ users.put("/update-verification", async (req, res) => {
       transportation_license_photo,
       techpassport_photo1,
       techpassport_photo2,
-      state_registration_truckNumber, 
+      state_registration_truckNumber,
       type,
       brand_name
     } = req.body;
-
     if (
       !id ||
       !full_name ||
@@ -2006,39 +2007,39 @@ users.put("/update-verification", async (req, res) => {
       !transportation_license_photo ||
       !techpassport_photo1 ||
       !techpassport_photo2 ||
-      !state_registration_truckNumber||
-      !type||
+      !state_registration_truckNumber ||
+      !type ||
       !brand_name
     ) {
       appData.error = "All fields are required";
       res.status(400).json(appData);
     }
-
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      `
-          UPDATE verification set
-              userId = ?,
-              fullName = ?,
-              phone = ?,
-              selfiesWithPassport = ?,
-              bankCard = ?,
-              bankCardName = ?,
-              transportFrontPhoto = ?,
-              transportBackPhoto = ?,
-              transportSidePhoto = ?,
-              adrPhoto = ?,
-              transportRegistrationCountry = ?,
-              driverLicense = ?,
-              transportationLicensePhoto = ?,
-              techPassportPhoto1 = ?,
-              techPassportPhoto2 = ?,
-              stateRegistrationTruckNumber = ? ,
-              type = ?,
-              brand_name = ?
-              where id = ?`,
+      `UPDATE verification
+        SET
+            user_id = ?,
+            full_name = ?,
+            phone = ?,
+            selfies_with_passport = ?,
+            bank_card = ?,
+            bank_cardname = ?,
+            transport_front_photo = ?,
+            transport_back_photo = ?,
+            transport_side_photo = ?,
+            adr_photo = ?,
+            transport_registration_country = ?,
+            driver_license = ?,
+            transportation_license_photo = ?,
+            techpassport_photo1 = ?,
+            techpassport_photo2 = ?,
+            state_registration_truckNumber = ?,
+            type = ?,
+            brand_name = ?,
+            send_verification = ?
+        WHERE id = ?`,
       [
-        userInfo.id,
+        user_id,
         full_name,
         phone,
         selfies_with_passport,
@@ -2054,16 +2055,20 @@ users.put("/update-verification", async (req, res) => {
         techpassport_photo1,
         techpassport_photo2,
         state_registration_truckNumber,
-        id,
+        type,
+        brand_name,
+        1,
+        id
       ]
     );
-    if (rows.affectedRows) {
+    if (rows.affectedRows > 0) {
       appData.status = true;
+      return res.status(200).json(appData);
+    } else {
+      appData.error = "No records were updated";
+      return res.status(404).json(appData);
     }
-    res.status(200).json(appData);
   } catch (err) {
-    console.log(err);
-    appData.error = "Internal error";
     res.status(403).json(appData);
   }
 });
@@ -2560,7 +2565,6 @@ users.post("/cancelDriverClient", async (req, res) => {
   }
 });
 users.post("/delPhotoUser", async (req, res) => {
-  console.log(req.body.filename);
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
     file = req.body.filename,
@@ -3540,8 +3544,11 @@ users.post("/createOrderClientTypes", async (req, res) => {
   }
 });
 
+
 users.post("/uploadImage", upload.single("file"), async (req, res) => {
   res.set("Access-Control-Allow-Origin", "*");
+  console.log(req.file.originalname)
+  console.log(req.file.buffer)
   let connect,
     userInfo = await jwt.decode(req.headers.authorization.split(" ")[1]),
     appData = { status: false },
