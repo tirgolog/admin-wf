@@ -524,15 +524,28 @@ users.post("/login", async (req, res) => {
       }
     } else {
       if (send_sms_res === "waiting") {
-        const [insert] = await connect.query(
-          "INSERT INTO users_list SET verify_code=?,phone=?,user_type = 1",
-          [code, phone]
+        const [notVerified] = await connect.query(
+          "SELECT * FROM users_contacts WHERE text = ? AND user_type = 1 AND verify = 0",
+          [phone]
         );
-        await connect.query(
-          "INSERT INTO users_contacts SET verify_code=?,text=?,user_type = 1,user_id = ?",
-          [code, phone, insert.insertId]
-        );
-        appData.status = true;
+        if (notVerified.length>0) {
+          await connect.query(
+            "UPDATE users_contacts SET verify_code = ? WHERE text = ? AND user_type = 1",
+            [code, phone]
+          );
+          appData.status = true;
+        }else{
+          const [insert] = await connect.query(
+            "INSERT INTO users_list SET verify_code=?,phone=?,user_type = 1",
+            [code, phone]
+          );
+          await connect.query(
+            "INSERT INTO users_contacts SET verify_code=?,text=?,user_type = 1,user_id = ?",
+            [code, phone, insert.insertId]
+          );
+          appData.status = true;
+        }
+    
       } else {
         appData.error = "Не удалось отправить SMS";
       }
@@ -3644,7 +3657,7 @@ users.post("/uploadImage", upload.single("file"), async (req, res) => {
     } else if (typeImage === "verification") {
       await connect.query(
         "INSERT INTO users_list_files SET user_id = ?,name = ?,type_file = ?",
-        [userInfo.id, req.file.originalname, "driver-license"]
+        [userInfo.id, req.file.originalname, "verification"]
       );
       sharp(req.file.originalname)
         .rotate()
