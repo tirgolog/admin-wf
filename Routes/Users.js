@@ -3657,7 +3657,7 @@ users.post("/uploadImage", upload.single("file"), async (req, res) => {
     } else if (typeImage === "verification") {
       await connect.query(
         "INSERT INTO users_list_files SET user_id = ?,name = ?,type_file = ?",
-        [userInfo.id, req.file.originalname, "driver-license"]
+        [userInfo.id, req.file.originalname, "verification"]
       );
       sharp(req.file.originalname)
         .rotate()
