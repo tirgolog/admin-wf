@@ -160,7 +160,7 @@ admin.post('/acceptOrderDriver', async (req, res) => {
             }
 
             // Execute the second query to insert into orders_accepted
-            const insertResult = await connection.query('INSERT INTO orders_accepted SET user_id = ?, order_id = ?, price = ?, status_order = 1', [userid, orderid, price]);
+            const insertResult = await connection.query('INSERT INTO orders_accepted SET user_id = ?, order_id = ?, price = ?, status_order = 1, ismerchant = ?', [userid, orderid, price, isMerchant]);
 
             // Check if rows were affected by the insert query
             if (insertResult[0].affectedRows === 0) {
