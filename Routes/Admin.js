@@ -176,7 +176,6 @@ admin.post('/acceptOrderDriver', async (req, res) => {
             if(isMerchant) {
                 await channel.sendToQueue('acceptAdminAppendOrder', Buffer.from(JSON.stringify(orderid)));
             }
-            await amqpConnection.close();
             appData.status = true;
         } else {
             appData.error = 'Данный водитель уже назначен';
