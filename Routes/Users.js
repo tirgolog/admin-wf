@@ -3560,8 +3560,6 @@ users.post("/createOrderClientTypes", async (req, res) => {
 
 users.post("/uploadImage", upload.single("file"), async (req, res) => {
   res.set("Access-Control-Allow-Origin", "*");
-  console.log(req.file.originalname)
-  console.log(req.file.buffer)
   let connect,
     userInfo = await jwt.decode(req.headers.authorization.split(" ")[1]),
     appData = { status: false },
