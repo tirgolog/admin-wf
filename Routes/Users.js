@@ -3164,7 +3164,7 @@ users.get("/getMyOrdersDriver", async (req, res) => {
           weight: el.cargoWeight,
           width_box: el.cargoWidth,
           created_at: el.createdAt,
-          logo: el.logoFilePath
+          logo: el.merchant?.logoFilePath
         };
       });
     }
