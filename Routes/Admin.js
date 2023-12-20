@@ -92,7 +92,7 @@ admin.post("/loginAdmin", async (req, res) => {
 //     }
 // });
 
-admin.post("/getAllAgent", async (req, res) => {
+admin.get("/getAllAgent", async (req, res) => {
   let connect,
     appData = { status: false };
   try {
@@ -415,28 +415,56 @@ admin.post("/addUser", async (req, res) => {
       res.status(400).json(appData);
     } else {
       if (data.agent_id) {
-        const [insert] = await connect.query(
-          "INSERT INTO users_list SET country = ?,city = ?,geo_id = ?,iso_code = ?,city_lat = ?,city_lng = ?,phone = ?,user_type = 1,name = ?,birthday = ?,email = ?, agent_id = ?,  date_last_login = NULL",
-          [
-            cityInfo.country,
-            cityInfo.city ? cityInfo.city : cityInfo.region,
-            cityInfo.geoname_id ? cityInfo.geoname_id : "0",
-            cityInfo.country_iso_code,
-            cityInfo.geo_lat,
-            cityInfo.geo_lon,
-            phone,
-            data.name,
-            new Date(data.birthday),
-            data.email,
-            data.agent_id,
-          ]
+        const [agent] = await connect.query(
+          "SELECT * FROM user_list where  order_type=4 AND id=? ",[agent_id]
         );
-        await connect.query(
-          "INSERT INTO users_contacts SET text=?,user_type = 1,user_id = ?,verify = 1",
-          [phone, insert.insertId]
-        );
-        appData.id = insert.insertId;
-        appData.status = true;
+        if (agent.length>0) {
+          const [subscription] = await connect.query(
+            "SELECT * FROM subscription where id = ? ", [subscription_id]
+          );
+          if (agent[0].balance > subscription[0].value) {
+            let balance=agent[0].balance -subscription[0].value
+            const [edit] = await connect.query(
+              "UPDATE users_list SET  agent_balance = ? WHERE id = ?",
+              [balance, agent_id]
+            );
+            if (edit.affectedRows) {
+              const [insert] = await connect.query(
+                "INSERT INTO users_list SET country = ?,city = ?,geo_id = ?,iso_code = ?,city_lat = ?,city_lng = ?,phone = ?,user_type = 1,name = ?,birthday = ?,email = ?, agent_id = ?, subscription_id = ?, date_last_login = NULL",
+                [
+                  cityInfo.country,
+                  cityInfo.city ? cityInfo.city : cityInfo.region,
+                  cityInfo.geoname_id ? cityInfo.geoname_id : "0",
+                  cityInfo.country_iso_code,
+                  cityInfo.geo_lat,
+                  cityInfo.geo_lon,
+                  phone,
+                  data.name,
+                  new Date(data.birthday),
+                  data.email,
+                  data.agent_id,
+                  data.subscription_id,
+                ]
+              );
+              await connect.query(
+                "INSERT INTO users_contacts SET text=?,user_type = 1,user_id = ?,verify = 1",
+                [phone, insert.insertId]
+              );
+              appData.id = insert.insertId;
+              appData.status = true;
+            }else{
+              appData.error = 'Can not  set new balance';
+              res.status(400).json(appData);
+            }
+          }else{
+            appData.error = 'Balance is not enough';
+            res.status(400).json(appData);
+          }
+      
+        }else{
+          appData.error = 'Not found Agent';
+          res.status(400).json(appData);
+        }
       } else {
         const [insert] = await connect.query(
           "INSERT INTO users_list SET country = ?,city = ?,geo_id = ?,iso_code = ?,city_lat = ?,city_lng = ?,phone = ?,user_type = 1,name = ?,birthday = ?,email = ?,date_last_login = NULL",
@@ -611,8 +639,8 @@ admin.post("/addAdmin", async (req, res) => {
         }
       } else {
         const [rows] = await connect.query(
-          "INSERT INTO users_list SET phone = ?,name = ?,username = ?,role = ?,password = ?,user_type = ?",
-          [phone, name, username, role, password, 4]
+          "INSERT INTO users_list SET phone = ?,name = ?,username = ?,role = ?,password = ?,user_type = ?, agent_balance=?",
+          [phone, name, username, role, password, 4, agent_balance]
         );
         if (rows.affectedRows) {
           appData.status = true;
@@ -840,37 +868,19 @@ admin.post("/addTransportToUser", async (req, res) => {
 });
 
 admin.post("/addTransportToUserByAgent", async (req, res) => {
-  console.log("addTransportToUserByAgent");
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
-    name = req.body.data.name,
-    description = req.body.data.description,
-    maxweight = req.body.data.maxweight,
-    type = req.body.data.type,
-    //car_photos = req.body.car_photos,
-    //license_files = req.body.license_files,
-    //tech_passport_files = req.body.tech_passport_files,
-    cubature = req.body.data.cubature,
-    state_number = req.body.data.state_number,
-    adr = req.body.data.adr,
-    userid = req.body.data.userid;
+    type = req.body.type,
+    subscription_id = req.body.subscription_id,
+    userid = req.body.userid;
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "INSERT INTO users_transport SET name = ?,description = ?,type = ?,max_weight = ?,user_id = ?,adr = ?,cubature = ?,state_number = ?",
-      [name, description, type, maxweight, userid, adr, cubature, state_number]
+      "INSERT INTO users_transport SET type = ?, subscription_id = ?,user_id = ?",
+      [type, subscription_id, userid]
     );
     if (rows.affectedRows) {
       appData.status = true;
-      /*for (let car of car_photos){
-                  await connect.query('INSERT INTO users_transport_files SET transport_id = ?,file_patch = ?,name = ?,type_file = ?', [rows.insertId,car.preview,car.filename,'car_photos']);
-              }
-              for (let lic of license_files){
-                  await connect.query('INSERT INTO users_transport_files SET transport_id = ?,file_patch = ?,name = ?,type_file = ?', [rows.insertId,lic.preview,lic.filename,'license_files']);
-              }
-              for (let tech of tech_passport_files){
-                  await connect.query('INSERT INTO users_transport_files SET transport_id = ?,file_patch = ?,name = ?,type_file = ?', [rows.insertId,tech.preview,tech.filename,'tech_passport_files']);
-              }*/
     } else {
       appData.error = "Не получилось добавить транспорт. Попробуйте позже.";
     }
@@ -1636,19 +1646,21 @@ admin.post("/uploadImage", upload.single("file"), async (req, res) => {
 admin.post("/subscription", async (req, res) => {
   let connect,
     name = req.body.name,
-    value = req.body.name,
+    value = req.body.value,
     appData = { status: false };
   try {
+    connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "SELECT * FROM subscription where name = ? ",
+      "SELECT * FROM subscription where name = ?",
       [name]
     );
-    if (rows.length) {
+    console.log(rows);
+    if (rows.length > 0) {
       appData.error = "Есть подписка на это имя";
       res.status(400).json(appData);
     } else {
       const [subscription] = await connect.query(
-        "INSERT INTO subscription SET name = ?,value = ?",
+        "INSERT INTO subscription SET name = ?, value = ?",
         [name, value]
       );
       appData.data = subscription;
@@ -1695,13 +1707,12 @@ admin.put("/subscription/:id", async (req, res) => {
     appData = { status: false, timestamp: new Date().getTime() };
   try {
     connect = await database.connection.getConnection();
-    const { id } = req.params.id;
+    const { id } = req.params;
     const { name, value } = req.body;
     if (!id || !name || !value) {
       appData.error = "All fields are required";
-      res.status(400).json(appData);
+      return res.status(400).json(appData);
     }
-    connect = await database.connection.getConnection();
     const [rows] = await connect.query(
       `UPDATE subscription SET name = ?, value = ? WHERE id = ?`,
       [name, value, id]
@@ -1714,7 +1725,13 @@ admin.put("/subscription/:id", async (req, res) => {
       return res.status(404).json(appData);
     }
   } catch (err) {
-    res.status(403).json(appData);
+    console.log(err);
+    appData.error = "Internal error";
+    res.status(500).json(appData);
+  } finally {
+    if (connect) {
+      connect.release(); // Release the connection when done
+    }
   }
 });
 
@@ -1723,7 +1740,7 @@ admin.delete("/subscription/:id", async (req, res) => {
     appData = { status: false, timestamp: new Date().getTime() };
   try {
     connect = await database.connection.getConnection();
-    const { id } = req.params.id;
+    const { id } = req.params;
     if (!id) {
       appData.error("Требуется идентификатор подписки");
       res.status(400).json(appData);
