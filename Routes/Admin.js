@@ -1665,7 +1665,10 @@ admin.post("/subscription", async (req, res) => {
 });
 
 admin.get("/subscription", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
   try {
+    connect = await database.connection.getConnection();
     const [subscription] = await connect.query(
       "SELECT * FROM subscription ORDER BY id DESC "
     );
@@ -1677,6 +1680,7 @@ admin.get("/subscription", async (req, res) => {
       res.status(400).json(appData);
     }
   } catch (e) {
+    console.log(e);
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
@@ -1688,37 +1692,7 @@ admin.get("/subscription", async (req, res) => {
 
 admin.put("/subscription/:id", async (req, res) => {
   let connect,
-    appData = { status: false, timestamp: new Date().getTime() },
-    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
-  try {
-    connect = await database.connection.getConnection();
-    const { id } = req.params.id;
-    const { name, value } = req.body;
-    if (!id || !name || !value) {
-      appData.error = "All fields are required";
-      res.status(400).json(appData);
-    }
-    connect = await database.connection.getConnection();
-    const [rows] = await connect.query(
-      `UPDATE subscription SET name = ?, value = ? WHERE id = ?`,
-      [name, value, id]
-    );
-    if (rows.affectedRows > 0) {
-      appData.status = true;
-      return res.status(200).json(appData);
-    } else {
-      appData.error = "No records were updated";
-      return res.status(404).json(appData);
-    }
-  } catch (err) {
-    res.status(403).json(appData);
-  }
-});
-
-admin.put("/subscription/:id", async (req, res) => {
-  let connect,
-    appData = { status: false, timestamp: new Date().getTime() },
-    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+    appData = { status: false, timestamp: new Date().getTime() };
   try {
     connect = await database.connection.getConnection();
     const { id } = req.params.id;
