@@ -4,6 +4,7 @@ const
     database = require('../Database/database'),
     cors = require('cors'),
     fs = require('fs');
+    const axios = require("axios");
 
 reborn.use(cors());
 
@@ -296,29 +297,108 @@ reborn.post('/getAllOrders', async (req, res) => {
         saveorder = req.body.saveorder ? +req.body.saveorder:null,
         from = +req.body.from,
         limit = +req.body.limit,
+        merchantData = [],
         appData = {status: false,timestamp: new Date().getTime()};
     try {
+
+        const merchantCargos = await axios.get(
+            "https://merchant.tirgo.io/api/v1/cargo/all-driver?secure="+saveorder
+          );
+          if (merchantCargos.data.success) {
+            merchantData = merchantCargos.data.data.map((el) => {
+              return {
+                id: el.id,
+                isMerchant: true,
+                usernameorder: el.createdBy?.username,
+                userphoneorder: el.createdBy?.phoneNumber,
+                route: {
+                  from_city: el.sendLocation,
+                  to_city: el.cargoDeliveryLocation,
+                },
+                add_two_days: "",
+                adr: el.isDangrousCargo,
+                comment: "",
+                comment_client: "",
+                cubic: "",
+                currency: el.currency?.name,
+                date_create: new Date(el.createdAt),
+                date_send: el.sendCargoDate,
+                driver_id: el.driverId,
+                end_client: "",
+                end_date: "",
+                end_driver: "",
+                height_box: el.cargoHeight,
+                length_box: el.cargoLength,
+                loading: "",
+                mode: "",
+                no_cash: el.isCashlessPayment,
+                orders_accepted: el.acceptedOrders,
+                price: el.offeredPrice,
+                raiting_driver: "",
+                raiting_user: "",
+                route_id: "",
+                save_order: "",
+                secure_transaction: el.isSafe,
+                status: el.status,
+                transport_type: el.transportType?.name,
+                transport_types: el.transportTypes,
+                type_cargo: el.cargoType?.code,
+                user_id: el.clientId,
+                weight: el.cargoWeight,
+                width_box: el.cargoWidth,
+                created_at: new Date(el.createdAt),
+                logo: el.merchant?.logoFilePath,
+                merchant: el.merchant
+              };
+            });
+          }
+
         connect = await database.connection.getConnection();
-        const [rows] = await connect.query('SELECT * FROM orders WHERE id LIKE ? AND status LIKE ? AND IFNULL(user_id, ?) LIKE ? AND (transport_types LIKE ? OR transport_type LIKE ?) AND type_cargo LIKE ? AND IFNULL(price, ?) LIKE ? AND IFNULL(date_create, ?) LIKE ?  AND IFNULL(date_send, ?) LIKE ? AND secure_transaction LIKE ? ORDER BY id DESC LIMIT ?, ?',
-            [id ? id:'%',status ? status:'%','',id_client ? '%'+id_client+'%':'%',typetransport ? '%'+typetransport+'%':'%',typetransport ? '%'+typetransport+'%':'%',typecargo ? '%'+typecargo+'%':'%','',price ? '%'+price+'%':'%','',dateCreate ? '%'+dateCreate+'%':'%','',dateSend ? '%'+dateSend+'%':'%',saveorder ? +saveorder:'%',from,limit]);
+        const [rows] = await connect.query('SELECT * FROM orders WHERE id LIKE ? AND status LIKE ? AND IFNULL(user_id, ?) LIKE ? AND (transport_types LIKE ? OR transport_type LIKE ?) AND type_cargo LIKE ? AND IFNULL(price, ?) LIKE ? AND IFNULL(date_create, ?) LIKE ?  AND IFNULL(date_send, ?) LIKE ?  ORDER BY id DESC LIMIT ?, ?',
+            [id ? id:'%',status ? status:'%','',id_client ? '%'+id_client+'%':'%',typetransport ? '%'+typetransport+'%':'%',typetransport ? '%'+typetransport+'%':'%',typecargo ? '%'+typecargo+'%':'%','',price ? '%'+price+'%':'%','',dateCreate ? '%'+dateCreate+'%':'%','',dateSend ? '%'+dateSend+'%':'%',from,limit]);
         const [rows_count] = await connect.query('SELECT count(*) as allcount FROM orders ORDER BY id DESC');
         if (rows.length){
             appData.data_count = rows_count[0].allcount
-            appData.data = await Promise.all(rows.map(async (item) => {
+            let data;
+            if(saveorder) {
+                data = [...merchantData];
+            } else {
+                data = [...merchantData ,...rows];
+            }
+            data.sort((a,b) => {
+                if (a.date_create < b.date_create) {
+                    return 1;
+                  }
+                  if (a.date_create > b.date_create) {
+                    return -1;
+                  }
+                  return 0;
+            })
+            appData.data = await Promise.all(data.map(async (item) => {
                 let newItem = item;
-                newItem.transport_types = JSON.parse(item.transport_types);
-                const [orders_accepted] = await connect.query('SELECT ul.*,oa.price as priceorder,oa.one_day,oa.two_day,oa.three_day,oa.status_order,oa.date_create as date_create_accepted FROM orders_accepted oa LEFT JOIN users_list ul ON ul.id = oa.user_id WHERE oa.order_id = ?',[item.id]);
+                if (!item.isMerchant) {
+                    newItem.transport_types = JSON.parse(item.transport_types);
+                  }
+                const [orders_accepted] = await connect.query('SELECT ul.*,oa.price as priceorder,oa.one_day,oa.two_day,oa.three_day,oa.status_order,oa.date_create as date_create_accepted FROM orders_accepted oa LEFT JOIN users_list ul ON ul.id = oa.user_id WHERE oa.order_id = ?',[item.isMerchant ? +item.id.split("M")[1] : item.id]);
                 newItem.orders_accepted = await Promise.all(orders_accepted.map(async (item2) => {
                     let newItemUsers = item2;
-                    newItemUsers.avatar = fs.existsSync(process.env.FILES_PATCH +'tirgo/drivers/'+item2.id+'/'+ item2.avatar)?process.env.SERVER_URL +'tirgo/drivers/'+item2.id+'/'+ item2.avatar : null;
+                    newItemUsers.avatar = null;
                     return newItemUsers;
                 }));
-                const [route] = await connect.query('SELECT * FROM routes WHERE id = ? LIMIT 1',[item.route_id]);
-                newItem.route = route[0];
-                const [userinfo] = await connect.query('SELECT * FROM users_list WHERE id = ? LIMIT 1',[item.user_id]);
-                newItem.userinfo = userinfo[0];
+                if (!item.isMerchant) {
+                    const [route] = await connect.query(
+                      "SELECT * FROM routes WHERE id = ? LIMIT 1",
+                      [item.route_id]
+                    );
+                    newItem.route = route[0];
+                  }
+                  if (!item.isMerchant) {
+                    const [userinfo] = await connect.query('SELECT * FROM users_list WHERE id = ? LIMIT 1',[item.user_id]);
+                    newItem.userinfo = userinfo[0];
+                  }
                 return newItem;
-            }));
+            }
+            ));
             appData.status = true;
         }else {
             appData.error = 'Нет заказов';
