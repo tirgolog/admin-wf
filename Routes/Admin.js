@@ -31,7 +31,7 @@ admin.post("/loginAdmin", async (req, res) => {
     appData = { status: false },
     login = req.body.name,
     password = req.body.password;
-    console.log(req.body)
+  console.log(req.body);
   try {
     password = crypto.createHash("md5").update(password).digest("hex");
     connect = await database.connection.getConnection();
@@ -45,7 +45,7 @@ admin.post("/loginAdmin", async (req, res) => {
         "UPDATE users_list SET date_last_login = ? WHERE id = ?",
         [new Date(), rows[0].id]
       );
-      console.log(rows[0])
+      console.log(rows[0]);
       //appData.token = jwt.sign({id: rows[0].id, type_business: rows[0].type_business, type_user: rows[0].type_user,}, process.env.SECRET_KEY);
       appData.token = jwt.sign(
         {
@@ -1630,6 +1630,142 @@ admin.post("/uploadImage", upload.single("file"), async (req, res) => {
     if (connect) {
       connect.release();
     }
+  }
+});
+
+admin.post("/subscription", async (req, res) => {
+  let connect,
+    name = req.body.name,
+    value = req.body.name,
+    appData = { status: false };
+  try {
+    const [rows] = await connect.query(
+      "SELECT * FROM subscription where name = ? ",
+      [name]
+    );
+    if (rows.length) {
+      appData.error = "Есть подписка на это имя";
+      res.status(400).json(appData);
+    } else {
+      const [subscription] = await connect.query(
+        "INSERT INTO subscription SET name = ?,value = ?",
+        [name, value]
+      );
+      appData.data = subscription;
+      res.status(200).json(appData);
+    }
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/subscription", async (req, res) => {
+  try {
+    const [subscription] = await connect.query(
+      "SELECT * FROM subscription ORDER BY id DESC "
+    );
+    if (subscription.length) {
+      appData.data = subscription;
+      res.status(200).json(appData);
+    } else {
+      appData.error = "Данные для входа введены неверно";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.put("/subscription/:id", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() },
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+  try {
+    connect = await database.connection.getConnection();
+    const { id } = req.params.id;
+    const { name, value } = req.body;
+    if (!id || !name || !value) {
+      appData.error = "All fields are required";
+      res.status(400).json(appData);
+    }
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      `UPDATE subscription SET name = ?, value = ? WHERE id = ?`,
+      [name, value, id]
+    );
+    if (rows.affectedRows > 0) {
+      appData.status = true;
+      return res.status(200).json(appData);
+    } else {
+      appData.error = "No records were updated";
+      return res.status(404).json(appData);
+    }
+  } catch (err) {
+    res.status(403).json(appData);
+  }
+});
+
+admin.put("/subscription/:id", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() },
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+  try {
+    connect = await database.connection.getConnection();
+    const { id } = req.params.id;
+    const { name, value } = req.body;
+    if (!id || !name || !value) {
+      appData.error = "All fields are required";
+      res.status(400).json(appData);
+    }
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      `UPDATE subscription SET name = ?, value = ? WHERE id = ?`,
+      [name, value, id]
+    );
+    if (rows.affectedRows > 0) {
+      appData.status = true;
+      return res.status(200).json(appData);
+    } else {
+      appData.error = "No records were updated";
+      return res.status(404).json(appData);
+    }
+  } catch (err) {
+    res.status(403).json(appData);
+  }
+});
+
+admin.delete("/subscription/:id", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  try {
+    connect = await database.connection.getConnection();
+    const { id } = req.params.id;
+    if (!id) {
+      appData.error("Требуется идентификатор подписки");
+      res.status(400).json(appData);
+    }
+    const [rows] = await connect.query(
+      "DELETE FROM subscription WHERE id = ?",
+      [id]
+    );
+    if (rows.affectedRows) {
+      appData.status = true;
+      res.status(200).json(appData);
+    }
+  } catch (err) {
+    console.log(err);
+    appData.error = "Internal error";
+    res.status(403).json(appData);
   }
 });
 module.exports = admin;
