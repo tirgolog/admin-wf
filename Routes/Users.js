@@ -1029,6 +1029,8 @@ users.get("/checkSession", async function (req, res) {
       "SELECT * FROM users_list WHERE id = ? AND user_type = 1 AND ban <> 1 AND deleted <> 1",
       [userInfo.id]
     );
+    console.log(userInfo.id, 'userId')
+    console.log(rows, 'userlist')
     if (rows.length) {
       const [config] = await connect.query("SELECT * FROM config LIMIT 1");
       const [verification] = await connect.query("SELECT * FROM verification WHERE user_id = ? LIMIT 1",[rows[0].id]);
@@ -1049,6 +1051,7 @@ users.get("/checkSession", async function (req, res) {
       appData.user.balance_in_proccess = totalWithdrawalAmountProcess;
       appData.user.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
       appData.user.config = config[0];
+      console.log(appData.user, 'users')
       appData.user.avatar = fs.existsSync(
         process.env.FILES_PATCH +
         "tirgo/drivers/" +
