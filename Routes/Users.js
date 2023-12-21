@@ -2142,8 +2142,7 @@ users.delete("/delete-verification", async (req, res) => {
 users.get("/verified-verifications", async (req, res) => {
   console.log('verified-verifications')
   let connect,
-    appData = { status: false, timestamp: new Date().getTime() },
-    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+    appData = { status: false, timestamp: new Date().getTime() }
   try {
     connect = await database.connection.getConnection();
     console.log(connect, 'connect')
@@ -2221,27 +2220,7 @@ users.get("/unverified-verifications", async (req, res) => {
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   try {
     connect = await database.connection.getConnection();
-    const [rows] = await connect.query(`SELECT 
-      id,
-      user_id,
-      full_name,
-      phone,
-      selfies_with_passport,
-      bank_card,
-      bank_cardname,
-      transport_front_photo,
-      transport_back_photo,
-      transport_side_photo,
-      adr_photo,
-      transport_registration_country,
-      driver_license,
-      transportation_license_photo,
-      techpassport_photo1,
-      techpassport_photo2,
-      state_registration_truckNumber,
-      type,
-      brand_name
-      from verification where verified = 0`);
+    const [rows] = await connect.query(`SELECT *  from verification where verified = 0`);
     if (rows.length) {
       appData.status = true;
       appData.data = rows;
