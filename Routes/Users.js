@@ -2221,8 +2221,7 @@ users.get("/unverified-verifications", async (req, res) => {
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   try {
     connect = await database.connection.getConnection();
-    const [rows] = await connect.query(`SELECT *
-      from verification where verified = 0`);
+    const [rows] = await connect.query(`SELECT * from verification where verified = 0`);
     if (rows.length) {
       appData.status = true;
       appData.data = rows;
