@@ -114,6 +114,54 @@ admin.get("/getAllAgent", async (req, res) => {
   }
 });
 
+admin.get("/getAgent/:agent_id", async (req, res) => {
+  agent_id = req.params.agent_id;
+  let connect,
+    appData = { status: false };
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      "SELECT * FROM users_list WHERE user_type = 4 agent_id",
+      [agent_id]
+    );
+    if (rows.length) {
+      appData.data = rows;
+    }
+    res.status(200).json(appData);
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/sumOfDriversSubcription/:agent_id", async (req, res) => {
+  let connect,
+    appData = { status: false };
+  agent_id = req.params.agent_id;
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      "SELECT SUM(s.value) AS total_subscription_balance FROM users_list u JOIN subscription s ON u.subscription_id = s.id WHERE u.agent_id = ?",
+      [agent_id]
+    );
+    if (rows.length) {
+      appData.data = rows;
+    }
+    res.status(200).json(appData);
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 admin.post("/getAllUsers", async (req, res) => {
   let connect,
     appData = { status: false };
@@ -416,18 +464,24 @@ admin.post("/addUser", async (req, res) => {
     } else {
       if (data.agent_id) {
         const [agent] = await connect.query(
-          "SELECT * FROM user_list where  order_type=4 AND id=? ",[agent_id]
+          "SELECT * FROM users_list where  user_type=4 AND id=? ",
+          [data.agent_id]
         );
-        if (agent.length>0) {
+        console.log(agent);
+        if (agent.length > 0) {
           const [subscription] = await connect.query(
-            "SELECT * FROM subscription where id = ? ", [subscription_id]
+            "SELECT * FROM subscription where id = ? ",
+            [data.subscription_id]
           );
-          if (agent[0].balance > subscription[0].value) {
-            let balance=agent[0].balance -subscription[0].value
+          console.log(subscription);
+          if (agent[0].agent_balance > subscription[0].value) {
+            let balance = agent[0].agent_balance - subscription[0].value;
+            console.log(balance);
             const [edit] = await connect.query(
               "UPDATE users_list SET  agent_balance = ? WHERE id = ?",
-              [balance, agent_id]
+              [balance, data.agent_id]
             );
+
             if (edit.affectedRows) {
               const [insert] = await connect.query(
                 "INSERT INTO users_list SET country = ?,city = ?,geo_id = ?,iso_code = ?,city_lat = ?,city_lng = ?,phone = ?,user_type = 1,name = ?,birthday = ?,email = ?, agent_id = ?, subscription_id = ?, date_last_login = NULL",
@@ -450,19 +504,22 @@ admin.post("/addUser", async (req, res) => {
                 "INSERT INTO users_contacts SET text=?,user_type = 1,user_id = ?,verify = 1",
                 [phone, insert.insertId]
               );
+              await connect.query(
+                "INSERT INTO users_transport SET type = ?,user_id = ?",
+                [data.type, insert.insertId]
+              );
               appData.id = insert.insertId;
               appData.status = true;
-            }else{
-              appData.error = 'Can not  set new balance';
+            } else {
+              appData.error = "Can not  set new balance";
               res.status(400).json(appData);
             }
-          }else{
-            appData.error = 'Balance is not enough';
+          } else {
+            appData.error = "Balance is not enough";
             res.status(400).json(appData);
           }
-      
-        }else{
-          appData.error = 'Not found Agent';
+        } else {
+          appData.error = "Not found Agent";
           res.status(400).json(appData);
         }
       } else {
