@@ -2214,12 +2214,12 @@ users.get("/unverified-verifications", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
-    console.log( 'unverified verifications')
+    console.log( 'unverified verifications first')
   try {
     connect = await database.connection.getConnection();
     console.log( 'connect  unverified verifications')
     const [rows] = await connect.query(`SELECT *  from verification where verified = 0`);
-    console.log(rows, 'unverified verifications')
+    console.log(rows, 'unverified verifications rows')
     if (rows.length) {
       appData.status = true;
       appData.data = rows;
