@@ -2140,6 +2140,7 @@ users.delete("/delete-verification", async (req, res) => {
 });
 
 users.get("/verified-verifications", async (req, res) => {
+  console.log('verified-verifications')
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
@@ -2166,6 +2167,7 @@ users.get("/verified-verifications", async (req, res) => {
       type, 
       brand_name
       from verification where verified = 1`);
+    console.log(rows)
     if (rows.length) {
       appData.status = true;
       appData.data = rows;
@@ -2184,12 +2186,14 @@ users.get("/verified-verifications", async (req, res) => {
 });
 
 users.get("/verified-driver", async (req, res) => {
+  console.log('verified-driver')
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(`select * from verification  WHERE verified = 1 and  user_id = ?`,[userInfo.id]);
+    console.log(rows)
     if (rows.length) {
       appData.status = true;
       appData.data = rows;
