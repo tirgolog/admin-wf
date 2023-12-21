@@ -2187,16 +2187,12 @@ users.get("/verified-verifications", async (req, res) => {
 });
 
 users.get("/verified-driver", async (req, res) => {
-  console.log('verified-driver')
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   try {
     connect = await database.connection.getConnection();
-    console.log(connect, 'connect')
-    console.log(userInfo, 'userInfo')
     const [rows] = await connect.query(`select * from verification  WHERE verified = 1 ?`);
-    console.log(rows)
     if (rows.length) {
       appData.status = true;
       appData.data = rows;
@@ -2218,9 +2214,12 @@ users.get("/unverified-verifications", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+    console.log( 'unverified verifications')
   try {
     connect = await database.connection.getConnection();
+    console.log( 'connect  unverified verifications')
     const [rows] = await connect.query(`SELECT *  from verification where verified = 0`);
+    console.log(rows, 'unverified verifications')
     if (rows.length) {
       appData.status = true;
       appData.data = rows;
