@@ -2146,6 +2146,8 @@ users.get("/verified-verifications", async (req, res) => {
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   try {
     connect = await database.connection.getConnection();
+    console.log(connect, 'connect')
+    console.log(connect, 'connect')
     const [rows] = await connect.query(`SELECT 
       id,
       user_id,
@@ -2192,7 +2194,9 @@ users.get("/verified-driver", async (req, res) => {
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   try {
     connect = await database.connection.getConnection();
-    const [rows] = await connect.query(`select * from verification  WHERE verified = 1 and  user_id = ?`,[userInfo.id]);
+    console.log(connect, 'connect')
+    console.log(userInfo, 'userInfo')
+    const [rows] = await connect.query(`select * from verification  WHERE verified = 1 ?`);
     console.log(rows)
     if (rows.length) {
       appData.status = true;
