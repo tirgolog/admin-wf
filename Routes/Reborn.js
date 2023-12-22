@@ -168,58 +168,15 @@ reborn.post("/getAllDriversByAgent", async (req, res) => {
   let connect,
     from = +req.body.from,
     limit = +req.body.limit,
-    id = req.body.id ? req.body.id : "",
-    phone = req.body.phone ? req.body.phone : "",
-    indentificator = req.body.indentificator ? req.body.indentificator : "",
-    name = req.body.name ? req.body.name : "",
     agent_id = req.body.agent_id ? req.body.agent_id : "",
-    dateReg = req.body.dateReg ? req.body.dateReg : "",
-    dateLogin = req.body.dateLogin ? req.body.dateLogin : "",
     [rows] = [],
     appData = { status: false };
   try {
     connect = await database.connection.getConnection();
-    if (agent_id) {
-      [rows] = await connect.query(
-        "SELECT ul.* FROM users_transport ut LEFT JOIN users_list ul ON ul.id = ut.user_id WHERE ut.type = ? AND ul.user_type = 1 AND ul.id LIKE ? AND IFNULL(ul.name, ?) LIKE ? AND IFNULL(ul.phone, ?) LIKE ? AND IFNULL(ul.date_reg, ?) LIKE ? AND IFNULL(ul.date_last_login, ?) LIKE ? AND IFNULL(ul.iso_code, ?) LIKE ?  ORDER BY ul.id DESC LIMIT ?, ?",
-        [
-          id ? id : "%",
-          "",
-          agent_id ? agent_id : "%",
-          "",
-          name ? "%" + name + "%" : "%",
-          "",
-          phone ? "%" + phone + "%" : "%",
-          "",
-          dateReg ? "%" + dateReg + "%" : "%",
-          "",
-          dateLogin ? "%" + dateLogin + "%" : "%",
-          "",
-          indentificator ? "%" + indentificator + "%" : "%",
-          from,
-          limit,
-        ]
-      );
-    } else {
-      [rows] = await connect.query(
-        "SELECT ul.* FROM users_transport ut LEFT JOIN users_list ul ON ul.id = ut.user_id WHERE ut.type = ? AND ul.user_type = 1 AND ul.id LIKE ? AND IFNULL(ul.name, ?) LIKE ? AND IFNULL(ul.phone, ?) LIKE ? AND IFNULL(ul.date_reg, ?) LIKE ? AND IFNULL(ul.date_last_login, ?) LIKE ? AND IFNULL(ul.iso_code, ?) LIKE ?  ORDER BY ul.id DESC LIMIT ?, ?",
-        [
-          id ? id : "%",
-          "",
-          name ? "%" + name + "%" : "%",
-          "",
-          phone ? "%" + phone + "%" : "%",
-          "",
-          dateReg ? "%" + dateReg + "%" : "%",
-          "",
-          dateLogin ? "%" + dateLogin + "%" : "%",
-          "",
-          indentificator ? "%" + indentificator + "%" : "%",
-          from,
-          limit,
-        ]
-      );
-    }
+    [rows] = await connect.query(
+      "SELECT ul.* FROM users_transport ut LEFT JOIN users_list ul ON ul.id = ut.user_id WHERE ul.user_type = 1 AND ul.agent_id = ?  ORDER BY ul.id DESC LIMIT ?, ? ",
+      [agent_id, from, limit]
+    );
     const [rows_count] = await connect.query(
       "SELECT count(*) as allcount FROM users_list WHERE user_type = 1 ORDER BY id DESC"
     );

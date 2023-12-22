@@ -9,6 +9,7 @@ const express = require("express"),
   jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const socket = require("../Modules/Socket");
+const { userInfo } = require("os");
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
@@ -45,14 +46,14 @@ admin.post("/loginAdmin", async (req, res) => {
         "UPDATE users_list SET date_last_login = ? WHERE id = ?",
         [new Date(), rows[0].id]
       );
-      console.log(rows[0]);
+      console.log(rows[0].user_type);
       //appData.token = jwt.sign({id: rows[0].id, type_business: rows[0].type_business, type_user: rows[0].type_user,}, process.env.SECRET_KEY);
       appData.token = jwt.sign(
         {
           id: rows[0].id,
           type_business: rows[0].type_business,
           type_user: rows[0].type_user,
-          user_type: rows[0].type_user,
+          user_type: rows[0].user_type,
         },
         process.env.SECRET_KEY
       );
@@ -115,17 +116,18 @@ admin.get("/getAllAgent", async (req, res) => {
 });
 
 admin.get("/getAgent/:agent_id", async (req, res) => {
-  agent_id = req.params.agent_id;
   let connect,
-    appData = { status: false };
+    appData = { status: false },
+    agent_id = req.params.agent_id;
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "SELECT * FROM users_list WHERE user_type = 4 agent_id",
+      "SELECT * FROM users_list WHERE user_type = 4 AND id = ?",
       [agent_id]
     );
     if (rows.length) {
-      appData.data = rows;
+      appData.status = true;
+      appData.data = rows[0];
     }
     res.status(200).json(appData);
   } catch (e) {
@@ -149,7 +151,8 @@ admin.get("/sumOfDriversSubcription/:agent_id", async (req, res) => {
       [agent_id]
     );
     if (rows.length) {
-      appData.data = rows;
+      appData.status = true;
+      appData.data = rows[0];
     }
     res.status(200).json(appData);
   } catch (e) {
@@ -467,16 +470,13 @@ admin.post("/addUser", async (req, res) => {
           "SELECT * FROM users_list where  user_type=4 AND id=? ",
           [data.agent_id]
         );
-        console.log(agent);
         if (agent.length > 0) {
           const [subscription] = await connect.query(
             "SELECT * FROM subscription where id = ? ",
             [data.subscription_id]
           );
-          console.log(subscription);
           if (agent[0].agent_balance > subscription[0].value) {
             let balance = agent[0].agent_balance - subscription[0].value;
-            console.log(balance);
             const [edit] = await connect.query(
               "UPDATE users_list SET  agent_balance = ? WHERE id = ?",
               [balance, data.agent_id]
@@ -930,6 +930,7 @@ admin.post("/addTransportToUserByAgent", async (req, res) => {
     type = req.body.type,
     subscription_id = req.body.subscription_id,
     userid = req.body.userid;
+
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
@@ -1428,7 +1429,7 @@ admin.get("/checkSessionAdmin", async function (req, res) {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "SELECT * FROM users_list WHERE id = ? AND user_type = 3 AND ban <> 1",
+      "SELECT * FROM users_list WHERE id = ? AND user_type = 3 OR  user_type = 4   AND ban <> 1",
       [userInfo.id]
     );
     if (rows.length) {
@@ -1742,6 +1743,7 @@ admin.get("/subscription", async (req, res) => {
       "SELECT * FROM subscription ORDER BY id DESC "
     );
     if (subscription.length) {
+      appData.status = true;
       appData.data = subscription;
       res.status(200).json(appData);
     } else {
