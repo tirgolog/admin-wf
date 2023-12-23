@@ -483,8 +483,9 @@ admin.post("/addUser", async (req, res) => {
             );
 
             if (edit.affectedRows) {
+              let nextthreeMonth = new Date(new Date().setMonth(new Date().getMonth() + subscription[0].duration))
               const [insert] = await connect.query(
-                "INSERT INTO users_list SET country = ?,city = ?,geo_id = ?,iso_code = ?,city_lat = ?,city_lng = ?,phone = ?,user_type = 1,name = ?,birthday = ?,email = ?, agent_id = ?, subscription_id = ?, date_last_login = NULL",
+                "INSERT INTO users_list SET country = ?,city = ?,geo_id = ?,iso_code = ?,city_lat = ?,city_lng = ?,phone = ?,user_type = 1,name = ?,birthday = ?,email = ?, agent_id = ?, subscription_id = ?, date_last_login = NULL, from_subscription = ? , to_subscription=? ",
                 [
                   cityInfo.country,
                   cityInfo.city ? cityInfo.city : cityInfo.region,
@@ -498,6 +499,8 @@ admin.post("/addUser", async (req, res) => {
                   data.email,
                   data.agent_id,
                   data.subscription_id,
+                  new Date(),
+                  nextthreeMonth
                 ]
               );
               await connect.query(
@@ -1705,6 +1708,7 @@ admin.post("/subscription", async (req, res) => {
   let connect,
     name = req.body.name,
     value = req.body.value,
+    duration = req.body.duration,
     appData = { status: false };
   try {
     connect = await database.connection.getConnection();
@@ -1712,15 +1716,15 @@ admin.post("/subscription", async (req, res) => {
       "SELECT * FROM subscription where name = ?",
       [name]
     );
-    console.log(rows);
     if (rows.length > 0) {
       appData.error = "Есть подписка на это имя";
       res.status(400).json(appData);
     } else {
       const [subscription] = await connect.query(
-        "INSERT INTO subscription SET name = ?, value = ?",
-        [name, value]
+        "INSERT INTO subscription SET name = ?, value = ?, duration = ?",
+        [name, value, duration]
       );
+      appData.data = true;
       appData.data = subscription;
       res.status(200).json(appData);
     }
@@ -1740,7 +1744,7 @@ admin.get("/subscription", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [subscription] = await connect.query(
-      "SELECT * FROM subscription ORDER BY id DESC "
+      "SELECT * FROM subscription"
     );
     if (subscription.length) {
       appData.status = true;
@@ -1767,14 +1771,14 @@ admin.put("/subscription/:id", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const { id } = req.params;
-    const { name, value } = req.body;
-    if (!id || !name || !value) {
+    const { name, value, duration } = req.body;
+    if (!id || !name || !value || !duration) {
       appData.error = "All fields are required";
       return res.status(400).json(appData);
     }
     const [rows] = await connect.query(
-      `UPDATE subscription SET name = ?, value = ? WHERE id = ?`,
-      [name, value, id]
+      `UPDATE subscription SET name = ?, value = ? , duration = ? WHERE id = ?`,
+      [name, value, duration, id]
     );
     if (rows.affectedRows > 0) {
       appData.status = true;
@@ -1784,7 +1788,6 @@ admin.put("/subscription/:id", async (req, res) => {
       return res.status(404).json(appData);
     }
   } catch (err) {
-    console.log(err);
     appData.error = "Internal error";
     res.status(500).json(appData);
   } finally {
