@@ -1960,16 +1960,6 @@ users.post("/verification", async (req, res) => {
       appData.status = true;
     }
     res.status(200).json(appData);
-    //    const [rows] = await connect.query(`UPDATE users_list SET name = ?, selfiesWithPassport = ?,
-    //    bankCard = ?, bankCardName = ?, transportFrontPhoto = ?, transportBackPhoto = ?, transportSidePhoto = ?, adrPhoto = ?, transportRegistrationCountry = ?  WHERE id = ?`,
-    //    [fullName, selfiesWithPassport, bankCard, bankCardName, transportFrontPhoto, transportBackPhoto, transportSidePhoto, adrPhoto, transportRegistrationCountry, userInfo.id]);
-    //    if (rows.affectedRows){
-    //     await connect.query('UPDATE users_transport set state_number = ? where user_id = ?', [stateRegistrationTruckNumber, userInfo.id])
-    //     await connect.query('INSERT INTO users_transport_files SET transport_id = ?,file_patch = ?,name = ?,type_file = ?',
-    //     [transportId, 'https://admin.tirgo.io/file/'+transportationLicensePhoto, transportationLicensePhoto,'license_files'],
-    //     [transportId, 'https://admin.tirgo.io/file/'+driverLicense, driverLicense,'license_files'],
-    //     [transportId, 'https://admin.tirgo.io/file/'+techPassportPhoto, techPassportPhoto,'tech_passport_files']);
-    //    }
   } catch (err) {
     console.log(err);
     appData.error = "Internal error";
@@ -2111,6 +2101,31 @@ users.patch("/verify-driver", async (req, res) => {
   }
 });
 
+users.patch("/unverify-driver", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  try {
+    connect = await database.connection.getConnection();
+    const { id } = req.body;
+    if (!id) {
+      appData.error = "VerificationId is required";
+      res.status(400).json(appData);
+    }
+    const [rows] = await connect.query(
+      "UPDATE verification SET verified = 0 WHERE id = ?",
+      [id]
+    );
+    if (rows.affectedRows) {
+      appData.status = true;
+      res.status(200).json(appData);
+    }
+  } catch (err) {
+    console.log(err);
+    appData.error = "Internal error";
+    res.status(403).json(appData);
+  }
+});
+
 users.delete("/delete-verification", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
@@ -2137,32 +2152,9 @@ users.delete("/delete-verification", async (req, res) => {
 });
 
 users.get("/verified-verifications", async (req, res) => {
-  let connect,
-    appData = { status: false, timestamp: new Date().getTime() },
-    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+    appData = { status: false, timestamp: new Date().getTime() };
   try {
-    connect = await database.connection.getConnection();
-    const [rows] = await connect.query(`SELECT 
-      id,
-      user_id,
-      full_name,
-      phone,
-      selfies_with_passport,
-      bank_card,
-      bank_cardname,
-      transport_front_photo,
-      transport_back_photo,
-      transport_side_photo,
-      adr_photo,
-      transport_registration_country,
-      driver_license,
-      transportation_license_photo,
-      techpassport_photo1,
-      techpassport_photo2,
-      state_registration_truckNumber,
-      type, 
-      brand_name
-      from verification where verified = 1`);
+    const [rows] = await database.connection.query('SELECT * from verification where verified = 1');
     if (rows.length) {
       appData.status = true;
       appData.data = rows;
@@ -2173,7 +2165,7 @@ users.get("/verified-verifications", async (req, res) => {
       res.status(204).json(appData);
     }
   } catch (err) {
-    console.lg(err)
+    console.log(err)
     appData.status = false;
     appData.error = err;
     res.status(403).json(appData);
@@ -2186,7 +2178,7 @@ users.get("/verified-driver", async (req, res) => {
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   try {
     connect = await database.connection.getConnection();
-    const [rows] = await connect.query(`select * from verification  WHERE verified = 1 and  user_id = ?`,[userInfo.id]);
+    const [rows] = await pool.query(`select * from verification  WHERE verified = 1 and  user_id = ?`,[userInfo.id]);
     if (rows.length) {
       appData.status = true;
       appData.data = rows;
@@ -2205,32 +2197,9 @@ users.get("/verified-driver", async (req, res) => {
 });
 
 users.get("/unverified-verifications", async (req, res) => {
-  let connect,
-    appData = { status: false, timestamp: new Date().getTime() },
-    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+  let appData = { status: false, timestamp: new Date().getTime() };
   try {
-    connect = await database.connection.getConnection();
-    const [rows] = await connect.query(`SELECT 
-      id,
-      user_id,
-      full_name,
-      phone,
-      selfies_with_passport,
-      bank_card,
-      bank_cardname,
-      transport_front_photo,
-      transport_back_photo,
-      transport_side_photo,
-      adr_photo,
-      transport_registration_country,
-      driver_license,
-      transportation_license_photo,
-      techpassport_photo1,
-      techpassport_photo2,
-      state_registration_truckNumber,
-      type,
-      brand_name
-      from verification where verified = 0`);
+    const [rows] = await database.connection.query('SELECT * from verification where verified = 0');
     if (rows.length) {
       appData.status = true;
       appData.data = rows;
