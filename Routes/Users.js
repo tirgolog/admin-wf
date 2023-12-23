@@ -2374,7 +2374,7 @@ users.post("/acceptOrderDriver", async (req, res) => {
   }
   try {
     const amqp = require("amqplib");
-    const connection = await amqp.connect("amqp://localhost");
+    const connection = await amqp.connect("amqp://172.31.4.197");
     const channel = await connection.createChannel();
     await channel.assertQueue("acceptOrderDriver");
     if (dates.includes(0)) one_day = 1;
@@ -2678,7 +2678,7 @@ users.post("/finishMerchantOrderDriver", async (req, res) => {
     to_city = req.body.toCity;
 
   const amqp = require("amqplib");
-  const connection = await amqp.connect("amqp://localhost");
+  const connection = await amqp.connect("amqp://172.31.4.197");
   const channel = await connection.createChannel();
 
   try {

@@ -3,7 +3,7 @@
     const socket = require('../Modules/Socket');
     const amqp = require('amqplib');
     const database = require('../Database/database');
-    const connection = await amqp.connect('amqp://localhost');
+    const connection = await amqp.connect('amqp://172.31.4.197');
     const channel = await connection.createChannel();
     await channel.assertQueue('acceptDriverOffer');
 

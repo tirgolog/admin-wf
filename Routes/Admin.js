@@ -140,7 +140,7 @@ admin.post('/acceptOrderDriver', async (req, res) => {
         userid = req.body.userid,
         isMerchant = req.body.isMerchant;
         const amqp = require('amqplib');
-        const amqpConnection = await amqp.connect('amqp://localhost');
+        const amqpConnection = await amqp.connect('amqp://172.31.4.197');
         const channel = await amqpConnection.createChannel();
         await channel.assertQueue('acceptAdminAppendOrder');
     try {
