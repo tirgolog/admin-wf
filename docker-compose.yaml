@@ -7,4 +7,5 @@ services:
       - .:/app
     ports:
       - "7790:7790"
-    command: "npm start"
+    command: >
+      bash -c "npm install && npm start"
