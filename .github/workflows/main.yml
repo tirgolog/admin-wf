@@ -19,12 +19,19 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: [ubuntu-latest]
+    runs-on: ubuntu-latest
     steps:
-      - name: Pull image from Docker Hub
-        run: docker pull ${{ secrets.DOCKER_USERNAME }}/nodejs-app:latest
-      - name: Delete old container
-        run: docker rm -f admin-wf
-      - name: Run Docker container
-        run: docker run -d -p 7790:7790 --name admin-wf ${{ secrets.DOCKER_USERNAME }}/nodejs-app
- 
+      - name: Create SSH directory
+        run: mkdir -p ~/.ssh
+
+      - name: Install SSH key
+        run: echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa && chmod 600 ~/.ssh/id_rsa
+
+      - name: Deploy to AWS EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ubuntu@${{ secrets.SERVER_IP }} 'bash -s' << EOF
+            docker pull ${{ secrets.DOCKER_USERNAME }}/admin-wf:latest
+            docker stop admin-wf-container || true
+            docker rm admin-wf-container || true
+            docker run -d -p 7790:7790 --name admin-wf-container ${{ secrets.DOCKER_USERNAME }}/admin-wf
+          EOF
