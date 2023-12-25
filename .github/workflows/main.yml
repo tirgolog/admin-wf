@@ -11,7 +11,7 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v3
       - name: Login to Docker Hub
-        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+        run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
       - name: Build Docker image
         run: docker build -t ${{ secrets.DOCKER_USERNAME }}/nodejs-app .
       - name: Publish image to Docker Hub
@@ -27,4 +27,3 @@ jobs:
         run: docker rm -f admin-wf
       - name: Run Docker container
         run: docker run -d -p 7790:7790 --name admin-wf ${{ secrets.DOCKER_USERNAME }}/nodejs-app
-
