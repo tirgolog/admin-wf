@@ -27,3 +27,4 @@ jobs:
         run: docker rm -f admin-wf
       - name: Run Docker container
         run: docker run -d -p 7790:7790 --name admin-wf ${{ secrets.DOCKER_USERNAME }}/nodejs-app
+ 
