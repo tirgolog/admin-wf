@@ -460,7 +460,8 @@ admin.post("/addUser", async (req, res) => {
       "SELECT * FROM users_contacts WHERE text = ? AND verify = 1",
       [phone]
     );
-    if (rows.length) {
+    console.log(rows)
+    if (rows.length>0) {
       appData.error = "Пользователь уже зарегистрирован";
       appData.status = false;
       res.status(400).json(appData);
@@ -514,15 +515,18 @@ admin.post("/addUser", async (req, res) => {
               appData.id = insert.insertId;
               appData.status = true;
             } else {
-              appData.error = "Can not  set new balance";
+              appData.error = "Не могу установить новый баланс";
+              appData.status = false;
               res.status(400).json(appData);
             }
           } else {
-            appData.error = "Balance is not enough";
+            appData.error = "Баланса недостаточно";
+            appData.status = false;
             res.status(400).json(appData);
           }
         } else {
-          appData.error = "Not found Agent";
+          appData.error = "Не найден Агент";
+          appData.status = false;
           res.status(400).json(appData);
         }
       } else {
@@ -549,7 +553,7 @@ admin.post("/addUser", async (req, res) => {
         appData.status = true;
       }
     }
-    res.status(200).json(appData);
+    // res.status(200).json(appData);
   } catch (e) {
     appData.error = e.message;
     res.status(400).json(appData);
@@ -1724,7 +1728,7 @@ admin.post("/subscription", async (req, res) => {
         "INSERT INTO subscription SET name = ?, value = ?, duration = ?",
         [name, value, duration]
       );
-      appData.data = true;
+      appData.status = true;
       appData.data = subscription;
       res.status(200).json(appData);
     }
