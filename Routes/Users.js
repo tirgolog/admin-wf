@@ -2067,8 +2067,10 @@ users.put("/update-verification", async (req, res) => {
         id
       ]
     );
+    console.log(rows)
     if (rows.affectedRows > 0) {
       appData.status = true;
+      console.log(appData)
       return res.status(200).json(appData);
     } else {
       appData.error = "No records were updated";
