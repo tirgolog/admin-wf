@@ -40,6 +40,7 @@ admin.post("/loginAdmin", async (req, res) => {
       "SELECT * FROM users_list WHERE username = ? AND password = ? AND user_type = 3 OR user_type = 4 AND ban <> 1",
       [login, password]
     );
+    console.log(rows, 'for users')
     if (rows.length) {
       appData.status = true;
       await connect.query(

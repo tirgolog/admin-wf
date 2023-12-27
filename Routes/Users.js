@@ -730,6 +730,7 @@ users.post("/codeverify", async (req, res) => {
       "SELECT * FROM users_contacts WHERE verify_code = ? AND text = ? AND user_type = 1 LIMIT 1",
       [code, phone]
     );
+    console.log(row)
     if (rows.length > 0) {
       await connect.query(
         "UPDATE users_contacts SET verify = 1 WHERE text = ? AND user_type = 1 AND verify_code = ?",
@@ -1029,7 +1030,7 @@ users.get("/checkSession", async function (req, res) {
       "SELECT * FROM users_list WHERE id = ? AND user_type = 1 AND ban <> 1 AND deleted <> 1",
       [userInfo.id]
     );
-    console.log(userInfo.id, 'userId')
+    console.log(userInfo.id, 'userId Sesion')
     console.log(rows, 'userlist')
     if (rows.length) {
       const [config] = await connect.query("SELECT * FROM config LIMIT 1");
