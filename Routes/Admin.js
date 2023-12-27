@@ -40,7 +40,7 @@ admin.post("/loginAdmin", async (req, res) => {
       "SELECT * FROM users_list WHERE username = ? AND password = ? AND (user_type = 3 OR user_type = 4) AND ban <> 1",
       [login, password]
     );
-    console.log(rows, 'for users')
+    console.log(rows, "for users");
     if (rows.length) {
       appData.status = true;
       await connect.query(
@@ -75,23 +75,26 @@ admin.post("/loginAdmin", async (req, res) => {
 });
 
 admin.use((req, res, next) => {
-    let token = req.body.token || req.headers['token'] || (req.headers.authorization && req.headers.authorization.split(' ')[1]);
-    let appData = {};
-    if (token) {
-        jwt.verify(token, process.env.SECRET_KEY, function(err) {
-            if (err) {
-                appData["error"] = err;
-                appData["data"] = "Token is invalid";
-                res.status(403).json(appData);
-            } else {
-                next();
-            }
-        });
-    } else {
-        appData["error"] = 1;
-        appData["data"] = "Token is null";
-        res.status(200).json(appData);
-    }
+  let token =
+    req.body.token ||
+    req.headers["token"] ||
+    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+  let appData = {};
+  if (token) {
+    jwt.verify(token, process.env.SECRET_KEY, function (err) {
+      if (err) {
+        appData["error"] = err;
+        appData["data"] = "Token is invalid";
+        res.status(403).json(appData);
+      } else {
+        next();
+      }
+    });
+  } else {
+    appData["error"] = 1;
+    appData["data"] = "Token is null";
+    res.status(200).json(appData);
+  }
 });
 
 admin.get("/getAllAgent", async (req, res) => {
@@ -107,6 +110,37 @@ admin.get("/getAllAgent", async (req, res) => {
     }
     res.status(200).json(appData);
   } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.put("/changeAgentBalance", async (req, res) => {
+  let connect,
+    appData = { status: false };
+    agent_id = req.body.agent_id;
+    agent_balance = req.body.agent_balance;
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      "UPDATE users_list SET agent_balance = ? WHERE id = ?",
+      [agent_balance, agent_id]
+    );
+    if (rows) {
+      appData.data = rows;
+      appData.status=true
+      res.status(200).json(appData);
+    }else{
+      appData.status=false
+      res.status(200).json(appData);
+    }
+  
+  } catch (e) {
+    console.log(e)
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
@@ -461,8 +495,8 @@ admin.post("/addUser", async (req, res) => {
       "SELECT * FROM users_contacts WHERE text = ? AND verify = 1",
       [phone]
     );
-    console.log(rows)
-    if (rows.length>0) {
+    console.log(rows);
+    if (rows.length > 0) {
       appData.error = "Пользователь уже зарегистрирован";
       appData.status = false;
       res.status(400).json(appData);
@@ -485,7 +519,11 @@ admin.post("/addUser", async (req, res) => {
             );
 
             if (edit.affectedRows) {
-              let nextthreeMonth = new Date(new Date().setMonth(new Date().getMonth() + subscription[0].duration))
+              let nextthreeMonth = new Date(
+                new Date().setMonth(
+                  new Date().getMonth() + subscription[0].duration
+                )
+              );
               const [insert] = await connect.query(
                 "INSERT INTO users_list SET country = ?,city = ?,geo_id = ?,iso_code = ?,city_lat = ?,city_lng = ?,phone = ?,user_type = 1,name = ?,birthday = ?,email = ?, agent_id = ?, subscription_id = ?, date_last_login = NULL, from_subscription = ? , to_subscription=? ",
                 [
@@ -502,7 +540,7 @@ admin.post("/addUser", async (req, res) => {
                   data.agent_id,
                   data.subscription_id,
                   new Date(),
-                  nextthreeMonth
+                  nextthreeMonth,
                 ]
               );
               await connect.query(
@@ -1749,9 +1787,7 @@ admin.get("/subscription", async (req, res) => {
     appData = { status: false, timestamp: new Date().getTime() };
   try {
     connect = await database.connection.getConnection();
-    const [subscription] = await connect.query(
-      "SELECT * FROM subscription"
-    );
+    const [subscription] = await connect.query("SELECT * FROM subscription");
     if (subscription.length) {
       appData.status = true;
       appData.data = subscription;

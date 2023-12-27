@@ -730,7 +730,6 @@ users.post("/codeverify", async (req, res) => {
       "SELECT * FROM users_contacts WHERE verify_code = ? AND text = ? AND user_type = 1 LIMIT 1",
       [code, phone]
     );
-    console.log(row)
     if (rows.length > 0) {
       await connect.query(
         "UPDATE users_contacts SET verify = 1 WHERE text = ? AND user_type = 1 AND verify_code = ?",
