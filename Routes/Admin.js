@@ -515,6 +515,7 @@ admin.post("/addUser", async (req, res) => {
               );
               appData.id = insert.insertId;
               appData.status = true;
+              res.status(200).json(appData);
             } else {
               appData.error = "Не могу установить новый баланс";
               appData.status = false;
