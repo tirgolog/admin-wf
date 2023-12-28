@@ -122,8 +122,8 @@ admin.get("/getAllAgent", async (req, res) => {
 admin.put("/changeAgentBalance", async (req, res) => {
   let connect,
     appData = { status: false };
-    agent_id = req.body.agent_id;
-    agent_balance = req.body.agent_balance;
+  agent_id = req.body.agent_id;
+  agent_balance = req.body.agent_balance;
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
@@ -132,15 +132,14 @@ admin.put("/changeAgentBalance", async (req, res) => {
     );
     if (rows) {
       appData.data = rows;
-      appData.status=true
+      appData.status = true;
       res.status(200).json(appData);
-    }else{
-      appData.status=false
+    } else {
+      appData.status = false;
       res.status(200).json(appData);
     }
-  
   } catch (e) {
-    console.log(e)
+    console.log(e);
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
@@ -1814,6 +1813,35 @@ admin.get("/subscription", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [subscription] = await connect.query("SELECT * FROM subscription");
+    if (subscription.length) {
+      appData.status = true;
+      appData.data = subscription;
+      res.status(200).json(appData);
+    } else {
+      appData.error = "Данные для входа введены неверно";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/subscription/:id", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  id = req.params.id;
+  try {
+    connect = await database.connection.getConnection();
+    const [subscription] = await connect.query(
+      "SELECT * FROM subscription where id = ?",
+      [id]
+    );
     if (subscription.length) {
       appData.status = true;
       appData.data = subscription;
