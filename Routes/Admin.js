@@ -378,6 +378,8 @@ admin.post('/acceptOrderDriver', async (req, res) => {
               throw new Error('No rows were updated. Transaction will be rolled back.');
           }
 
+          await connection.query('DELETE FROM orders_accepted where order_id = ? AND user_id = ? AND ismerchant = ?', [orderid, userid, isMerchant]);
+
           // Execute the second query to insert into orders_accepted
           const insertResult = await connection.query('INSERT INTO orders_accepted SET user_id = ?, order_id = ?, price = ?, status_order = 1, ismerchant = ?', [userid, orderid, price, isMerchant]);
 
