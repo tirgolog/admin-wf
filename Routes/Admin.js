@@ -351,47 +351,73 @@ admin.post("/getAllDrivers", async (req, res) => {
     }
   }
 });
-admin.post("/acceptOrderDriver", async (req, res) => {
-  let connect,
-    appData = { status: false, timestamp: new Date().getTime() },
-    orderid = req.body.orderid,
-    price = req.body.price,
-    userid = req.body.userid;
-  try {
-    connect = await database.connection.getConnection();
 
-    const [isset] = await connect.query(
-      "SELECT *  FROM orders_accepted WHERE user_id = ? AND order_id = ?",
-      [userid, orderid]
-    );
-    if (!isset.length) {
-      await connect.query("UPDATE orders SET status = 1 WHERE id = ?", [
-        orderid,
-      ]);
-      const [rows] = await connect.query(
-        "INSERT INTO orders_accepted SET user_id = ?,order_id = ?,price = ?,status_order = 1",
-        [userid, orderid, price]
-      );
-      if (rows.affectedRows) {
-        socket.updateAllList("update-all-list", "1");
-        appData.status = true;
+admin.post('/acceptOrderDriver', async (req, res) => {
+  let connection,
+      appData = { status: false, timestamp: new Date().getTime() },
+      orderid = req.body.orderid,
+      price = req.body.price,
+      userid = req.body.userid,
+      isMerchant = req.body.isMerchant;
+      const amqp = require('amqplib');
+      const amqpConnection = await amqp.connect('amqp://localhost');
+      const channel = await amqpConnection.createChannel();
+      await channel.assertQueue('acceptAdminAppendOrder');
+  try {
+      connection = await database.connection.getConnection();
+
+      const [isset] = await connection.query('SELECT * FROM orders_accepted WHERE user_id = ? AND order_id = ?', [userid, orderid]);
+      if (!isset.length) {
+          // Start the transaction
+          await connection.beginTransaction();
+
+          // Execute the first query to update orders
+          const updateResult = await connection.query('UPDATE orders SET status = 1 WHERE id = ?', [orderid]);
+
+          // Check if rows were affected by the update query
+          if (updateResult[0].affectedRows === 0) {
+              throw new Error('No rows were updated. Transaction will be rolled back.');
+          }
+
+          // Execute the second query to insert into orders_accepted
+          const insertResult = await connection.query('INSERT INTO orders_accepted SET user_id = ?, order_id = ?, price = ?, status_order = 1, ismerchant = ?', [userid, orderid, price, isMerchant]);
+
+          // Check if rows were affected by the insert query
+          if (insertResult[0].affectedRows === 0) {
+              // If the second query fails, explicitly trigger a rollback
+              throw new Error('No rows were inserted. Transaction will be rolled back.');
+          }
+
+          // Commit the transaction
+          await connection.commit();
+
+          // Notify clients about the update
+          socket.updateAllList('update-all-list', '1');
+          if(isMerchant) {
+              await channel.sendToQueue('acceptAdminAppendOrder', Buffer.from(JSON.stringify(orderid)));
+          }
+          appData.status = true;
       } else {
-        appData.error = "Невозможно применить водителя";
+          appData.error = 'Данный водитель уже назначен';
       }
-    } else {
-      appData.error = "Данный водитель уже назначен ";
-    }
-    res.status(200).json(appData);
+      res.status(200).json(appData);
   } catch (err) {
-    appData.status = false;
-    appData.error = err;
-    res.status(403).json(appData);
+      // If an error occurs, rollback the transaction
+      if (connection) {
+          await connection.rollback();
+      }
+      console.error('Transaction rolled back:', err);
+      appData.status = false;
+      appData.error = err.message;
+      res.status(403).json(appData);
   } finally {
-    if (connect) {
-      connect.release();
-    }
+      // Release the connection back to the pool
+      if (connection) {
+          connection.release();
+      }
   }
 });
+
 admin.post("/createOrder", async (req, res) => {
   console.log(req.body);
   let connect,
