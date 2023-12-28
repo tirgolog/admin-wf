@@ -365,7 +365,7 @@ admin.post('/acceptOrderDriver', async (req, res) => {
   try {
       connection = await database.connection.getConnection();
 
-      const [isset] = await connection.query('SELECT * FROM orders_accepted WHERE user_id = ? AND order_id = ?', [userid, orderid]);
+      const [isset] = await connection.query('SELECT * FROM orders_accepted WHERE user_id = ? AND order_id = ? AND status_order <> 0', [userid, orderid]);
       if (!isset.length) {
           // Start the transaction
           await connection.beginTransaction();
