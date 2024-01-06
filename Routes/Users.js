@@ -2354,7 +2354,8 @@ users.post("/acceptOrderDriver", async (req, res) => {
     two_day = 0,
     three_day = 0,
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
-  pricePlus = 0;
+    pricePlus = 0;
+    console.log(req.body)
   if (isMerchant) {
     const merchantCargos = await axios.get(
       "https://merchant.tirgo.io/api/v1/cargo/id?id=" + orderid
@@ -2380,8 +2381,31 @@ users.post("/acceptOrderDriver", async (req, res) => {
       "INSERT INTO orders_accepted SET user_id = ?,order_id = ?,price = ?, additional_price = ?,one_day = ?,two_day = ?,three_day = ?, ismerchant = ?",
       [userInfo.id, orderid, price, pricePlus, one_day, two_day, three_day, isMerchant]
     );
+    const [order] = await connect.query(
+      "select * from orders  where id = ?",
+      [orderid]
+    );
+    const [user] = await connect.query(
+      "select * from users_list  where  id= ?",
+      [order[0].user_id]
+    );
+    const [driver] = await connect.query(
+      "select * from users_list  where  id= ?",
+      [userInfo.id]
+    );
+    if (user.length) {
+      if (user[0].token !== "" && user[0].token !== null) {
+        push.send(
+          user[0].token,
+          "Информация о водителе",
+          "Информация об имени водителя " + driver[0].name  +  "Телифон " + driver[0].phone +  "Рейтинг " + driver[0].phone +  "Цена " + price,
+          "",
+          ""
+        );
+      }
+    }
     if (rows.affectedRows) {
-      console.log("keld");
+      console.log("keldi");
       socket.updateAllList("update-all-list", "1");
       channel.sendToQueue("acceptOrderDriver", Buffer.from("request"));
       appData.status = true;
@@ -2435,6 +2459,29 @@ users.post("/cancelOrderDriver", async (req, res) => {
       "DELETE FROM orders_accepted WHERE order_id = ? AND user_id = ?",
       [order.id, userInfo.id]
     );
+    const [orderAll] = await connect.query(
+      "select * from orders  where id = ?",
+      [order.id]
+    );
+    const [user] = await connect.query(
+      "select *  from users_list  where  id= ?",
+      [orderAll[0].user_id]
+    );
+    const [driver] = await connect.query(
+      "select *  from users_list  where  id= ?",
+      [userInfo.id]
+    );
+    if (user.length) {
+      if (user[0].token !== "" && user[0].token !== null) {
+        push.send(
+          user[0].token,
+          "Информация о водителе",
+          "Информация об имени водителя " + driver[0].name  +  "Телифон " + driver[0].phone +  "Рейтинг " + driver[0].phone,
+          "",
+          ""
+        );
+      }
+    }
     if (rows.affectedRows) {
       socket.updateAllList("update-all-list", "1");
       appData.status = true;
@@ -2496,6 +2543,25 @@ users.post("/acceptDriverClient", async (req, res) => {
       "UPDATE orders_accepted SET status_order = 1 WHERE order_id = ? AND user_id = ?",
       [orderid, id]
     );
+    const [orderAll] = await connect.query(
+      "select * from orders_accepted  where id = ?",
+      [orderid]
+    );
+    const [user] = await connect.query(
+      "select *  from users_list  where  id= ?",
+      [orderAll[0].user_id]
+    );
+    if (user.length) {
+      if (user[0].token !== "" && user[0].token !== null) {
+        push.send(
+          user[0].token,
+          "Информация о клиенте",
+          "Имя информационного клиента " + user[0].name  +  "Телифон " + user[0].phone +  "Рейтинг " + user[0].phone,
+          "",
+          ""
+        );
+      }
+    }
     if (rows.affectedRows) {
       appData.status = true;
       // const [check_secure] = await connect.query(
@@ -2546,6 +2612,25 @@ users.post("/cancelDriverClient", async (req, res) => {
       "UPDATE orders_accepted SET status_order = 2 WHERE order_id = ? AND user_id = ?",
       [orderid, id]
     );
+    const [orderAll] = await connect.query(
+      "select * from orders_accepted  where id = ?",
+      [orderid]
+    );
+    const [user] = await connect.query(
+      "select *  from users_list  where  id= ?",
+      [orderAll[0].user_id]
+    );
+    if (user.length) {
+      if (user[0].token !== "" && user[0].token !== null) {
+        push.send(
+          user[0].token,
+          "Информация о клиенте",
+          "Имя информационного клиента " + user[0].name  +  "Телифон " + user[0].phone +  "Рейтинг " + user[0].phone,
+          "",
+          ""
+        );
+      }
+    }
     if (rows.affectedRows) {
       socket.updateAllList("update-all-list", "1");
       appData.status = true;
@@ -2568,7 +2653,7 @@ users.post("/delPhotoUser", async (req, res) => {
     appData = { status: false, timestamp: new Date().getTime() },
     file = req.body.filename,
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
-  minioClient.removeObject("tirgo", req.body.filename).then(async () => {
+    minioClient.removeObject("tirgo", req.body.filename).then(async () => {
     try {
       connect = await database.connection.getConnection();
       const [rows] = await connect.query(
