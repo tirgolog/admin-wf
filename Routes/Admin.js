@@ -223,16 +223,16 @@ admin.post("/getAllUsers", async (req, res) => {
           let newUser = row;
           newUser.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-              "tirgo/clients/" +
-              row.id +
-              "/" +
-              row.avatar
+            "tirgo/clients/" +
+            row.id +
+            "/" +
+            row.avatar
           )
             ? process.env.SERVER_URL +
-              "tirgo/clients/" +
-              row.id +
-              "/" +
-              row.avatar
+            "tirgo/clients/" +
+            row.id +
+            "/" +
+            row.avatar
             : null;
           const [contacts] = await connect.query(
             "SELECT * FROM users_contacts WHERE user_id = ?",
@@ -268,16 +268,16 @@ admin.post("/getAllDrivers", async (req, res) => {
           let newUser = row;
           newUser.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-              "tirgo/drivers/" +
-              row.id +
-              "/" +
-              row.avatar
+            "tirgo/drivers/" +
+            row.id +
+            "/" +
+            row.avatar
           )
             ? process.env.SERVER_URL +
-              "tirgo/drivers/" +
-              row.id +
-              "/" +
-              row.avatar
+            "tirgo/drivers/" +
+            row.id +
+            "/" +
+            row.avatar
             : null;
           const [files] = await connect.query(
             "SELECT * FROM users_list_files WHERE user_id = ?",
@@ -288,16 +288,16 @@ admin.post("/getAllDrivers", async (req, res) => {
               let newFile = file;
               newFile.preview = fs.existsSync(
                 process.env.FILES_PATCH +
-                  "tirgo/drivers/" +
-                  row.id +
-                  "/" +
-                  file.name
+                "tirgo/drivers/" +
+                row.id +
+                "/" +
+                file.name
               )
                 ? process.env.SERVER_URL +
-                  "tirgo/drivers/" +
-                  row.id +
-                  "/" +
-                  file.name
+                "tirgo/drivers/" +
+                row.id +
+                "/" +
+                file.name
                 : null;
               return newFile;
             })
@@ -318,16 +318,16 @@ admin.post("/getAllDrivers", async (req, res) => {
                   let docks = filetruck;
                   docks.preview = fs.existsSync(
                     process.env.FILES_PATCH +
-                      "tirgo/drivers/" +
-                      row.id +
-                      "/" +
-                      filetruck.name
+                    "tirgo/drivers/" +
+                    row.id +
+                    "/" +
+                    filetruck.name
                   )
                     ? process.env.SERVER_URL +
-                      "tirgo/drivers/" +
-                      row.id +
-                      "/" +
-                      filetruck.name
+                    "tirgo/drivers/" +
+                    row.id +
+                    "/" +
+                    filetruck.name
                     : null;
                   return docks;
                 })
@@ -361,71 +361,140 @@ admin.post("/getAllDrivers", async (req, res) => {
   }
 });
 
+admin.post('/appendOrderDriver', async (req, res) => {
+  let connection,
+    appData = { status: false, timestamp: new Date().getTime() },
+    orderid = req.body.orderid,
+    price = req.body.price,
+    userid = req.body.userid,
+    isMerchant = req.body.isMerchant ? req.body.isMerchant : null;
+  const amqp = require('amqplib');
+  const amqpConnection = await amqp.connect("amqp://13.232.83.179:5672");
+  const channel = await amqpConnection.createChannel();
+  await channel.assertQueue('acceptAdminAppendOrder');
+  try {
+    connection = await database.connection.getConnection();
+    const [inProccessOrder] = await connection.query('SELECT * FROM orders_accepted WHERE user_id = ? AND status_order = 1', [userid, orderid]);
+    if (inProccessOrder.length) {
+      console.error('Driver has active order !');
+      appData.status = false;
+      appData.error = 'Невозможно назначить водителя, у Водителя уже есть активный Заказ';
+    } else {
+      const [isset] = await connection.query('SELECT * FROM orders_accepted WHERE user_id = ? AND order_id = ? AND status_order = 0', [userid, orderid]);
+      if (!isset.length) {
+        // Start the transaction
+        await connection.beginTransaction();
+
+        // Execute the first query to update orders
+        const updateResult = await connection.query('UPDATE orders SET status = 1 WHERE id = ?', [orderid]);
+
+        // Check if rows were affected by the update query
+        if (updateResult[0].affectedRows === 0) {
+          throw new Error('No rows were updated. Transaction will be rolled back.');
+        }
+
+        // Execute the second query to insert into orders_accepted
+        const insertResult = await connection.query('INSERT INTO orders_accepted SET user_id = ?, order_id = ?, price = ?, status_order = 1, ismerchant = ?', [userid, orderid, price, isMerchant]);
+
+        // Check if rows were affected by the insert query
+        if (insertResult[0].affectedRows === 0) {
+          // If the second query fails, explicitly trigger a rollback
+          throw new Error('No rows were inserted. Transaction will be rolled back.');
+        }
+
+        // Commit the transaction
+        await connection.commit();
+
+        // Notify clients about the update
+        socket.updateAllList('update-all-list', '1');
+        if (isMerchant) {
+          await channel.sendToQueue('acceptAdminAppendOrder', Buffer.from(JSON.stringify(orderid)));
+        }
+        appData.status = true;
+      } else {
+        appData.error = 'Невозможно назначить водителя, Водитель уже предложил цену';
+      }
+    }
+    res.status(200).json(appData);
+  } catch (err) {
+    // If an error occurs, rollback the transaction
+    if (connection) {
+      await connection.rollback();
+    }
+    console.error('Transaction rolled back:', err);
+    appData.status = false;
+    appData.error = err.message;
+    res.status(403).json(appData);
+  } finally {
+    // Release the connection back to the pool
+    if (connection) {
+      connection.release();
+    }
+  }
+});
+
 admin.post('/acceptOrderDriver', async (req, res) => {
   let connection,
-      appData = { status: false, timestamp: new Date().getTime() },
-      orderid = req.body.orderid,
-      price = req.body.price,
-      userid = req.body.userid,
-      isMerchant = req.body.isMerchant;
-      const amqp = require('amqplib');
-      const amqpConnection = await amqp.connect("amqp://13.232.83.179:5672");
-      const channel = await amqpConnection.createChannel();
-      await channel.assertQueue('acceptAdminAppendOrder');
+    appData = { status: false, timestamp: new Date().getTime() },
+    orderid = req.body.orderid,
+    price = req.body.price,
+    userid = req.body.userid,
+    isMerchant = req.body.isMerchant ? req.body.isMerchant : null;
+  const amqp = require('amqplib');
+  const amqpConnection = await amqp.connect("amqp://13.232.83.179:5672");
+  const channel = await amqpConnection.createChannel();
+  await channel.assertQueue('acceptAdminAppendOrder');
   try {
-      connection = await database.connection.getConnection();
+    connection = await database.connection.getConnection();
+    const [isset] = await connection.query('SELECT * FROM orders_accepted WHERE user_id = ? AND order_id = ? AND status_order = 0', [userid, orderid]);
+    if (isset.length) {
+      // Start the transaction
+      await connection.beginTransaction();
 
-      const [isset] = await connection.query('SELECT * FROM orders_accepted WHERE user_id = ? AND order_id = ? AND status_order <> 0', [userid, orderid]);
-      if (!isset.length) {
-          // Start the transaction
-          await connection.beginTransaction();
+      // Execute the first query to update orders
+      const updateResult = await connection.query('UPDATE orders SET status = 1 WHERE id = ?', [orderid]);
 
-          // Execute the first query to update orders
-          const updateResult = await connection.query('UPDATE orders SET status = 1 WHERE id = ?', [orderid]);
-
-          // Check if rows were affected by the update query
-          if (updateResult[0].affectedRows === 0) {
-              throw new Error('No rows were updated. Transaction will be rolled back.');
-          }
-
-          await connection.query('DELETE FROM orders_accepted where order_id = ? AND user_id = ? AND ismerchant = ?', [orderid, userid, isMerchant]);
-
-          // Execute the second query to insert into orders_accepted
-          const insertResult = await connection.query('INSERT INTO orders_accepted SET user_id = ?, order_id = ?, price = ?, status_order = 1, ismerchant = ?', [userid, orderid, price, isMerchant]);
-
-          // Check if rows were affected by the insert query
-          if (insertResult[0].affectedRows === 0) {
-              // If the second query fails, explicitly trigger a rollback
-              throw new Error('No rows were inserted. Transaction will be rolled back.');
-          }
-
-          // Commit the transaction
-          await connection.commit();
-
-          // Notify clients about the update
-          socket.updateAllList('update-all-list', '1');
-          if(isMerchant) {
-              await channel.sendToQueue('acceptAdminAppendOrder', Buffer.from(JSON.stringify(orderid)));
-          }
-          appData.status = true;
-      } else {
-          appData.error = 'Данный водитель уже назначен';
+      // Check if rows were affected by the update query
+      if (updateResult[0].affectedRows === 0) {
+        throw new Error('No rows were updated. Transaction will be rolled back.');
       }
-      res.status(200).json(appData);
+
+      // Execute the second query to update orders_accepted
+      const insertResult = await connection.query('UPDATE orders_accepted SET status_order = 1');
+
+      // Check if rows were affected by the insert query
+      if (insertResult[0].affectedRows === 0) {
+        // If the second query fails, explicitly trigger a rollback
+        throw new Error('No rows were inserted. Transaction will be rolled back.');
+      }
+
+      // Commit the transaction
+      await connection.commit();
+
+      // Notify clients about the update
+      socket.updateAllList('update-all-list', '1');
+      if (isMerchant) {
+        await channel.sendToQueue('acceptAdminAppendOrder', Buffer.from(JSON.stringify(orderid)));
+      }
+      appData.status = true;
+    } else {
+      appData.error = 'Невозможно принять водителя, Водитель не предложил цену';
+    }
+    res.status(200).json(appData);
   } catch (err) {
-      // If an error occurs, rollback the transaction
-      if (connection) {
-          await connection.rollback();
-      }
-      console.error('Transaction rolled back:', err);
-      appData.status = false;
-      appData.error = err.message;
-      res.status(403).json(appData);
+    // If an error occurs, rollback the transaction
+    if (connection) {
+      await connection.rollback();
+    }
+    console.error('Transaction rolled back:', err);
+    appData.status = false;
+    appData.error = err.message;
+    res.status(403).json(appData);
   } finally {
-      // Release the connection back to the pool
-      if (connection) {
-          connection.release();
-      }
+    // Release the connection back to the pool
+    if (connection) {
+      connection.release();
+    }
   }
 });
 
@@ -1060,16 +1129,16 @@ admin.post("/getAllOrders", async (req, res) => {
               let newItemUsers = item2;
               newItemUsers.avatar = fs.existsSync(
                 process.env.FILES_PATCH +
-                  "tirgo/drivers/" +
-                  item2.id +
-                  "/" +
-                  item2.avatar
+                "tirgo/drivers/" +
+                item2.id +
+                "/" +
+                item2.avatar
               )
                 ? process.env.SERVER_URL +
-                  "tirgo/drivers/" +
-                  item2.id +
-                  "/" +
-                  item2.avatar
+                "tirgo/drivers/" +
+                item2.id +
+                "/" +
+                item2.avatar
                 : null;
               return newItemUsers;
             })
@@ -1169,16 +1238,16 @@ admin.get("/getAllMessages", async (req, res) => {
           let newItem = item;
           newItem.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-              "tirgo/drivers/" +
-              item.user_id +
-              "/" +
-              item.avatar
+            "tirgo/drivers/" +
+            item.user_id +
+            "/" +
+            item.avatar
           )
             ? process.env.SERVER_URL +
-              "tirgo/drivers/" +
-              item.user_id +
-              "/" +
-              item.avatar
+            "tirgo/drivers/" +
+            item.user_id +
+            "/" +
+            item.avatar
             : null;
           const [messages] = await connect.query(
             "SELECT * FROM chat_support WHERE user_id = ? ORDER BY id",
