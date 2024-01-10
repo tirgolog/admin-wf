@@ -337,8 +337,7 @@ async function sendSmsOson(phone, code) {
   };
   try {
     let rp_res = await rp(options);
-      console.log(rp_res, 'responce  from oson')
-    if (rp_res.status) {
+    if ((JSON.parse(rp_res)).status=='ok') {
       return "waiting";
     } else {
       return false;
@@ -408,6 +407,7 @@ function generateUniqueId() {
 }
 
 function generateHash(txn_id, login, sender, phone_number, hash) {
+  const dlm = ";";
   const hashString = `${txn_id}${dlm}${login}${dlm}${sender}${dlm}${phone_number}${dlm}${hash}`;
   return crypto.createHash('sha256').update(hashString).digest('hex');
 }
