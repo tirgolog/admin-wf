@@ -511,7 +511,7 @@ users.post("/login", async (req, res) => {
         async function (res) {
           await sendpulse.smsSend(
             answerGetter,
-            "test",
+            "TIRGO",
             ["+" + phone],
             "Confirmation code " + code
           );
@@ -614,7 +614,7 @@ users.post("/sms-verification", async (req, res) => {
         async function (res) {
           await sendpulse.smsSend(
             answerGetter,
-            "test",
+            "TIRGO",
             ["+" + phone],
             "Confirmation code " + code
           );
@@ -679,7 +679,7 @@ users.post("/loginClient", async (req, res) => {
         async function (res) {
           await sendpulse.smsSend(
             answerGetter,
-            "test",
+            "TIRGO",
             ["+" + phone],
             "Confirmation code " + code
           );
@@ -904,7 +904,8 @@ users.post("/addContact", async (req, res) => {
     );
     if (!rows.length) {
       if (phone.substr(0, 3) === "998") {
-        send_sms_res = await sendSms(phone, code, country_code);
+        send_sms_res = await sendSmsPlayMobile(phone, code, country_code);
+
       } else if (phone.substr(0, 2) !== "79" && phone.substr(0, 2) !== "77") {
         sendpulse.init(
           API_USER_ID,
@@ -913,7 +914,7 @@ users.post("/addContact", async (req, res) => {
           async function (res) {
             await sendpulse.smsSend(
               answerGetter,
-              "test",
+              "TIRGO",
               ["+" + phone],
               "Confirmation code " + code
             );
