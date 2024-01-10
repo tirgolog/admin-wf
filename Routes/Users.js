@@ -280,7 +280,7 @@ async function sendSmsPlayMobile(phone, code, country_code) {
   console.log(code);
   console.log(country_code);
   let options = {
-    method: "POST",
+    method: "GET",
     uri: "http://91.204.239.44/broker-api/send",
     json: true,
     body: {
@@ -305,6 +305,40 @@ async function sendSmsPlayMobile(phone, code, country_code) {
   try {
     let rp_res = await rp(options);
     if (rp_res === "Request is received") {
+      return "waiting";
+    } else {
+      return false;
+    }
+  } catch (err) {
+    return false;
+  } finally {
+    console.log("finally");
+  }
+}
+
+async function sendSmsOson(phone, code) {
+  console.log(phone, 'phone OSON');
+  console.log(code, 'phone code OSON');
+  const txn_id = generateUniqueId(); 
+  const str_hash = generateHash(txn_id, 'tirgo', 'TIRGO', phone, 'f498f64594b4f0b844ba45b79d4d0d4f');
+  const message =   "Confirmation code " + code;
+  const params = {
+    from: 'TIRGO',
+    phone_number: phone,
+    msg: message,
+    str_hash: str_hash,
+    txn_id: txn_id,
+    login: 'tirgo',
+  };
+  let options = {
+    method: "GET",
+    uri: `https://api.osonsms.com/sendsms_v1.php?login=${params.login}&from=${params.from}&phone_number=${params.phone_number}&msg=${params.msg}&txn_id=${params.txn_id}&str_hash=${params.str_hash}`,
+    json: false,
+  };
+  try {
+    let rp_res = await rp(options);
+      console.log(rp_res, 'responce  from oson')
+    if (rp_res.status) {
       return "waiting";
     } else {
       return false;
@@ -367,6 +401,15 @@ async function sendSms(phone, code, country_code) {
       connect.release();
     }
   }
+}
+
+function generateUniqueId() {
+  return crypto.randomBytes(16).toString('hex');
+}
+
+function generateHash(txn_id, login, sender, phone_number, hash) {
+  const hashString = `${txn_id}${dlm}${login}${dlm}${sender}${dlm}${phone_number}${dlm}${hash}`;
+  return crypto.createHash('sha256').update(hashString).digest('hex');
 }
 
 users.get("/getTokenEskiz", async function (req, res) {
@@ -486,7 +529,11 @@ users.post("/login", async (req, res) => {
       send_sms_res = await sendSmsPlayMobile(phone, code, country_code);
       console.log("send_sms_res", send_sms_res);
       //send_sms_res = await sendSms(phone,code,country_code)
-    } else if (phone.substr(0, 2) === "79") {
+    } else if (phone.substr(0, 3) === "992") {
+      send_sms_res = await sendSmsOson(phone, code);
+      console.log("send_sms_res", send_sms_res);
+      //send_sms_res = await sendSms(phone,code,country_code)
+    }  else if (phone.substr(0, 2) === "79") {
       let options = {
         method: "GET",
         uri:
@@ -590,7 +637,13 @@ users.post("/sms-verification", async (req, res) => {
     if (phone.substr(0, 3) === "998") {
       send_sms_res = await sendSmsPlayMobile(phone, code, country_code);
       console.log("send_sms_res", send_sms_res);
-    } else if (phone.substr(0, 2) === "79") {
+    } 
+    else if (phone.substr(0, 3) === "992") {
+      send_sms_res = await sendSmsOson(phone, code);
+      console.log("send_sms_res", send_sms_res);
+      //send_sms_res = await sendSms(phone,code,country_code)
+    } 
+    else if (phone.substr(0, 2) === "79") {
       let options = {
         method: "GET",
         uri:
@@ -655,7 +708,12 @@ users.post("/loginClient", async (req, res) => {
     if (phone.substr(0, 3) === "998") {
       send_sms_res = await sendSmsPlayMobile(phone, code, country_code);
       //await sendSms(phone,code,country_code)
-    } else if (phone.substr(0, 2) === "79") {
+    } else if (phone.substr(0, 3) === "992") {
+      send_sms_res = await sendSmsOson(phone, code);
+      console.log("send_sms_res", send_sms_res);
+      //send_sms_res = await sendSms(phone,code,country_code)
+    } 
+    else if (phone.substr(0, 2) === "79") {
       let options = {
         method: "GET",
         uri:
@@ -905,7 +963,10 @@ users.post("/addContact", async (req, res) => {
     if (!rows.length) {
       if (phone.substr(0, 3) === "998") {
         send_sms_res = await sendSmsPlayMobile(phone, code, country_code);
-
+       } else if (phone.substr(0, 3) === "992") {
+        send_sms_res = await sendSmsOson(phone, code);
+        console.log("send_sms_res", send_sms_res);
+        //send_sms_res = await sendSms(phone,code,country_code)
       } else if (phone.substr(0, 2) !== "79" && phone.substr(0, 2) !== "77") {
         sendpulse.init(
           API_USER_ID,
