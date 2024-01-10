@@ -2543,13 +2543,10 @@ users.post("/acceptDriverClient", async (req, res) => {
       "UPDATE orders_accepted SET status_order = 1 WHERE order_id = ? AND user_id = ?",
       [orderid, id]
     );
-    const [orderAll] = await connect.query(
-      "select * from orders_accepted  where id = ?",
-      [orderid]
-    );
+    
     const [user] = await connect.query(
       "select *  from users_list  where  id= ?",
-      [orderAll[0].user_id]
+      [userInfo?.id]
     );
     if (user.length) {
       if (user[0].token !== "" && user[0].token !== null) {
@@ -2592,6 +2589,7 @@ users.post("/acceptDriverClient", async (req, res) => {
     }
     res.status(200).json(appData);
   } catch (err) {
+    console.log(err)
     appData.status = false;
     appData.error = err;
     res.status(403).json(appData);
