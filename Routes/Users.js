@@ -408,6 +408,7 @@ function generateUniqueId() {
 }
 
 function generateHash(txn_id, login, sender, phone_number, hash) {
+  const dlm = ";";
   const hashString = `${txn_id}${dlm}${login}${dlm}${sender}${dlm}${phone_number}${dlm}${hash}`;
   return crypto.createHash('sha256').update(hashString).digest('hex');
 }
