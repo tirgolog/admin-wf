@@ -276,11 +276,11 @@ async function sendSmsGlobal(phone, code, country_code) {
   }
 }
 async function sendSmsPlayMobile(phone, code, country_code) {
-  console.log(phone);
-  console.log(code);
-  console.log(country_code);
+  console.log(phone, 'playmobile');
+  console.log(code, 'playmobile');
+  console.log(country_code, 'playmobile');
   let options = {
-    method: "GET",
+    method: "POST",
     uri: "http://91.204.239.44/broker-api/send",
     json: true,
     body: {
@@ -302,8 +302,11 @@ async function sendSmsPlayMobile(phone, code, country_code) {
         "Basic " + Buffer.from("tirgo:C63Fs89yuN").toString("base64"),
     },
   };
+  console.log( "a" + new Date().getTime().toString())
   try {
+    console.log('before responce')
     let rp_res = await rp(options);
+    console.log(rp_res, 'responce')
     if (rp_res === "Request is received") {
       return "waiting";
     } else {
