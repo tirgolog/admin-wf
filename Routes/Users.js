@@ -337,8 +337,7 @@ async function sendSmsOson(phone, code) {
   };
   try {
     let rp_res = await rp(options);
-      console.log(rp_res, 'responce  from oson')
-    if (rp_res.status) {
+    if ((JSON.parse(rp_res)).status=='ok') {
       return "waiting";
     } else {
       return false;
