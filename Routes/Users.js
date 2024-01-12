@@ -2442,42 +2442,52 @@ users.post("/acceptOrderDriver", async (req, res) => {
     if (dates.includes(1)) two_day = 1;
     if (dates.includes(2)) three_day = 1;
     connect = await database.connection.getConnection();
-    const [rows] = await connect.query(
-      "INSERT INTO orders_accepted SET user_id = ?,order_id = ?,price = ?, additional_price = ?,one_day = ?,two_day = ?,three_day = ?, ismerchant = ?",
-      [userInfo.id, orderid, price, pricePlus, one_day, two_day, three_day, isMerchant]
+    const [orders_accepted] = await connect.query(
+      "select * from orders_accepted  where user_id = ? AND order_id = ?",
+      [userInfo.id, orderid]
     );
-    const [order] = await connect.query(
-      "select * from orders  where id = ?",
-      [orderid]
-    );
-    const [user] = await connect.query(
-      "select * from users_list  where  id= ?",
-      [order[0].user_id]
-    );
-    const [driver] = await connect.query(
-      "select * from users_list  where  id= ?",
-      [userInfo.id]
-    );
-    if (user.length) {
-      if (user[0].token !== "" && user[0].token !== null) {
-        push.send(
-          user[0].token,
-          "Информация о водителе",
-          "Информация об имени водителя " + driver[0].name  +  "Телифон " + driver[0].phone +  "Рейтинг " + driver[0].phone +  "Цена " + price,
-          "",
-          ""
-        );
+    if(!orders_accepted.length) {
+      const [rows] = await connect.query(
+        "INSERT INTO orders_accepted SET user_id = ?,order_id = ?,price = ?, additional_price = ?,one_day = ?,two_day = ?,three_day = ?, ismerchant = ?",
+        [userInfo.id, orderid, price, pricePlus, one_day, two_day, three_day, isMerchant]
+      );
+      const [order] = await connect.query(
+        "select * from orders  where id = ?",
+        [orderid]
+      );
+      const [user] = await connect.query(
+        "select * from users_list  where  id= ?",
+        [order[0].user_id]
+      );
+      const [driver] = await connect.query(
+        "select * from users_list  where  id= ?",
+        [userInfo.id]
+      );
+      if (user.length) {
+        if (user[0].token !== "" && user[0].token !== null) {
+          push.send(
+            user[0].token,
+            "Информация о водителе",
+            "Информация об имени водителя " + driver[0].name  +  "Телифон " + driver[0].phone +  "Рейтинг " + driver[0].phone +  "Цена " + price,
+            "",
+            ""
+          );
+        }
       }
+      if (rows.affectedRows) {
+        console.log("keldi");
+        socket.updateAllList("update-all-list", "1");
+        channel.sendToQueue("acceptOrderDriver", Buffer.from("request"));
+        appData.status = true;
+      } else {
+        appData.error = "Невозможно принять заказ";
+      }
+      res.status(200).json(appData);
+    } else  {
+      appData.status = false;
+      appData.error = "Вы уже отправили предложение !";
+      res.status(400).json(appData);
     }
-    if (rows.affectedRows) {
-      console.log("keldi");
-      socket.updateAllList("update-all-list", "1");
-      channel.sendToQueue("acceptOrderDriver", Buffer.from("request"));
-      appData.status = true;
-    } else {
-      appData.error = "Невозможно принять заказ";
-    }
-    res.status(200).json(appData);
   } catch (err) {
     appData.status = false;
     appData.error = err;
