@@ -223,16 +223,16 @@ admin.post("/getAllUsers", async (req, res) => {
           let newUser = row;
           newUser.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-            "tirgo/clients/" +
-            row.id +
-            "/" +
-            row.avatar
+              "tirgo/clients/" +
+              row.id +
+              "/" +
+              row.avatar
           )
             ? process.env.SERVER_URL +
-            "tirgo/clients/" +
-            row.id +
-            "/" +
-            row.avatar
+              "tirgo/clients/" +
+              row.id +
+              "/" +
+              row.avatar
             : null;
           const [contacts] = await connect.query(
             "SELECT * FROM users_contacts WHERE user_id = ?",
@@ -268,16 +268,16 @@ admin.post("/getAllDrivers", async (req, res) => {
           let newUser = row;
           newUser.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-            "tirgo/drivers/" +
-            row.id +
-            "/" +
-            row.avatar
+              "tirgo/drivers/" +
+              row.id +
+              "/" +
+              row.avatar
           )
             ? process.env.SERVER_URL +
-            "tirgo/drivers/" +
-            row.id +
-            "/" +
-            row.avatar
+              "tirgo/drivers/" +
+              row.id +
+              "/" +
+              row.avatar
             : null;
           const [files] = await connect.query(
             "SELECT * FROM users_list_files WHERE user_id = ?",
@@ -288,16 +288,16 @@ admin.post("/getAllDrivers", async (req, res) => {
               let newFile = file;
               newFile.preview = fs.existsSync(
                 process.env.FILES_PATCH +
-                "tirgo/drivers/" +
-                row.id +
-                "/" +
-                file.name
+                  "tirgo/drivers/" +
+                  row.id +
+                  "/" +
+                  file.name
               )
                 ? process.env.SERVER_URL +
-                "tirgo/drivers/" +
-                row.id +
-                "/" +
-                file.name
+                  "tirgo/drivers/" +
+                  row.id +
+                  "/" +
+                  file.name
                 : null;
               return newFile;
             })
@@ -318,16 +318,16 @@ admin.post("/getAllDrivers", async (req, res) => {
                   let docks = filetruck;
                   docks.preview = fs.existsSync(
                     process.env.FILES_PATCH +
-                    "tirgo/drivers/" +
-                    row.id +
-                    "/" +
-                    filetruck.name
+                      "tirgo/drivers/" +
+                      row.id +
+                      "/" +
+                      filetruck.name
                   )
                     ? process.env.SERVER_URL +
-                    "tirgo/drivers/" +
-                    row.id +
-                    "/" +
-                    filetruck.name
+                      "tirgo/drivers/" +
+                      row.id +
+                      "/" +
+                      filetruck.name
                     : null;
                   return docks;
                 })
@@ -361,58 +361,79 @@ admin.post("/getAllDrivers", async (req, res) => {
   }
 });
 
-admin.post('/appendOrderDriver', async (req, res) => {
+admin.post("/appendOrderDriver", async (req, res) => {
   let connection,
     appData = { status: false, timestamp: new Date().getTime() },
     orderid = req.body.orderid,
     price = req.body.price,
     userid = req.body.userid,
     isMerchant = req.body.isMerchant ? req.body.isMerchant : null;
-  const amqp = require('amqplib');
+  const amqp = require("amqplib");
   const amqpConnection = await amqp.connect("amqp://13.232.83.179:5672");
   const channel = await amqpConnection.createChannel();
-  await channel.assertQueue('acceptAdminAppendOrder');
+  await channel.assertQueue("acceptAdminAppendOrder");
   try {
     connection = await database.connection.getConnection();
-    const [inProccessOrder] = await connection.query('SELECT * FROM orders_accepted WHERE user_id = ? AND status_order = 1', [userid, orderid]);
+    const [inProccessOrder] = await connection.query(
+      "SELECT * FROM orders_accepted WHERE user_id = ? AND status_order = 1",
+      [userid, orderid]
+    );
     if (inProccessOrder.length) {
-      console.error('Driver has active order !');
+      console.error("Driver has active order !");
       appData.status = false;
-      appData.error = 'Невозможно назначить водителя, у Водителя уже есть активный Заказ';
+      appData.error =
+        "Невозможно назначить водителя, у Водителя уже есть активный Заказ";
     } else {
-      const [isset] = await connection.query('SELECT * FROM orders_accepted WHERE user_id = ? AND order_id = ? AND status_order = 0', [userid, orderid]);
+      const [isset] = await connection.query(
+        "SELECT * FROM orders_accepted WHERE user_id = ? AND order_id = ? AND status_order = 0",
+        [userid, orderid]
+      );
       if (!isset.length) {
         // Start the transaction
         await connection.beginTransaction();
 
         // Execute the first query to update orders
-        const updateResult = await connection.query('UPDATE orders SET status = 1 WHERE id = ?', [orderid]);
+        const updateResult = await connection.query(
+          "UPDATE orders SET status = 1 WHERE id = ?",
+          [orderid]
+        );
 
         // Check if rows were affected by the update query
         if (updateResult[0].affectedRows === 0) {
-          throw new Error('No rows were updated. Transaction will be rolled back.');
+          throw new Error(
+            "No rows were updated. Transaction will be rolled back."
+          );
         }
 
         // Execute the second query to insert into orders_accepted
-        const insertResult = await connection.query('INSERT INTO orders_accepted SET user_id = ?, order_id = ?, price = ?, status_order = 1, ismerchant = ?', [userid, orderid, price, isMerchant]);
+        const insertResult = await connection.query(
+          "INSERT INTO orders_accepted SET user_id = ?, order_id = ?, price = ?, status_order = 1, ismerchant = ?",
+          [userid, orderid, price, isMerchant]
+        );
 
         // Check if rows were affected by the insert query
         if (insertResult[0].affectedRows === 0) {
           // If the second query fails, explicitly trigger a rollback
-          throw new Error('No rows were inserted. Transaction will be rolled back.');
+          throw new Error(
+            "No rows were inserted. Transaction will be rolled back."
+          );
         }
 
         // Commit the transaction
         await connection.commit();
 
         // Notify clients about the update
-        socket.updateAllList('update-all-list', '1');
+        socket.updateAllList("update-all-list", "1");
         if (isMerchant) {
-          await channel.sendToQueue('acceptAdminAppendOrder', Buffer.from(JSON.stringify(orderid)));
+          await channel.sendToQueue(
+            "acceptAdminAppendOrder",
+            Buffer.from(JSON.stringify(orderid))
+          );
         }
         appData.status = true;
       } else {
-        appData.error = 'Невозможно назначить водителя, Водитель уже предложил цену';
+        appData.error =
+          "Невозможно назначить водителя, Водитель уже предложил цену";
       }
     }
     res.status(200).json(appData);
@@ -421,7 +442,7 @@ admin.post('/appendOrderDriver', async (req, res) => {
     if (connection) {
       await connection.rollback();
     }
-    console.error('Transaction rolled back:', err);
+    console.error("Transaction rolled back:", err);
     appData.status = false;
     appData.error = err.message;
     res.status(403).json(appData);
@@ -433,52 +454,67 @@ admin.post('/appendOrderDriver', async (req, res) => {
   }
 });
 
-admin.post('/acceptOrderDriver', async (req, res) => {
+admin.post("/acceptOrderDriver", async (req, res) => {
   let connection,
     appData = { status: false, timestamp: new Date().getTime() },
     orderid = req.body.orderid,
     price = req.body.price,
     userid = req.body.userid,
     isMerchant = req.body.isMerchant ? req.body.isMerchant : null;
-  const amqp = require('amqplib');
+  const amqp = require("amqplib");
   const amqpConnection = await amqp.connect("amqp://13.232.83.179:5672");
   const channel = await amqpConnection.createChannel();
-  await channel.assertQueue('acceptAdminAppendOrder');
+  await channel.assertQueue("acceptAdminAppendOrder");
   try {
     connection = await database.connection.getConnection();
-    const [isset] = await connection.query('SELECT * FROM orders_accepted WHERE user_id = ? AND order_id = ? AND status_order = 0', [userid, orderid]);
+    const [isset] = await connection.query(
+      "SELECT * FROM orders_accepted WHERE user_id = ? AND order_id = ? AND status_order = 0",
+      [userid, orderid]
+    );
     if (isset.length) {
       // Start the transaction
       await connection.beginTransaction();
 
       // Execute the first query to update orders
-      const updateResult = await connection.query('UPDATE orders SET status = 1 WHERE id = ?', [orderid]);
+      const updateResult = await connection.query(
+        "UPDATE orders SET status = 1 WHERE id = ?",
+        [orderid]
+      );
 
       // Check if rows were affected by the update query
       if (updateResult[0].affectedRows === 0) {
-        throw new Error('No rows were updated. Transaction will be rolled back.');
+        throw new Error(
+          "No rows were updated. Transaction will be rolled back."
+        );
       }
 
       // Execute the second query to update orders_accepted
-      const insertResult = await connection.query('UPDATE orders_accepted SET status_order = 1');
+      const insertResult = await connection.query(
+        "UPDATE orders_accepted SET status_order = 1"
+      );
 
       // Check if rows were affected by the insert query
       if (insertResult[0].affectedRows === 0) {
         // If the second query fails, explicitly trigger a rollback
-        throw new Error('No rows were inserted. Transaction will be rolled back.');
+        throw new Error(
+          "No rows were inserted. Transaction will be rolled back."
+        );
       }
 
       // Commit the transaction
       await connection.commit();
 
       // Notify clients about the update
-      socket.updateAllList('update-all-list', '1');
+      socket.updateAllList("update-all-list", "1");
       if (isMerchant) {
-        await channel.sendToQueue('acceptAdminAppendOrder', Buffer.from(JSON.stringify(orderid)));
+        await channel.sendToQueue(
+          "acceptAdminAppendOrder",
+          Buffer.from(JSON.stringify(orderid))
+        );
       }
       appData.status = true;
     } else {
-      appData.error = 'Невозможно принять водителя, Водитель не предложил цену';
+      appData.error = "Невозможно принять водителя, Водитель не предложил цену";
     }
     res.status(200).json(appData);
   } catch (err) {
@@ -486,7 +522,7 @@ admin.post('/acceptOrderDriver', async (req, res) => {
     if (connection) {
       await connection.rollback();
     }
-    console.error('Transaction rolled back:', err);
+    console.error("Transaction rolled back:", err);
     appData.status = false;
     appData.error = err.message;
     res.status(403).json(appData);
@@ -601,7 +637,6 @@ admin.post("/addUser", async (req, res) => {
       "SELECT * FROM users_contacts WHERE text = ? AND verify = 1",
       [phone]
     );
-    console.log(rows);
     if (rows.length > 0) {
       appData.error = "Пользователь уже зарегистрирован";
       appData.status = false;
@@ -1129,16 +1164,16 @@ admin.post("/getAllOrders", async (req, res) => {
               let newItemUsers = item2;
               newItemUsers.avatar = fs.existsSync(
                 process.env.FILES_PATCH +
-                "tirgo/drivers/" +
-                item2.id +
-                "/" +
-                item2.avatar
+                  "tirgo/drivers/" +
+                  item2.id +
+                  "/" +
+                  item2.avatar
               )
                 ? process.env.SERVER_URL +
-                "tirgo/drivers/" +
-                item2.id +
-                "/" +
-                item2.avatar
+                  "tirgo/drivers/" +
+                  item2.id +
+                  "/" +
+                  item2.avatar
                 : null;
               return newItemUsers;
             })
@@ -1238,16 +1273,16 @@ admin.get("/getAllMessages", async (req, res) => {
           let newItem = item;
           newItem.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-            "tirgo/drivers/" +
-            item.user_id +
-            "/" +
-            item.avatar
+              "tirgo/drivers/" +
+              item.user_id +
+              "/" +
+              item.avatar
           )
             ? process.env.SERVER_URL +
-            "tirgo/drivers/" +
-            item.user_id +
-            "/" +
-            item.avatar
+              "tirgo/drivers/" +
+              item.user_id +
+              "/" +
+              item.avatar
             : null;
           const [messages] = await connect.query(
             "SELECT * FROM chat_support WHERE user_id = ? ORDER BY id",
@@ -1998,4 +2033,138 @@ admin.delete("/subscription/:id", async (req, res) => {
     res.status(403).json(appData);
   }
 });
+
+admin.post("/addDriverSubscription", async (req, res) => {
+  let connect;
+  const { userid, subscriptionid, phone } = req.body;
+  (phone = phone.replace(/[^0-9, ]/g, "").replace(/ /g, "")),
+    (appData = { status: false });
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      "SELECT * FROM users_contacts WHERE text = ? AND verify = 1",
+      [phone]
+    );
+    if (rows.length > 0) {
+      appData.error = "Пользователь уже зарегистрирован";
+      appData.status = false;
+      res.status(400).json(appData);
+    } else {
+      const [paymentUser] = await connect.query(
+        "SELECT * FROM payment where  AND userid=? ",
+        [userid]
+      );
+      if (paymentUser.length > 0) {
+        const [subscription] = await connect.query(
+          "SELECT * FROM subscription where id = ? ",
+          [subscriptionid]
+        );
+        if (paymentUser[0].amount > subscription[0].value) {
+          let amount = paymentUser[0].amount - subscription[0].value;
+          const [edit] = await connect.query(
+            "UPDATE amount SET amount = ? WHERE id = ?",
+            [amount, paymentUser.agent_id]
+          );
+
+          if (edit.affectedRows) {
+            let nextthreeMonth = new Date(
+              new Date().setMonth(
+                new Date().getMonth() + subscription[0].duration
+              )
+            );
+
+            const [insert] = await connect.query(
+              "UPDATE users_list SET subscription_id = ?, from_subscription = ? , to_subscription=?  WHERE id = ?",
+              [subscription_id, new Date(), nextthreeMonth, userid]
+            );
+
+            appData.id = insert.insertId;
+            appData.status = true;
+            res.status(200).json(appData);
+          } else {
+            appData.error = "Не могу установить новый баланс";
+            appData.status = false;
+            res.status(400).json(appData);
+          }
+        } else {
+          appData.error = "Баланса недостаточно";
+          appData.status = false;
+          res.status(400).json(appData);
+        }
+      } else {
+        appData.error = "Не найден Агент";
+        appData.status = false;
+        res.status(400).json(appData);
+      }
+    }
+    // res.status(200).json(appData);
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/searchDriver/:driverId", async (req, res) => {
+  let connect;
+  const { driverId } = req.params;
+  (phone = phone.replace(/[^0-9, ]/g, "").replace(/ /g, "")),
+    (appData = { status: false });
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      "SELECT users_list.phone, payment.amount FROM users_list JOIN payment ON users_list.id = payment.userid where users_list.id=? ",
+      [driverId]
+    );
+    if (rows.length > 0) {
+      appData.data = rows;
+      appData.status = true;
+      res.status(200).json(appData);
+    } else {
+      appData.error = "Драйвер не найден";
+      appData.status = false;
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/payment/:userId", async (req, res) => {
+  let connect;
+  const { userId } = req.params;
+  (phone = phone.replace(/[^0-9, ]/g, "").replace(/ /g, "")),
+    (appData = { status: false });
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query("SELECT * FROM payment userid = ? ", [
+      userId,
+    ]);
+    if (rows.length > 0) {
+      appData.data = rows;
+      appData.status = true;
+      res.status(200).json(appData);
+    } else {
+      appData.error = "Драйвер не найден";
+      appData.status = false;
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 module.exports = admin;
