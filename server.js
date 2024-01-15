@@ -108,7 +108,7 @@ app.get('/download/:filename', (req, res) => {
     });
   });
 app.use('/users', Users);
-app.use('/payme', Payme);
+app.use('/api', Payme);
 app.use('/admin', Admin);
 app.use('/reborn', Reborn);
 app.use('/merchant', Merchant);

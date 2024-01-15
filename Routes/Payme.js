@@ -15,7 +15,7 @@ payme.use(cors());
 payme.get('/testPage', async function(req, res) {
     res.send('<h1>tirgo api glad you!!!</h1>');
 })
-payme.post('/merchant', async function(req, res) {
+payme.post('/payMeMerchantApi', async function(req, res) {
     let connect,
         data = [],
         id = req.body.id,
