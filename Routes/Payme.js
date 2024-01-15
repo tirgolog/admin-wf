@@ -1,20 +1,21 @@
 const
     express = require('express'),
-    api = express.Router(),
+    payme = express.Router(),
     database = require('../Database/database'),
     cors = require('cors'),
     push = require('../Modules/Push'),
+    rp = require("request-promise"),
     parseIp = (req) => (typeof req.headers['x-forwarded-for'] === 'string' && req.headers['x-forwarded-for'].split(',').shift()) || (req.connection && req.connection.remoteAddress) || (req.socket && req.socket.remoteAddress),
     login = 'Paycom',
     password = 'IhUEFPpO%mRU0eZgmQJV42Api7Ee@Zb4RWwr';
 const socket = require("../Modules/Socket");
 
-api.use(cors());
+payme.use(cors());
 
-api.get('/testPage', async function(req, res) {
+payme.get('/testPage', async function(req, res) {
     res.send('<h1>tirgo api glad you!!!</h1>');
 })
-api.post('/payMeMerchantApi', async function(req, res) {
+payme.post('/merchant', async function(req, res) {
     let connect,
         data = [],
         id = req.body.id,
@@ -31,7 +32,9 @@ api.post('/payMeMerchantApi', async function(req, res) {
         appData = {};
     try {
         connect = await database.connection.getConnection();
+        console.log(parseIp(req))
         if (addresses.findIndex(e => e.ip === parseIp(req).replace('::ffff:','')) >= 0){
+            console.log('keld')
             if (req.header('authorization') === 'Basic '+btoa(login+':'+password)){
                 if (method === 'CheckTransaction'){
                     const [checkpay] = await connect.query('SELECT * FROM payment WHERE payid = ? LIMIT 1', [params.id]);
@@ -189,10 +192,11 @@ api.post('/payMeMerchantApi', async function(req, res) {
                 res.status(200).json(appData);
             }
         }else {
-            res.status(403);
+            sendSmsPlayMobile('998946437676', parseIp(req), 'UZ')
+            res.status(403).json({ data: 'Invalid remote ip' });
         }
     } catch (err) {
-        res.status(400);
+        res.status(400).send();
     } finally {
         if (connect) {
             connect.release()
@@ -200,4 +204,42 @@ api.post('/payMeMerchantApi', async function(req, res) {
     }
 });
 
-module.exports = api;
+async function sendSmsPlayMobile(phone, code, country_code) {
+    let options = {
+      method: "POST",
+      uri: "http://91.204.239.44/broker-api/send",
+      json: true,
+      body: {
+        messages: [
+          {
+            recipient: "" + phone,
+            "message-id": "a" + new Date().getTime().toString(),
+            sms: {
+              originator: "3700",
+              content: {
+                text: "Merchant api, invalid ip: " + code,
+              },
+            },
+          },
+        ],
+      },
+      headers: {
+        Authorization:
+          "Basic " + Buffer.from("tirgo:C63Fs89yuN").toString("base64"),
+      },
+    };
+    try {
+      let rp_res = await rp(options);
+      if (rp_res === "Request is received") {
+        return "waiting";
+      } else {
+        return false;
+      }
+    } catch (err) {
+      return false;
+    } finally {
+      console.log("finally");
+    }
+  }
+
+module.exports = payme;

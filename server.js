@@ -22,7 +22,7 @@ const
     bodyParser = require('body-parser'),
     socket = require('./Modules/Socket'),
     Users = require('./Routes/Users'),
-    Api = require('./Routes/Api'),
+    Payme = require('./Routes/Payme.js'),
     Admin = require('./Routes/Admin'),
     Reborn = require('./Routes/Reborn'),
     Merchant = require('./Routes/Merchant'),
@@ -108,7 +108,7 @@ app.get('/download/:filename', (req, res) => {
     });
   });
 app.use('/users', Users);
-app.use('/api', Api);
+app.use('/payme', Payme);
 app.use('/admin', Admin);
 app.use('/reborn', Reborn);
 app.use('/merchant', Merchant);
