@@ -2099,12 +2099,12 @@ admin.post("/addDriverSubscription", async (req, res) => {
           );
           let valueofPayment;
           if (subscription[0].duration == 1) {
-            valueofPayment = 80;
+            valueofPayment = 80000;
           } else if (subscription[0].duration == 3) {
-            valueofPayment = 180;
+            valueofPayment = 180000;
           }
           if (subscription[0].duration == 12) {
-            valueofPayment = 570;
+            valueofPayment = 570000;
           }
           if (paymentUser[0].amount > valueofPayment) {
             let amount = paymentUser[0].amount - valueofPayment;
