@@ -1977,6 +1977,35 @@ admin.get("/subscription/:id", async (req, res) => {
   }
 });
 
+admin.get("/user/subscription/:id", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  id = req.params.id;
+  try {
+    connect = await database.connection.getConnection();
+    const [subscription] = await connect.query(
+      "SELECT subscription.name, subscription.value , users_list.from_subscription, users_list.to_subscription    FROM subscription   JOIN users_list ON subscription.id = users_list.subscription_id  WHERE subscription.id = ?;",
+      [id]
+    );
+    if (subscription.length) {
+      appData.status = true;
+      appData.data = subscription;
+      res.status(200).json(appData);
+    } else {
+      appData.error = "Данные для входа введены неверно";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 admin.put("/subscription/:id", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
@@ -2035,50 +2064,50 @@ admin.delete("/subscription/:id", async (req, res) => {
 });
 
 admin.post("/addDriverSubscription", async (req, res) => {
-  let connect;
-  const { userid, subscriptionid, phone } = req.body;
-  (phone = phone.replace(/[^0-9, ]/g, "").replace(/ /g, "")),
-    (appData = { status: false });
+  let connect,
+    appData = { status: false };
+  console.log(req.body);
+  const { user_id, subscription_id, phone } = req.body;
+  console.log(phone);
+  // phone = phone.replace(/[^0-9, ]/g, "").replace(/ /g, "");
+
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
       "SELECT * FROM users_contacts WHERE text = ? AND verify = 1",
       [phone]
     );
-    if (rows.length > 0) {
-      appData.error = "Пользователь уже зарегистрирован";
+    console.log(rows);
+    if (rows.length < 0) {
+      appData.error = " Не найден Пользователь";
       appData.status = false;
       res.status(400).json(appData);
     } else {
       const [paymentUser] = await connect.query(
-        "SELECT * FROM payment where  AND userid=? ",
-        [userid]
+        "SELECT * FROM payment where  userid = ? ",
+        [user_id]
       );
       if (paymentUser.length > 0) {
         const [subscription] = await connect.query(
           "SELECT * FROM subscription where id = ? ",
-          [subscriptionid]
+          [subscription_id]
         );
-        if (paymentUser[0].amount > subscription[0].value) {
-          let amount = paymentUser[0].amount - subscription[0].value;
+        if (paymentUser[0].amount > subscription[0].value * 11000) {
+          let amount = paymentUser[0].amount - subscription[0].value * 11000;
           const [edit] = await connect.query(
-            "UPDATE amount SET amount = ? WHERE id = ?",
-            [amount, paymentUser.agent_id]
+            "UPDATE payment SET amount = ? WHERE id = ?",
+            [amount, paymentUser.id]
           );
-
-          if (edit.affectedRows) {
+          if (edit.serverStatus) {
             let nextthreeMonth = new Date(
               new Date().setMonth(
                 new Date().getMonth() + subscription[0].duration
               )
             );
-
             const [insert] = await connect.query(
               "UPDATE users_list SET subscription_id = ?, from_subscription = ? , to_subscription=?  WHERE id = ?",
-              [subscription_id, new Date(), nextthreeMonth, userid]
+              [subscription_id, new Date(), nextthreeMonth, user_id]
             );
-
-            appData.id = insert.insertId;
             appData.status = true;
             res.status(200).json(appData);
           } else {
@@ -2092,12 +2121,11 @@ admin.post("/addDriverSubscription", async (req, res) => {
           res.status(400).json(appData);
         }
       } else {
-        appData.error = "Не найден Агент";
+        appData.error = " Не найден Пользователь";
         appData.status = false;
         res.status(400).json(appData);
       }
     }
-    // res.status(200).json(appData);
   } catch (e) {
     appData.error = e.message;
     res.status(400).json(appData);
@@ -2109,14 +2137,13 @@ admin.post("/addDriverSubscription", async (req, res) => {
 });
 
 admin.get("/searchDriver/:driverId", async (req, res) => {
-  let connect;
   const { driverId } = req.params;
-  (phone = phone.replace(/[^0-9, ]/g, "").replace(/ /g, "")),
-    (appData = { status: false });
+  let connect,
+    appData = { status: false };
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "SELECT users_list.phone, payment.amount FROM users_list JOIN payment ON users_list.id = payment.userid where users_list.id=? ",
+      "SELECT users_list.phone, users_list.name, payment.amount FROM users_list JOIN payment ON users_list.id = payment.userid where users_list.id=? ",
       [driverId]
     );
     if (rows.length > 0) {
@@ -2124,7 +2151,7 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
       appData.status = true;
       res.status(200).json(appData);
     } else {
-      appData.error = "Драйвер не найден";
+      appData.error = "Не найден платный драйвер";
       appData.status = false;
       res.status(400).json(appData);
     }
@@ -2139,13 +2166,12 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
 });
 
 admin.get("/payment/:userId", async (req, res) => {
-  let connect;
+  let connect,
+  appData = { status: false };
   const { userId } = req.params;
-  (phone = phone.replace(/[^0-9, ]/g, "").replace(/ /g, "")),
-    (appData = { status: false });
   try {
     connect = await database.connection.getConnection();
-    const [rows] = await connect.query("SELECT * FROM payment userid = ? ", [
+    const [rows] = await connect.query("SELECT * FROM payment where userid = ? ", [
       userId,
     ]);
     if (rows.length > 0) {
