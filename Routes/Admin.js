@@ -1984,7 +1984,7 @@ admin.get("/user/subscription/:id", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [subscription] = await connect.query(
-      "SELECT subscription.name, subscription.value , users_list.from_subscription, users_list.to_subscription    FROM subscription   JOIN users_list ON subscription.id = users_list.subscription_id  WHERE subscription.id = ?;",
+      "SELECT subscription.name, subscription.value , subscription.duration , users_list.from_subscription, users_list.to_subscription    FROM subscription   JOIN users_list ON subscription.id = users_list.subscription_id  WHERE subscription.id = ?;",
       [id]
     );
     if (subscription.length) {
@@ -2066,64 +2066,84 @@ admin.delete("/subscription/:id", async (req, res) => {
 admin.post("/addDriverSubscription", async (req, res) => {
   let connect,
     appData = { status: false };
-  console.log(req.body);
   const { user_id, subscription_id, phone } = req.body;
-  console.log(phone);
-  // phone = phone.replace(/[^0-9, ]/g, "").replace(/ /g, "");
-
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
       "SELECT * FROM users_contacts WHERE text = ? AND verify = 1",
       [phone]
     );
-    console.log(rows);
     if (rows.length < 0) {
       appData.error = " Не найден Пользователь";
       appData.status = false;
       res.status(400).json(appData);
     } else {
-      const [paymentUser] = await connect.query(
-        "SELECT * FROM payment where  userid = ? ",
+      const [user] = await connect.query(
+        "SELECT * FROM users_list WHERE to_subscription > CURDATE() AND id = ?",
         [user_id]
       );
-      if (paymentUser.length > 0) {
-        const [subscription] = await connect.query(
-          "SELECT * FROM subscription where id = ? ",
-          [subscription_id]
+      if (user.length > 0) {
+        appData.error = "Пользователь уже имеет подписку";
+        appData.status = false;
+        res.status(400).json(appData);
+      } else {
+        const [paymentUser] = await connect.query(
+          "SELECT * FROM payment where  userid = ? ",
+          [user_id]
         );
-        if (paymentUser[0].amount > subscription[0].value * 11000) {
-          let amount = paymentUser[0].amount - subscription[0].value * 11000;
-          const [edit] = await connect.query(
-            "UPDATE payment SET amount = ? WHERE id = ?",
-            [amount, paymentUser.id]
+        if (paymentUser.length > 0) {
+          const [subscription] = await connect.query(
+            "SELECT * FROM subscription where id = ? ",
+            [subscription_id]
           );
-          if (edit.serverStatus) {
-            let nextthreeMonth = new Date(
-              new Date().setMonth(
-                new Date().getMonth() + subscription[0].duration
-              )
+          let valueofPayment;
+          if (subscription[0].duration == 1) {
+            valueofPayment = 80000;
+          } else if (subscription[0].duration == 6) {
+            valueofPayment = 180000;
+          }
+          if (subscription[0].duration == 12) {
+            valueofPayment = 570000;
+          }
+          if (paymentUser[0].amount > valueofPayment) {
+            let amount = paymentUser[0].amount - valueofPayment;
+            const [edit] = await connect.query(
+              "UPDATE payment SET amount = ? WHERE id = ?",
+              [amount, paymentUser[0].id]
             );
-            const [insert] = await connect.query(
-              "UPDATE users_list SET subscription_id = ?, from_subscription = ? , to_subscription=?  WHERE id = ?",
-              [subscription_id, new Date(), nextthreeMonth, user_id]
-            );
-            appData.status = true;
-            res.status(200).json(appData);
+            if (edit.serverStatus == 2) {
+              let nextMonth = new Date(
+                new Date().setMonth(
+                  new Date().getMonth() + subscription[0].duration
+                )
+              );
+              const [insert] = await connect.query(
+                "UPDATE users_list SET subscription_id = ?, from_subscription = ? , to_subscription=?, subscription_amount=?  WHERE id = ?",
+                [
+                  subscription_id,
+                  new Date(),
+                  nextMonth,
+                  valueofPayment,
+                  user_id,
+                ]
+              );
+              appData.status = true;
+              res.status(200).json(appData);
+            } else {
+              appData.error = "Не могу установить новый баланс";
+              appData.status = false;
+              res.status(400).json(appData);
+            }
           } else {
-            appData.error = "Не могу установить новый баланс";
+            appData.error = "Баланса недостаточно";
             appData.status = false;
             res.status(400).json(appData);
           }
         } else {
-          appData.error = "Баланса недостаточно";
+          appData.error = " Не найден Пользователь";
           appData.status = false;
           res.status(400).json(appData);
         }
-      } else {
-        appData.error = " Не найден Пользователь";
-        appData.status = false;
-        res.status(400).json(appData);
       }
     }
   } catch (e) {
@@ -2167,13 +2187,14 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
 
 admin.get("/payment/:userId", async (req, res) => {
   let connect,
-  appData = { status: false };
+    appData = { status: false };
   const { userId } = req.params;
   try {
     connect = await database.connection.getConnection();
-    const [rows] = await connect.query("SELECT * FROM payment where userid = ? ", [
-      userId,
-    ]);
+    const [rows] = await connect.query(
+      "SELECT users_list.subscription_amount, payment.pay_method, payment.date  FROM users_list JOIN payment ON users_list.id = payment.userid where payment.userid=? ",
+      [userId]
+    );
     if (rows.length > 0) {
       appData.data = rows;
       appData.status = true;

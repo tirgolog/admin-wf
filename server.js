@@ -26,7 +26,7 @@ const
     Admin = require('./Routes/Admin'),
     Reborn = require('./Routes/Reborn'),
     Merchant = require('./Routes/Merchant'),
-    port = 8000;
+    port = 7790;
 
 process.env.SECRET_KEY = "tirgoserverkey";
 process.env.FILES_PATCH = "/var/www/html/";
