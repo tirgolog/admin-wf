@@ -7,7 +7,8 @@ const
     rp = require("request-promise"),
     parseIp = (req) => (typeof req.headers['x-forwarded-for'] === 'string' && req.headers['x-forwarded-for'].split(',').shift()) || (req.connection && req.connection.remoteAddress) || (req.socket && req.socket.remoteAddress),
     login = 'Paycom',
-    password = 'IhUEFPpO%mRU0eZgmQJV42Api7Ee@Zb4RWwr';
+    password = 'IhUEFPpO%mRU0eZgmQJV42Api7Ee@Zb4RWwr',
+    btoa = require('btoa');
 const socket = require("../Modules/Socket");
 
 payme.use(cors());
