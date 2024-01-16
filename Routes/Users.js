@@ -1197,7 +1197,7 @@ users.get("/checkSessionClient", async function (req, res) {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "SELECT * FROM users_list WHERE id = ? AND user_type = 2",
+      "SELECT * FROM users_list WHERE id = ? AND user_type = 2  AND deleted <> 1",
       [userInfo.id]
     );
     if (rows.length) {
