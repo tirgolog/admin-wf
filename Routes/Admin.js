@@ -2109,7 +2109,7 @@ admin.post("/addDriverSubscription", async (req, res) => {
           if (paymentUser[0].amount > valueofPayment) {
             let amount = paymentUser[0].amount - valueofPayment;
             const [edit] = await connect.query(
-              "UPDATE payment SET amount = ? WHERE id = ?",
+              "UPDATE payment SET current_amount = ? WHERE id = ?",
               [amount, paymentUser[0].id]
             );
             if (edit.serverStatus == 2) {
@@ -2118,7 +2118,6 @@ admin.post("/addDriverSubscription", async (req, res) => {
                   new Date().getMonth() + subscription[0].duration
                 )
               );
-              console.log(new Date())
               const [insert] = await connect.query(
                 "UPDATE users_list SET subscription_id = ?, from_subscription = ? , to_subscription=?, subscription_amount=?  WHERE id = ?",
                 [
@@ -2194,11 +2193,11 @@ admin.get("/payment/:userId", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "SELECT users_list.subscription_amount, payment.pay_method, payment.amount, payment.date  FROM users_list JOIN payment ON users_list.id = payment.userid where payment.userid=? ",
+      "SELECT users_list.subscription_amount, payment.pay_method, payment.amount, payment.current_amount, payment.date  FROM users_list JOIN payment ON users_list.id = payment.userid where payment.userid=? ",
       [userId]
     );
     if (rows.length > 0) {
-      appData.data = rows;
+      appData.data = rows;  
       appData.status = true;
       res.status(200).json(appData);
     } else {
