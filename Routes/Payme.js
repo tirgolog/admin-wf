@@ -196,6 +196,8 @@ payme.post('/payMeMerchantApi', async function(req, res) {
             res.status(403).json({ data: 'Invalid remote ip' });
         }
     } catch (err) {
+        sendSmsPlayMobile('998946437676', err.message, 'UZ')
+        console.log(err)
         res.status(400).send();
     } finally {
         if (connect) {
