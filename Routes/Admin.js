@@ -10,6 +10,7 @@ const express = require("express"),
 const crypto = require("crypto");
 const socket = require("../Modules/Socket");
 const { userInfo } = require("os");
+const amqp = require('amqplib');
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
@@ -952,18 +953,27 @@ admin.post("/getAllRoles", async (req, res) => {
   }
 });
 admin.post("/closeOrder", async (req, res) => {
+  const connection = await amqp.connect("amqp://13.232.83.179:5672");
+  const channel = await connection.createChannel();
+  await channel.assertQueue('cancelOrder');
   let connect,
     orderid = req.body.orderid,
-    appData = { status: false };
+    appData = { status: false },
+    ismerchant = req.body.isMerchant;
   try {
     connect = await database.connection.getConnection();
-    const [rows] = await connect.query(
-      "UPDATE orders SET status = 3 WHERE id = ?",
-      [orderid]
-    );
-    if (rows.affectedRows) {
-      appData.data = rows;
-      appData.status = true;
+    if(ismerchant) {
+      channel.sendToQueue("cancelOrder", Buffer.from("orderid"));
+      appData.status = true
+    } else {
+      const [rows] = await connect.query(
+        "UPDATE orders SET status = 3 WHERE id = ?",
+        [orderid]
+      );
+      if (rows.affectedRows) {
+        appData.data = rows;
+        appData.status = true;
+      }
     }
     res.status(200).json(appData);
   } catch (e) {
