@@ -2106,8 +2106,37 @@ admin.post("/addDriverSubscription", async (req, res) => {
           if (subscription[0].duration == 12) {
             valueofPayment = 570000;
           }
-          if (paymentUser[0].amount > valueofPayment) {
+          if (!paymentUser[0].current_amount) {
             let amount = paymentUser[0].amount - valueofPayment;
+            const [edit] = await connect.query(
+              "UPDATE payment SET current_amount = ? WHERE id = ?",
+              [amount, paymentUser[0].id]
+            );
+            if (edit.serverStatus == 2) {
+              let nextMonth = new Date(
+                new Date().setMonth(
+                  new Date().getMonth() + subscription[0].duration
+                )
+              );
+              const [insert] = await connect.query(
+                "UPDATE users_list SET subscription_id = ?, from_subscription = ? , to_subscription=?, subscription_amount=?  WHERE id = ?",
+                [
+                  subscription_id,
+                  new Date(),
+                  nextMonth,
+                  valueofPayment,
+                  user_id,
+                ]
+              );
+              appData.status = true;
+              res.status(200).json(appData);
+            } else {
+              appData.error = "Не могу установить новый баланс";
+              appData.status = false;
+              res.status(400).json(appData);
+            }
+          } else if (paymentUser[0].current_amount > valueofPayment) {
+            let amount = paymentUser[0].current_amount - valueofPayment;
             const [edit] = await connect.query(
               "UPDATE payment SET current_amount = ? WHERE id = ?",
               [amount, paymentUser[0].id]
