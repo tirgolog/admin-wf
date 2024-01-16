@@ -3998,4 +3998,30 @@ users.patch('/verify-withdrawal/verify/:id', async (req, res) => {
   }
 });
 
+users.post("/delUser", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() },
+    userid = req.body.userid;
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      "UPDATE users_list SET deleted = 1 WHERE id = ?",
+      [userid]
+    );
+    if (rows.affectedRows) {
+      appData.status = true;
+    } else {
+      appData.error = "Невозможно удалить аккаунт";
+    }
+    res.status(200).json(appData);
+  } catch (err) {
+    appData.status = false;
+    appData.error = err;
+    res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
 module.exports = users;
