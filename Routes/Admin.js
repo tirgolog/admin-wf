@@ -963,7 +963,7 @@ admin.post("/closeOrder", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     if (ismerchant) {
-      channel.sendToQueue("cancelOrder", Buffer.from(orderid));
+      channel.sendToQueue("cancelOrder", Buffer.from(JSON.stringify(orderid)));
       appData.status = true
     } else {
       const [rows] = await connect.query(
