@@ -1977,15 +1977,16 @@ admin.get("/subscription/:id", async (req, res) => {
   }
 });
 
-admin.get("/user/subscription/:id", async (req, res) => {
+admin.get("/user/subscription/:id/:userid", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
   id = req.params.id;
+  userid = req.params.userid;
   try {
     connect = await database.connection.getConnection();
     const [subscription] = await connect.query(
-      "SELECT subscription.name, subscription.value , subscription.duration , users_list.from_subscription, users_list.to_subscription    FROM subscription   JOIN users_list ON subscription.id = users_list.subscription_id  WHERE subscription.id = ?;",
-      [id]
+      "SELECT  subscription.name, subscription.value,  subscription.duration, users_list.from_subscription, users_list.to_subscription   FROM  subscription  JOIN  users_list ON   subscription.id = users_list.subscription_id  WHERE  subscription.id =? AND users_list.id = ?",
+      [id, userid]
     );
     if (subscription.length) {
       appData.status = true;
@@ -2099,7 +2100,7 @@ admin.post("/addDriverSubscription", async (req, res) => {
           let valueofPayment;
           if (subscription[0].duration == 1) {
             valueofPayment = 80000;
-          } else if (subscription[0].duration == 6) {
+          } else if (subscription[0].duration == 3) {
             valueofPayment = 180000;
           }
           if (subscription[0].duration == 12) {
@@ -2108,7 +2109,7 @@ admin.post("/addDriverSubscription", async (req, res) => {
           if (paymentUser[0].amount > valueofPayment) {
             let amount = paymentUser[0].amount - valueofPayment;
             const [edit] = await connect.query(
-              "UPDATE payment SET amount = ? WHERE id = ?",
+              "UPDATE payment SET current_amount = ? WHERE id = ?",
               [amount, paymentUser[0].id]
             );
             if (edit.serverStatus == 2) {
@@ -2135,7 +2136,7 @@ admin.post("/addDriverSubscription", async (req, res) => {
               res.status(400).json(appData);
             }
           } else {
-            appData.error = "Баланса недостаточно";
+            appData.error = "Недостаточно средств на балансе";
             appData.status = false;
             res.status(400).json(appData);
           }
@@ -2192,11 +2193,11 @@ admin.get("/payment/:userId", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "SELECT users_list.subscription_amount, payment.pay_method, payment.date  FROM users_list JOIN payment ON users_list.id = payment.userid where payment.userid=? ",
+      "SELECT users_list.subscription_amount, payment.pay_method, payment.amount, payment.current_amount, payment.date  FROM users_list JOIN payment ON users_list.id = payment.userid where payment.userid=? ",
       [userId]
     );
     if (rows.length > 0) {
-      appData.data = rows;
+      appData.data = rows;  
       appData.status = true;
       res.status(200).json(appData);
     } else {
