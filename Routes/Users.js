@@ -1119,13 +1119,12 @@ users.get("/checkSession", async function (req, res) {
       const [activeBalance] = await connect.query(`SELECT amount from secure_transaction where dirverid = ? and status = 2`, [rows[0]?.id]);
       const [subscriptionPayment] = await connect.query(`SELECT id from subscription_transaction where userid = ?`, [rows[0]?.id]);
       const [payments] = await connect.query("SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",[rows[0].id]);
-      console.log('payments', payments)
-
-      const totalWithdrawalAmountProcess = withdrawalsProccess.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      const totalPayments = payments.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+      
+      const totalWithdrawalAmountProcess = withdrawalsProccess.reduce((accumulator, secure) => accumulator + +secure.amount, 0);
+      const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + +secure.amount, 0);
+      const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + +secure.amount, 0);
+      const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + +secure.amount, 0);
+      const totalPayments = payments.reduce((accumulator, secure) => accumulator + +secure.amount, 0);
       const totalSubscriptionPayment = subscriptionPayment.reduce((accumulator, subPay) => {
         if (subPay.duration === 1) {
           return accumulator + 80000;
@@ -1137,12 +1136,13 @@ users.get("/checkSession", async function (req, res) {
         // Default case when none of the conditions are met
         return accumulator;
       }, 0);
-      
+      console.log('payments', payments,totalActiveAmount,  totalPayments, totalSubscriptionPayment, totalWithdrawalAmount)
+      console.log(totalActiveAmount + (totalPayments - totalSubscriptionPayment) - totalWithdrawalAmount)
       appData.user = rows[0];
       appData.user.transport = transport[0];
       appData.user.driver_verification = verification[0]?.verified;
       appData.user.send_verification = verification[0]?.send_verification;
-      appData.user.balance = totalActiveAmount ? (totalActiveAmount + (totalPayments - totalSubscriptionPayment)) - totalWithdrawalAmount : 0;
+      appData.user.balance = (totalActiveAmount + (totalPayments - totalSubscriptionPayment)) - totalWithdrawalAmount;
       appData.user.balance_in_proccess = totalWithdrawalAmountProcess;
       appData.user.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
       appData.user.config = config[0];
@@ -1960,7 +1960,7 @@ users.post("/finish-merchant-cargo", async (req, res) => {
       }, 0);
       
       const user = {};
-            user.balance = totalActiveAmount ? (totalActiveAmount + (totalPayments - totalSubscriptionPayment)) - totalWithdrawalAmount : 0;
+            user.balance = (totalActiveAmount + (totalPayments - totalSubscriptionPayment)) - totalWithdrawalAmount;
             user.balance_in_proccess = totalWithdrawalAmountProcess;
             user.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
       socket.updateAllList("update-driver-balance", JSON.stringify(user));
@@ -3922,7 +3922,7 @@ users.post("/driver-balance/withdraw", async (req, res) => {
      }, 0);
 
       const obj = {
-        balance: totalActiveAmount ? (totalActiveAmount + (totalPayments - totalSubscriptionPayment)) - totalWithdrawalAmount : 0,
+        balance: (totalActiveAmount + (totalPayments - totalSubscriptionPayment)) - totalWithdrawalAmount,
         balance_in_proccess: totalWithdrawalAmountProcess,
         balance_off: totalFrozenAmount ? totalFrozenAmount : 0,
       }  
@@ -3991,7 +3991,7 @@ users.get("/driver/withdrawals", async (req, res) => {
          return accumulator;
        }, 0);
         
-        el.balance = totalActiveAmount ? (totalActiveAmount + (totalPayments - totalSubscriptionPayment)) - totalWithdrawalAmount : 0;
+        el.balance = (totalActiveAmount + (totalPayments - totalSubscriptionPayment)) - totalWithdrawalAmount;
       }
       appData.status = true;
       appData.data = rows;
@@ -4063,7 +4063,7 @@ users.patch('/verify-withdrawal/verify/:id', async (req, res) => {
      }, 0);
 
       const obj = {
-        balance: totalActiveAmount ? (totalActiveAmount + (totalPayments - totalSubscriptionPayment)) - totalWithdrawalAmount : 0,
+        balance: (totalActiveAmount + (totalPayments - totalSubscriptionPayment)) - totalWithdrawalAmount,
         balance_in_proccess: totalWithdrawalAmountProcess,
         balance_off: totalFrozenAmount ? totalFrozenAmount : 0,
       }
