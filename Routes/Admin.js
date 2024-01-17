@@ -2118,7 +2118,7 @@ admin.post("/addDriverSubscription", async (req, res) => {
           }
        const [withdrawals] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ?`, [rows[0]?.id]);
        const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [rows[0]?.id]);
-       const [payments] = await connect.query("SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time = null",[rows[0].id]);
+       const [payments] = await connect.query("SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",[rows[0].id]);
        const [subscriptionPayment] = await connect.query(`SELECT id from subscription_transaction left join  where userid = ?`, [rows[0]?.id]);
        const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
        const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
