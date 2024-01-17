@@ -10,7 +10,7 @@ const express = require("express"),
 const crypto = require("crypto");
 const socket = require("../Modules/Socket");
 const { userInfo } = require("os");
-const amqp = require('amqplib');
+const amqp = require("amqplib");
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
@@ -224,16 +224,16 @@ admin.post("/getAllUsers", async (req, res) => {
           let newUser = row;
           newUser.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-            "tirgo/clients/" +
-            row.id +
-            "/" +
-            row.avatar
+              "tirgo/clients/" +
+              row.id +
+              "/" +
+              row.avatar
           )
             ? process.env.SERVER_URL +
-            "tirgo/clients/" +
-            row.id +
-            "/" +
-            row.avatar
+              "tirgo/clients/" +
+              row.id +
+              "/" +
+              row.avatar
             : null;
           const [contacts] = await connect.query(
             "SELECT * FROM users_contacts WHERE user_id = ?",
@@ -269,16 +269,16 @@ admin.post("/getAllDrivers", async (req, res) => {
           let newUser = row;
           newUser.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-            "tirgo/drivers/" +
-            row.id +
-            "/" +
-            row.avatar
+              "tirgo/drivers/" +
+              row.id +
+              "/" +
+              row.avatar
           )
             ? process.env.SERVER_URL +
-            "tirgo/drivers/" +
-            row.id +
-            "/" +
-            row.avatar
+              "tirgo/drivers/" +
+              row.id +
+              "/" +
+              row.avatar
             : null;
           const [files] = await connect.query(
             "SELECT * FROM users_list_files WHERE user_id = ?",
@@ -289,16 +289,16 @@ admin.post("/getAllDrivers", async (req, res) => {
               let newFile = file;
               newFile.preview = fs.existsSync(
                 process.env.FILES_PATCH +
-                "tirgo/drivers/" +
-                row.id +
-                "/" +
-                file.name
+                  "tirgo/drivers/" +
+                  row.id +
+                  "/" +
+                  file.name
               )
                 ? process.env.SERVER_URL +
-                "tirgo/drivers/" +
-                row.id +
-                "/" +
-                file.name
+                  "tirgo/drivers/" +
+                  row.id +
+                  "/" +
+                  file.name
                 : null;
               return newFile;
             })
@@ -319,16 +319,16 @@ admin.post("/getAllDrivers", async (req, res) => {
                   let docks = filetruck;
                   docks.preview = fs.existsSync(
                     process.env.FILES_PATCH +
-                    "tirgo/drivers/" +
-                    row.id +
-                    "/" +
-                    filetruck.name
+                      "tirgo/drivers/" +
+                      row.id +
+                      "/" +
+                      filetruck.name
                   )
                     ? process.env.SERVER_URL +
-                    "tirgo/drivers/" +
-                    row.id +
-                    "/" +
-                    filetruck.name
+                      "tirgo/drivers/" +
+                      row.id +
+                      "/" +
+                      filetruck.name
                     : null;
                   return docks;
                 })
@@ -955,7 +955,7 @@ admin.post("/getAllRoles", async (req, res) => {
 admin.post("/closeOrder", async (req, res) => {
   const connection = await amqp.connect("amqp://13.232.83.179:5672");
   const channel = await connection.createChannel();
-  await channel.assertQueue('cancelOrder');
+  await channel.assertQueue("cancelOrder");
   let connect,
     orderid = req.body.orderid,
     appData = { status: false },
@@ -964,7 +964,7 @@ admin.post("/closeOrder", async (req, res) => {
     connect = await database.connection.getConnection();
     if (ismerchant) {
       channel.sendToQueue("cancelOrder", Buffer.from(JSON.stringify(orderid)));
-      appData.status = true
+      appData.status = true;
     } else {
       const [rows] = await connect.query(
         "UPDATE orders SET status = 3 WHERE id = ?",
@@ -1174,16 +1174,16 @@ admin.post("/getAllOrders", async (req, res) => {
               let newItemUsers = item2;
               newItemUsers.avatar = fs.existsSync(
                 process.env.FILES_PATCH +
-                "tirgo/drivers/" +
-                item2.id +
-                "/" +
-                item2.avatar
+                  "tirgo/drivers/" +
+                  item2.id +
+                  "/" +
+                  item2.avatar
               )
                 ? process.env.SERVER_URL +
-                "tirgo/drivers/" +
-                item2.id +
-                "/" +
-                item2.avatar
+                  "tirgo/drivers/" +
+                  item2.id +
+                  "/" +
+                  item2.avatar
                 : null;
               return newItemUsers;
             })
@@ -1283,16 +1283,16 @@ admin.get("/getAllMessages", async (req, res) => {
           let newItem = item;
           newItem.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-            "tirgo/drivers/" +
-            item.user_id +
-            "/" +
-            item.avatar
+              "tirgo/drivers/" +
+              item.user_id +
+              "/" +
+              item.avatar
           )
             ? process.env.SERVER_URL +
-            "tirgo/drivers/" +
-            item.user_id +
-            "/" +
-            item.avatar
+              "tirgo/drivers/" +
+              item.user_id +
+              "/" +
+              item.avatar
             : null;
           const [messages] = await connect.query(
             "SELECT * FROM chat_support WHERE user_id = ? ORDER BY id",
@@ -2116,64 +2116,42 @@ admin.post("/addDriverSubscription", async (req, res) => {
           if (subscription[0].duration == 12) {
             valueofPayment = 570000;
           }
-          if (!paymentUser[0].current_amount) {
-            let amount = paymentUser[0].amount - valueofPayment;
-            const [edit] = await connect.query(
-              "UPDATE payment SET current_amount = ? WHERE id = ?",
-              [amount, paymentUser[0].id]
-            );
-            if (edit.serverStatus == 2) {
+       const [withdrawals] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ?`, [rows[0]?.id]);
+       const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [rows[0]?.id]);
+       const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+       const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+       let balance = totalActiveAmount ? totalActiveAmount - totalWithdrawalAmount : 0;
+          // paymentUser active balance
+          if (balance>valueofPayment) {
               let nextMonth = new Date(
                 new Date().setMonth(
                   new Date().getMonth() + subscription[0].duration
                 )
               );
-              const [insert] = await connect.query(
-                "UPDATE users_list SET subscription_id = ?, from_subscription = ? , to_subscription=?, subscription_amount=?  WHERE id = ?",
+              const [userUpdate] = await connect.query(
+                "UPDATE users_list SET subscription_id = ?, from_subscription = ? , to_subscription=?  WHERE id = ?",
                 [
                   subscription_id,
                   new Date(),
                   nextMonth,
-                  valueofPayment,
                   user_id,
                 ]
               );
-              appData.status = true;
-              res.status(200).json(appData);
-            } else {
-              appData.error = "Не могу установить новый баланс";
-              appData.status = false;
-              res.status(400).json(appData);
-            }
-          } else if (paymentUser[0].current_amount > valueofPayment) {
-            let amount = paymentUser[0].current_amount - valueofPayment;
-            const [edit] = await connect.query(
-              "UPDATE payment SET current_amount = ? WHERE id = ?",
-              [amount, paymentUser[0].id]
-            );
-            if (edit.serverStatus == 2) {
-              let nextMonth = new Date(
-                new Date().setMonth(
-                  new Date().getMonth() + subscription[0].duration
-                )
-              );
-              const [insert] = await connect.query(
-                "UPDATE users_list SET subscription_id = ?, from_subscription = ? , to_subscription=?, subscription_amount=?  WHERE id = ?",
-                [
-                  subscription_id,
-                  new Date(),
-                  nextMonth,
-                  valueofPayment,
-                  user_id,
-                ]
-              );
-              appData.status = true;
-              res.status(200).json(appData);
-            } else {
-              appData.error = "Не могу установить новый баланс";
-              appData.status = false;
-              res.status(400).json(appData);
-            }
+              if (userUpdate.affectedRows==1) {
+                const subscription_transaction = await connect.query(
+                  "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?",
+                   [user_id, subscription_id, phone]
+               );
+               if (subscription_transaction.length>0) {
+                appData.status = true;
+                res.status(200).json(appData);
+               }
+              }else{
+                appData.error = "Невозможно обновить данные пользователя";
+                appData.status = false;
+                res.status(400).json(appData);
+              }
+              
           } else {
             appData.error = "Недостаточно средств на балансе";
             appData.status = false;
@@ -2232,7 +2210,7 @@ admin.get("/payment/:userId", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "SELECT users_list.subscription_amount, payment.pay_method, payment.amount, payment.current_amount, payment.date  FROM users_list JOIN payment ON users_list.id = payment.userid where payment.userid=? ",
+      "SELECT  * from payment where userid=? ",
       [userId]
     );
     if (rows.length > 0) {
