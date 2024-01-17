@@ -311,7 +311,7 @@ reborn.post('/getAllOrders', async (req, res) => {
     try {
 
         const merchantCargos = await axios.get(
-            "https://merchant.tirgo.io/api/v1/cargo/all-driver?secure="+saveorder
+            "https://merchant.tirgo.io/api/v1/cargo/all-admin?secure="+saveorder
           );
           if (merchantCargos.data.success) {
             merchantData = merchantCargos.data.data.map((el) => {
