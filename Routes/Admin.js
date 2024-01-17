@@ -2134,7 +2134,7 @@ admin.post("/addDriverSubscription", async (req, res) => {
         // Default case when none of the conditions are met
         return accumulator;
       }, 0);
-       let balance = totalActiveAmount ? (totalActiveAmount + (totalPayments - totalSubscriptionPayment)) - totalWithdrawalAmount : 0;
+       let balance = (totalActiveAmount + (totalPayments - totalSubscriptionPayment)) - totalWithdrawalAmount;
        
           // paymentUser active balance
           if (balance>valueofPayment) {
