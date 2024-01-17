@@ -1113,6 +1113,7 @@ users.get("/checkSession", async function (req, res) {
     if (rows.length) {
       const [config] = await connect.query("SELECT * FROM config LIMIT 1");
       const [verification] = await connect.query("SELECT * FROM verification WHERE user_id = ? LIMIT 1",[rows[0].id]);
+      const [payments] = await connect.query("SELECT * FROM payment WHERE user_id = ? and status = 1 and date_cancel_time = null",[rows[0].id]);
       const [transport] = await connect.query("SELECT * FROM  users_transport WHERE user_id = ? LIMIT 1",[rows[0].id]);
       const [withdrawalsProccess] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ? and status = 0`, [rows[0]?.id]);
       const [withdrawals] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ?`, [rows[0]?.id]);
@@ -1122,11 +1123,12 @@ users.get("/checkSession", async function (req, res) {
       const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+      const totalPayments = payments.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       appData.user = rows[0];
       appData.user.transport = transport[0];
       appData.user.driver_verification = verification[0]?.verified;
       appData.user.send_verification = verification[0]?.send_verification;
-      appData.user.balance = totalActiveAmount ? totalActiveAmount - totalWithdrawalAmount : 0;
+      appData.user.balance = totalActiveAmount ? (totalActiveAmount + totalPayments) - totalWithdrawalAmount : 0;
       appData.user.balance_in_proccess = totalWithdrawalAmountProcess;
       appData.user.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
       appData.user.config = config[0];
