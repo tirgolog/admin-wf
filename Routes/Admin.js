@@ -2118,9 +2118,24 @@ admin.post("/addDriverSubscription", async (req, res) => {
           }
        const [withdrawals] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ?`, [rows[0]?.id]);
        const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [rows[0]?.id]);
+       const [payments] = await connect.query("SELECT amount FROM payment WHERE user_id = ? and status = 1 and date_cancel_time = null",[rows[0].id]);
+       const [subscriptionPayment] = await connect.query(`SELECT amount from subscription_transaction left join  where userid = ?`, [rows[0]?.id]);
        const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
        const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-       let balance = totalActiveAmount ? totalActiveAmount - totalWithdrawalAmount : 0;
+       const totalPayments = payments.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+       const totalSubscriptionPayment = subscriptionPayment.reduce((accumulator, subPay) => {
+        if (subPay.duration === 1) {
+          return accumulator + 80000;
+        } else if (subPay.duration === 3) {
+          return accumulator + 180000;
+        } else if (subPay.duration === 12) {
+          return accumulator + 570000;
+        }
+        // Default case when none of the conditions are met
+        return accumulator;
+      }, 0);
+       let balance = totalActiveAmount ? (totalActiveAmount + (totalPayments - totalSubscriptionPayment)) - totalWithdrawalAmount : 0;
+       
           // paymentUser active balance
           if (balance>valueofPayment) {
               let nextMonth = new Date(
