@@ -547,9 +547,10 @@ users.post("/login", async (req, res) => {
         json: false,
         headers: {
           Authorization:
-            "Basic " + Buffer.from("tirgo1:TIRGOSMS").toString("base64"),
+            "Basic " + Buffer.from("fxkKt7iR:fTsODP6m").toString("base64"),
         },
       };
+      console.log("code Russian", code);
       await rp(options);
       send_sms_res = "waiting";
     } else {
@@ -657,9 +658,10 @@ users.post("/sms-verification", async (req, res) => {
         json: false,
         headers: {
           Authorization:
-            "Basic " + Buffer.from("tirgo1:TIRGOSMS").toString("base64"),
+          "Basic " + Buffer.from("fxkKt7iR:fTsODP6m").toString("base64"),
         },
       };
+      console.log("code Russian", code);
       await rp(options);
       send_sms_res = "waiting";
     } else {
@@ -727,9 +729,10 @@ users.post("/loginClient", async (req, res) => {
         json: false,
         headers: {
           Authorization:
-            "Basic " + Buffer.from("tirgo1:TIRGOSMS").toString("base64"),
+          "Basic " + Buffer.from("fxkKt7iR:fTsODP6m").toString("base64"),
         },
       };
+      console.log("code Russian", code);
       await rp(options);
       send_sms_res = "waiting";
     } else {
@@ -996,10 +999,10 @@ users.post("/addContact", async (req, res) => {
           json: false,
           headers: {
             Authorization:
-              "Basic " +
-              Buffer.from("z1493225826616:191379").toString("base64"),
+             "Basic " + Buffer.from("fxkKt7iR:fTsODP6m").toString("base64"),
           },
         };
+        console.log("code Russian", code);
         await rp(options);
         send_sms_res = "waiting";
       }
