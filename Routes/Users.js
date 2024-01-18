@@ -3903,7 +3903,7 @@ users.post("/driver-balance/withdraw", async (req, res) => {
         appData.status = false;
         appData.error = 'No enough balance';
         res.status(400).json(appData);
-      }
+      } else {
       await connect.query(
         "INSERT INTO driver_withdrawal SET driver_id = ?,amount = ?, withdraw_type = 'Вывод средств', status = 0",
         [
@@ -3944,7 +3944,7 @@ users.post("/driver-balance/withdraw", async (req, res) => {
       socket.updateAllList("update-driver-balance", JSON.stringify(obj));
       socket.updateAllList("update-driver-withdraw-request", '1');
       res.status(200).json(appData);
-
+    }
     } else {
       appData.status = false;
       appData.error = 'User not found';
