@@ -3903,7 +3903,7 @@ users.post("/driver-balance/withdraw", async (req, res) => {
         appData.status = false;
         appData.error = 'No enough balance';
         res.status(400).json(appData);
-      }
+      } else {
       await connect.query(
         "INSERT INTO driver_withdrawal SET driver_id = ?,amount = ?, withdraw_type = 'Вывод средств', status = 0",
         [
@@ -3944,7 +3944,7 @@ users.post("/driver-balance/withdraw", async (req, res) => {
       socket.updateAllList("update-driver-balance", JSON.stringify(obj));
       socket.updateAllList("update-driver-withdraw-request", '1');
       res.status(200).json(appData);
-
+    }
     } else {
       appData.status = false;
       appData.error = 'User not found';
@@ -4058,8 +4058,8 @@ users.patch('/verify-withdrawal/verify/:id', async (req, res) => {
       const [withdrawals] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ?`, [withdrawal[0].driver_id]);
       const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status <> 2`, [withdrawal[0].driver_id]);
       const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [withdrawal[0].driver_id]);
-      const [subscriptionPayment] = await connect.query(`SELECT id from subscription_transaction where userid = ?`, [user.id]);
-      const [payments] = await connect.query("SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",[user.id]);
+      const [subscriptionPayment] = await connect.query(`SELECT id from subscription_transaction where userid = ?`, [withdrawal[0].driver_id]);
+      const [payments] = await connect.query("SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",[withdrawal[0].driver_id]);
       const totalWithdrawalAmountProcess = withdrawalsProccess.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
