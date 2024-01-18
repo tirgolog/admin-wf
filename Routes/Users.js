@@ -4036,7 +4036,7 @@ users.patch('/verify-withdrawal/verify/:id', async (req, res) => {
       await connect.query(
         "UPDATE driver_withdrawal SET status = 1 WHERE id = ?",
         [withdrawId]
-      );
+      ); 
 
       appData.status = true;
       const [withdrawalsProccess] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ? and status = 0`, [withdrawal[0].driver_id]);
