@@ -2098,13 +2098,11 @@ admin.post("/addDriverSubscription", async (req, res) => {
         appData.status = false;
         res.status(400).json(appData);
       } else {
-        const [paymentUser] = await connect.query(
-          "SELECT * FROM payment where  userid = ? ",
+        const [paymentUser] = await connect.query("SELECT * FROM payment where  userid = ? ",
           [user_id]
         );
         if (paymentUser.length > 0) {
-          const [subscription] = await connect.query(
-            "SELECT * FROM subscription where id = ? ",
+          const [subscription] = await connect.query("SELECT * FROM subscription where id = ? ",
             [subscription_id]
           );
           let valueofPayment;
@@ -2137,36 +2135,28 @@ admin.post("/addDriverSubscription", async (req, res) => {
        let balance = (totalActiveAmount + (totalPayments - totalSubscriptionPayment)) - totalWithdrawalAmount;
        
           // paymentUser active balance
-          if (balance>valueofPayment) {
-              let nextMonth = new Date(
-                new Date().setMonth(
-                  new Date().getMonth() + subscription[0].duration
-                )
+          if (balance > valueofPayment) {
+            let nextMonth = new Date(
+              new Date().setMonth(
+                new Date().getMonth() + subscription[0].duration
+              )
+            );
+            const [userUpdate] = await connect.query("UPDATE users_list SET subscription_id = ?, from_subscription = ? , to_subscription=?  WHERE id = ?",
+              [subscription_id, new Date(), nextMonth, user_id]
+            );
+            if (userUpdate.affectedRows == 1) {
+              const subscription_transaction = await connect.query("INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?",
+                [user_id, subscription_id, phone]
               );
-              const [userUpdate] = await connect.query(
-                "UPDATE users_list SET subscription_id = ?, from_subscription = ? , to_subscription=?  WHERE id = ?",
-                [
-                  subscription_id,
-                  new Date(),
-                  nextMonth,
-                  user_id,
-                ]
-              );
-              if (userUpdate.affectedRows==1) {
-                const subscription_transaction = await connect.query(
-                  "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?",
-                   [user_id, subscription_id, phone]
-               );
-               if (subscription_transaction.length>0) {
+              if (subscription_transaction.length > 0) {
                 appData.status = true;
                 res.status(200).json(appData);
-               }
-              }else{
-                appData.error = "Невозможно обновить данные пользователя";
-                appData.status = false;
-                res.status(400).json(appData);
               }
-              
+            } else {
+              appData.error = "Невозможно обновить данные пользователя";
+              appData.status = false;
+              res.status(400).json(appData);
+            }
           } else {
             appData.error = "Недостаточно средств на балансе";
             appData.status = false;
@@ -2195,12 +2185,54 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
     appData = { status: false };
   try {
     connect = await database.connection.getConnection();
-    const [rows] = await connect.query(
-      "SELECT users_list.phone, users_list.name, payment.amount FROM users_list JOIN payment ON users_list.id = payment.userid where users_list.id=? ",
+    const [rows] = await connect.query("SELECT id, phone, name FROM users_list where id = ? ",
       [driverId]
     );
     if (rows.length > 0) {
-      appData.data = rows;
+      const [withdrawalsProccess] = await connect.query(`SELECT amount from driver_withdrawal where driver_id = ? and status = 0`,
+        [rows[0]?.id]
+      );
+      const [withdrawals] = await connect.query(`SELECT amount from driver_withdrawal where driver_id = ?`,
+        [rows[0]?.id]
+      );
+      const [frozenBalance] = await connect.query(`SELECT amount from secure_transaction where dirverid = ? and status <> 2`,
+        [rows[0]?.id]
+      );
+      const [activeBalance] = await connect.query(`SELECT amount from secure_transaction where dirverid = ? and status = 2`,
+        [rows[0]?.id]
+      );
+      const [subscriptionPayment] = await connect.query(`SELECT id from subscription_transaction where userid = ?`,
+        [rows[0]?.id]
+      );
+      const [payments] = await connect.query("SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",
+        [rows[0].id]
+      );
+      const totalWithdrawalAmountProcess = withdrawalsProccess.reduce((accumulator, secure) => accumulator + +secure.amount,0);
+      const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + +secure.amount,0);
+      const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + +secure.amount,0);
+      const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + +secure.amount,0);
+      const totalPayments = payments.reduce(
+        (accumulator, secure) => accumulator + +secure.amount,
+        0
+      );
+      const totalSubscriptionPayment = subscriptionPayment.reduce(
+        (accumulator, subPay) => {
+          if (subPay.duration === 1) {
+            return accumulator + 80000;
+          } else if (subPay.duration === 3) {
+            return accumulator + 180000;
+          } else if (subPay.duration === 12) {
+            return accumulator + 570000;
+          }
+          return accumulator;
+        },
+        0
+      );
+      appData.data = rows[0];
+      appData.data.balance = totalActiveAmount + (totalPayments - totalSubscriptionPayment) -  totalWithdrawalAmount;
+      appData.data.balance_in_proccess = totalWithdrawalAmountProcess;
+      appData.data.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
+      console.log(appData.data);
       appData.status = true;
       res.status(200).json(appData);
     } else {
@@ -2233,9 +2265,140 @@ admin.get("/payment/:userId", async (req, res) => {
       appData.status = true;
       res.status(200).json(appData);
     } else {
-      appData.error = "Драйвер не найден";
+      // appData.error = "Драйвер не найден";
       appData.status = false;
       res.status(400).json(appData);
+    }
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/paymentFullBalance/:userId", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  const { userId } = req.params;
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      "SELECT id, phone, name FROM users_list WHERE id = ?",
+      [userId]
+    );
+    if (rows.length) {
+      const [withdrawalsProccess] = await connect.query(
+        `SELECT amount from driver_withdrawal where driver_id = ? and status = 0`,
+        [rows[0]?.id]
+      );
+      const [withdrawals] = await connect.query(
+        `SELECT amount from driver_withdrawal where driver_id = ?`,
+        [rows[0]?.id]
+      );
+      const [frozenBalance] = await connect.query(
+        `SELECT amount from secure_transaction where dirverid = ? and status <> 2`,
+        [rows[0]?.id]
+      );
+      const [activeBalance] = await connect.query(
+        `SELECT amount from secure_transaction where dirverid = ? and status = 2`,
+        [rows[0]?.id]
+      );
+      const [subscriptionPayment] = await connect.query(
+        `SELECT id from subscription_transaction where userid = ?`,
+        [rows[0]?.id]
+      );
+      const [payments] = await connect.query(
+        "SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",
+        [rows[0].id]
+      );
+      const totalWithdrawalAmountProcess = withdrawalsProccess.reduce((accumulator, secure) => accumulator + +secure.amount,0);
+      const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + +secure.amount,0);
+      const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + +secure.amount,0);
+      const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + +secure.amount,0);
+      const totalPayments = payments.reduce((accumulator, secure) => accumulator + +secure.amount,0);
+      const totalSubscriptionPayment = subscriptionPayment.reduce(
+        (accumulator, subPay) => {
+          if (subPay.duration === 1) {
+            return accumulator + 80000;
+          } else if (subPay.duration === 3) {
+            return accumulator + 180000;
+          } else if (subPay.duration === 12) {
+            return accumulator + 570000;
+          }
+          return accumulator;
+        },
+        0
+      );
+      appData.data = rows[0];
+      appData.data.balance = totalActiveAmount + (totalPayments - totalSubscriptionPayment) - totalWithdrawalAmount;
+      appData.data.balance_in_proccess = totalWithdrawalAmountProcess;
+      appData.data.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
+      appData.status = true;
+      res.status(200).json(appData);
+    } else {
+      res.status(200).json(appData);
+    }
+  } catch (err) {
+    console.log(err);
+    appData.message = err.message;
+    res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.post("/payment/history", async (req, res) => {
+  let connect,
+    appData = { status: false };
+  const { userid, from, limit } = req.body;
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      "SELECT  * from payment where userid=?  ORDER BY id DESC LIMIT ?, ?",
+      [userid, from, limit]
+    );
+    if (rows.length > 0) {
+      appData.data = rows;
+      appData.status = true;
+      res.status(200).json(appData);
+    } else {
+      // appData.error = "Драйвер не найден";
+      appData.status = false;
+      res.status(200).json(appData);
+    }
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.post("/driver_withdrawal/history", async (req, res) => {
+  let connect,
+    appData = { status: false };
+  const { driver_id, from, limit } = req.body;
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      "SELECT  * from driver_withdrawal where driver_id=? ORDER BY id DESC LIMIT ?, ?",
+      [driver_id, from, limit]
+    );
+    if (rows.length > 0) {
+      appData.data = rows;
+      appData.status = true;
+      res.status(200).json(appData);
+    } else {
+      // appData.error = "Драйвер не найден";
+      appData.status = false;
+      res.status(200).json(appData);
     }
   } catch (e) {
     appData.error = e.message;
