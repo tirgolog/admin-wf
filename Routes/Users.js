@@ -3991,8 +3991,8 @@ users.get("/driver/withdrawals", async (req, res) => {
         const [withdrawals] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ?`, [el.driver_id]);
         const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
         const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-        const [subscriptionPayment] = await connect.query(`SELECT id from subscription_transaction  where userid = ?`, [user.id]);
-        const [payments] = await connect.query("SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",[user.id]);
+        const [subscriptionPayment] = await connect.query(`SELECT id from subscription_transaction  where userid = ?`, [el.driver_id]);
+        const [payments] = await connect.query("SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",[el.driver_id]);
         const totalPayments = payments.reduce((accumulator, secure) => accumulator + secure.amount, 0);
         const totalSubscriptionPayment = subscriptionPayment.reduce((accumulator, subPay) => {
          if (subPay.duration === 1) {
