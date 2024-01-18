@@ -3881,9 +3881,24 @@ users.post("/driver-balance/withdraw", async (req, res) => {
         const user = row[0];
         let [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [user.id]);
         let [withdrawals] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ?`, [row[0]?.id]);
+        const [subscriptionPayment] = await connect.query(`SELECT id from subscription_transaction  where userid = ?`, [user.id]);
+        const [payments] = await connect.query("SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",[user.id]);
         let totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
         let totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-        let amount = totalActiveAmount - totalWithdrawalAmount;
+        const totalPayments = payments.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+        const totalSubscriptionPayment = subscriptionPayment.reduce((accumulator, subPay) => {
+         if (subPay.duration === 1) {
+           return accumulator + 80000;
+         } else if (subPay.duration === 3) {
+           return accumulator + 180000;
+         } else if (subPay.duration === 12) {
+           return accumulator + 570000;
+         }
+         // Default case when none of the conditions are met
+         return accumulator;
+       }, 0);
+        let amount = (totalActiveAmount + (totalPayments - totalSubscriptionPayment)) - totalWithdrawalAmount;
+        
         if(amount <= 0) {
         appData.status = false;
         appData.error = 'No enough balance';
@@ -3904,22 +3919,22 @@ users.post("/driver-balance/withdraw", async (req, res) => {
       totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       const [withdrawalsProccess] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ? and status = 0`, [user.id]);
       const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status <> 2`, [user.id]);
-      const [subscriptionPayment] = await connect.query(`SELECT id from subscription_transaction  where userid = ?`, [user.id]);
-      const [payments] = await connect.query("SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",[user.id]);
+      // const [subscriptionPayment] = await connect.query(`SELECT id from subscription_transaction  where userid = ?`, [user.id]);
+      // const [payments] = await connect.query("SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",[user.id]);
       const totalWithdrawalAmountProcess = withdrawalsProccess.reduce((accumulator, secure) => accumulator + secure.amount, 0);
       const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      const totalPayments = payments.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      const totalSubscriptionPayment = subscriptionPayment.reduce((accumulator, subPay) => {
-       if (subPay.duration === 1) {
-         return accumulator + 80000;
-       } else if (subPay.duration === 3) {
-         return accumulator + 180000;
-       } else if (subPay.duration === 12) {
-         return accumulator + 570000;
-       }
-       // Default case when none of the conditions are met
-       return accumulator;
-     }, 0);
+    //   const totalPayments = payments.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+    //   const totalSubscriptionPayment = subscriptionPayment.reduce((accumulator, subPay) => {
+    //    if (subPay.duration === 1) {
+    //      return accumulator + 80000;
+    //    } else if (subPay.duration === 3) {
+    //      return accumulator + 180000;
+    //    } else if (subPay.duration === 12) {
+    //      return accumulator + 570000;
+    //    }
+    //    // Default case when none of the conditions are met
+    //    return accumulator;
+    //  }, 0);
 
       const obj = {
         balance: (totalActiveAmount + (totalPayments - totalSubscriptionPayment)) - totalWithdrawalAmount,
