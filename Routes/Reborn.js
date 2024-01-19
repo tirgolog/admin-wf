@@ -236,7 +236,7 @@ reborn.post('/getAllUsers', async (req, res) => {
         appData = {status: false};
     try {
         connect = await database.connection.getConnection();
-        const [rows] = await connect.query('SELECT * FROM users_list WHERE user_type = 2 AND id LIKE ? AND IFNULL(name, ?) LIKE ? AND IFNULL(phone, ?) LIKE ? AND IFNULL(city, ?) LIKE ? AND IFNULL(date_reg, ?) LIKE ? AND IFNULL(date_last_login, ?) LIKE ? ORDER BY id LIMIT ?, ?',
+        const [rows] = await connect.query('SELECT * FROM users_list WHERE user_type = 2 AND id LIKE ? AND IFNULL(name, ?) LIKE ? AND IFNULL(phone, ?) LIKE ? AND IFNULL(city, ?) LIKE ? AND IFNULL(date_reg, ?) LIKE ? AND IFNULL(date_last_login, ?) LIKE ? ORDER BY id DESC LIMIT ?, ?',
             [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',city ? '%'+city+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%',from,limit]);
         const [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 2 AND id LIKE ? ORDER BY id DESC',[id ? id:'%']);
         if (rows.length){
