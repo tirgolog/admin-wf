@@ -132,17 +132,28 @@ admin.get("/getAllAgent", async (req, res) => {
 
 admin.put("/changeAgentBalance", async (req, res) => {
   let connect,
-    appData = { status: false };
-  agent_id = req.body.agent_id;
-  agent_balance = req.body.agent_balance;
+    appData = { status: false },
+    agent_id = req.body.agent_id,
+    agent_balance = req.body.agent_balance,
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+
   try {
     connect = await database.connection.getConnection();
-    const [rows] = await connect.query(
-      "UPDATE users_list SET agent_balance = ? WHERE id = ?",
-      [agent_balance, agent_id]
+    console.log(agent_id, agent_balance, userInfo.id)
+
+    const insertResult = await connect.query(
+      "INSERT INTO agent_transaction SET admin_id = ?, agent_id = ?, amount = ?, created_at = ?",
+      [userInfo.id, agent_id, agent_balance, new Date()]
     );
-    if (rows) {
-      appData.data = rows;
+
+    //     SELECT at.*, u_admin.name AS admin_name, u_agent.name AS agent_name
+    // FROM agent_transaction at
+    // LEFT JOIN users_list u_admin ON u_admin.id = at.admin_id
+    // LEFT JOIN users_list u_agent ON u_agent.id = at.agent_id;
+
+
+    if (insertResult) {
+      appData.data = insertResult;
       appData.status = true;
       res.status(200).json(appData);
     } else {
@@ -224,16 +235,16 @@ admin.post("/getAllUsers", async (req, res) => {
           let newUser = row;
           newUser.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-              "tirgo/clients/" +
-              row.id +
-              "/" +
-              row.avatar
+            "tirgo/clients/" +
+            row.id +
+            "/" +
+            row.avatar
           )
             ? process.env.SERVER_URL +
-              "tirgo/clients/" +
-              row.id +
-              "/" +
-              row.avatar
+            "tirgo/clients/" +
+            row.id +
+            "/" +
+            row.avatar
             : null;
           const [contacts] = await connect.query(
             "SELECT * FROM users_contacts WHERE user_id = ?",
@@ -269,16 +280,16 @@ admin.post("/getAllDrivers", async (req, res) => {
           let newUser = row;
           newUser.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-              "tirgo/drivers/" +
-              row.id +
-              "/" +
-              row.avatar
+            "tirgo/drivers/" +
+            row.id +
+            "/" +
+            row.avatar
           )
             ? process.env.SERVER_URL +
-              "tirgo/drivers/" +
-              row.id +
-              "/" +
-              row.avatar
+            "tirgo/drivers/" +
+            row.id +
+            "/" +
+            row.avatar
             : null;
           const [files] = await connect.query(
             "SELECT * FROM users_list_files WHERE user_id = ?",
@@ -289,16 +300,16 @@ admin.post("/getAllDrivers", async (req, res) => {
               let newFile = file;
               newFile.preview = fs.existsSync(
                 process.env.FILES_PATCH +
-                  "tirgo/drivers/" +
-                  row.id +
-                  "/" +
-                  file.name
+                "tirgo/drivers/" +
+                row.id +
+                "/" +
+                file.name
               )
                 ? process.env.SERVER_URL +
-                  "tirgo/drivers/" +
-                  row.id +
-                  "/" +
-                  file.name
+                "tirgo/drivers/" +
+                row.id +
+                "/" +
+                file.name
                 : null;
               return newFile;
             })
@@ -319,16 +330,16 @@ admin.post("/getAllDrivers", async (req, res) => {
                   let docks = filetruck;
                   docks.preview = fs.existsSync(
                     process.env.FILES_PATCH +
-                      "tirgo/drivers/" +
-                      row.id +
-                      "/" +
-                      filetruck.name
+                    "tirgo/drivers/" +
+                    row.id +
+                    "/" +
+                    filetruck.name
                   )
                     ? process.env.SERVER_URL +
-                      "tirgo/drivers/" +
-                      row.id +
-                      "/" +
-                      filetruck.name
+                    "tirgo/drivers/" +
+                    row.id +
+                    "/" +
+                    filetruck.name
                     : null;
                   return docks;
                 })
@@ -1297,16 +1308,16 @@ admin.post("/getAllOrders", async (req, res) => {
               let newItemUsers = item2;
               newItemUsers.avatar = fs.existsSync(
                 process.env.FILES_PATCH +
-                  "tirgo/drivers/" +
-                  item2.id +
-                  "/" +
-                  item2.avatar
+                "tirgo/drivers/" +
+                item2.id +
+                "/" +
+                item2.avatar
               )
                 ? process.env.SERVER_URL +
-                  "tirgo/drivers/" +
-                  item2.id +
-                  "/" +
-                  item2.avatar
+                "tirgo/drivers/" +
+                item2.id +
+                "/" +
+                item2.avatar
                 : null;
               return newItemUsers;
             })
@@ -1406,16 +1417,16 @@ admin.get("/getAllMessages", async (req, res) => {
           let newItem = item;
           newItem.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-              "tirgo/drivers/" +
-              item.user_id +
-              "/" +
-              item.avatar
+            "tirgo/drivers/" +
+            item.user_id +
+            "/" +
+            item.avatar
           )
             ? process.env.SERVER_URL +
-              "tirgo/drivers/" +
-              item.user_id +
-              "/" +
-              item.avatar
+            "tirgo/drivers/" +
+            item.user_id +
+            "/" +
+            item.avatar
             : null;
           const [messages] = await connect.query(
             "SELECT * FROM chat_support WHERE user_id = ? ORDER BY id",
@@ -2199,7 +2210,8 @@ admin.delete("/subscription/:id", async (req, res) => {
 
 admin.post("/addDriverSubscription", async (req, res) => {
   let connect,
-    appData = { status: false };
+    appData = { status: false },
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);;
   const { user_id, subscription_id, phone } = req.body;
   try {
     connect = await database.connection.getConnection();
@@ -2299,8 +2311,8 @@ admin.post("/addDriverSubscription", async (req, res) => {
             );
             if (userUpdate.affectedRows == 1) {
               const subscription_transaction = await connect.query(
-                "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?",
-                [user_id, subscription_id, phone]
+                "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, admin_id",
+                [user_id, subscription_id, phone, valueofPayment, userInfo.id]
               );
               if (subscription_transaction.length > 0) {
                 appData.status = true;
