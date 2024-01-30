@@ -689,7 +689,7 @@ admin.post("/addUser", async (req, res) => {
                     )
                   );
 
-
+ 
                   // const subscription_transaction = await connect.query(
                   //   "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, agent_id = ?",
                   //   [user_id, subscription_id, phone, valueofPayment, agent_id]
