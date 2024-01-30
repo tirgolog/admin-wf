@@ -139,18 +139,17 @@ admin.put("/changeAgentBalance", async (req, res) => {
 
   try {
     connect = await database.connection.getConnection();
-    console.log(agent_id, agent_balance, userInfo.id)
+    console.log(agent_id, agent_balance, userInfo.id);
 
     const insertResult = await connect.query(
       "INSERT INTO agent_transaction SET admin_id = ?, agent_id = ?, amount = ?, created_at = ?, type = 'Пополнение'",
       [userInfo.id, agent_id, agent_balance, new Date()]
     );
 
-    //     SELECT at.*, u_admin.name AS admin_name, u_agent.name AS agent_name
+    // SELECT at.*, u_admin.name AS admin_name, u_agent.name AS agent_name
     // FROM agent_transaction at
     // LEFT JOIN users_list u_admin ON u_admin.id = at.admin_id
     // LEFT JOIN users_list u_agent ON u_agent.id = at.agent_id;
-
 
     if (insertResult) {
       appData.data = insertResult;
@@ -196,6 +195,31 @@ admin.get("/getAgent/:agent_id", async (req, res) => {
   }
 });
 
+admin.get("/getAgentBalanse/:agent_id", async (req, res) => {
+  let connect,
+    appData = { status: false },
+    agent_id = req.params.agent_id;
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      "SELECT SUM(amount) AS total_amount FROM agent_transaction where agent_id = ?",
+      [agent_id]
+    );
+    if (rows.length) {
+      appData.status = true;
+      appData.data = rows[0];
+    }
+    res.status(200).json(appData);
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 admin.get("/sumOfDriversSubcription/:agent_id", async (req, res) => {
   let connect,
     appData = { status: false };
@@ -203,7 +227,13 @@ admin.get("/sumOfDriversSubcription/:agent_id", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "SELECT SUM(s.value) AS total_subscription_balance FROM users_list u JOIN subscription s ON u.subscription_id = s.id WHERE u.agent_id = ?",
+      `SELECT   SUM(CASE WHEN s.duration = 1 THEN 80000
+               WHEN s.duration = 3 THEN 180000
+               WHEN s.duration = 12 THEN 570000
+               ELSE 0 END) AS total_sum
+       FROM users_list u
+       JOIN subscription s ON u.subscription_id = s.id
+       WHERE u.agent_id = ?`,
       [agent_id]
     );
     if (rows.length) {
@@ -235,16 +265,16 @@ admin.post("/getAllUsers", async (req, res) => {
           let newUser = row;
           newUser.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-            "tirgo/clients/" +
-            row.id +
-            "/" +
-            row.avatar
+              "tirgo/clients/" +
+              row.id +
+              "/" +
+              row.avatar
           )
             ? process.env.SERVER_URL +
-            "tirgo/clients/" +
-            row.id +
-            "/" +
-            row.avatar
+              "tirgo/clients/" +
+              row.id +
+              "/" +
+              row.avatar
             : null;
           const [contacts] = await connect.query(
             "SELECT * FROM users_contacts WHERE user_id = ?",
@@ -280,16 +310,16 @@ admin.post("/getAllDrivers", async (req, res) => {
           let newUser = row;
           newUser.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-            "tirgo/drivers/" +
-            row.id +
-            "/" +
-            row.avatar
+              "tirgo/drivers/" +
+              row.id +
+              "/" +
+              row.avatar
           )
             ? process.env.SERVER_URL +
-            "tirgo/drivers/" +
-            row.id +
-            "/" +
-            row.avatar
+              "tirgo/drivers/" +
+              row.id +
+              "/" +
+              row.avatar
             : null;
           const [files] = await connect.query(
             "SELECT * FROM users_list_files WHERE user_id = ?",
@@ -300,16 +330,16 @@ admin.post("/getAllDrivers", async (req, res) => {
               let newFile = file;
               newFile.preview = fs.existsSync(
                 process.env.FILES_PATCH +
-                "tirgo/drivers/" +
-                row.id +
-                "/" +
-                file.name
+                  "tirgo/drivers/" +
+                  row.id +
+                  "/" +
+                  file.name
               )
                 ? process.env.SERVER_URL +
-                "tirgo/drivers/" +
-                row.id +
-                "/" +
-                file.name
+                  "tirgo/drivers/" +
+                  row.id +
+                  "/" +
+                  file.name
                 : null;
               return newFile;
             })
@@ -330,16 +360,16 @@ admin.post("/getAllDrivers", async (req, res) => {
                   let docks = filetruck;
                   docks.preview = fs.existsSync(
                     process.env.FILES_PATCH +
-                    "tirgo/drivers/" +
-                    row.id +
-                    "/" +
-                    filetruck.name
+                      "tirgo/drivers/" +
+                      row.id +
+                      "/" +
+                      filetruck.name
                   )
                     ? process.env.SERVER_URL +
-                    "tirgo/drivers/" +
-                    row.id +
-                    "/" +
-                    filetruck.name
+                      "tirgo/drivers/" +
+                      row.id +
+                      "/" +
+                      filetruck.name
                     : null;
                   return docks;
                 })
@@ -688,44 +718,52 @@ admin.post("/addUser", async (req, res) => {
                       new Date().getMonth() + subscription[0].duration
                     )
                   );
-
- 
-                  // const subscription_transaction = await connect.query(
-                  //   "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, agent_id = ?",
-                  //   [user_id, subscription_id, phone, valueofPayment, agent_id]
-                  // );
-
-
-                  const [insert] = await connect.query(
-                    "INSERT INTO users_list SET country = ?,city = ?,geo_id = ?,iso_code = ?,city_lat = ?,city_lng = ?,phone = ?,user_type = 1,name = ?,birthday = ?,email = ?, agent_id = ?, subscription_id = ?, date_last_login = NULL, from_subscription = ? , to_subscription=? ",
+                  const subscription_transaction = await connect.query(
+                    "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, agent_id = ?",
                     [
-                      cityInfo.country,
-                      cityInfo.city ? cityInfo.city : cityInfo.region,
-                      cityInfo.geoname_id ? cityInfo.geoname_id : "0",
-                      cityInfo.country_iso_code,
-                      cityInfo.geo_lat,
-                      cityInfo.geo_lon,
-                      phone,
-                      data.name,
-                      new Date(data.birthday),
-                      data.email,
-                      data.agent_id,
+                      user_id,
                       data.subscription_id,
-                      new Date(),
-                      nextthreeMonth,
+                      phone,
+                      valueofPayment,
+                      data.agent_id,
                     ]
                   );
-                  await connect.query(
-                    "INSERT INTO users_contacts SET text=?,user_type = 1,user_id = ?,verify = 1",
-                    [phone, insert.insertId]
-                  );
-                  await connect.query(
-                    "INSERT INTO users_transport SET type = ?,user_id = ?",
-                    [data.type, insert.insertId]
-                  );
-                  appData.id = insert.insertId;
-                  appData.status = true;
-                  res.status(200).json(appData);
+                  if (subscription_transaction.length > 0) {
+                    const [insert] = await connect.query(
+                      "INSERT INTO users_list SET country = ?,city = ?,geo_id = ?,iso_code = ?,city_lat = ?,city_lng = ?,phone = ?,user_type = 1,name = ?,birthday = ?,email = ?, agent_id = ?, subscription_id = ?, date_last_login = NULL, from_subscription = ? , to_subscription=? ",
+                      [
+                        cityInfo.country,
+                        cityInfo.city ? cityInfo.city : cityInfo.region,
+                        cityInfo.geoname_id ? cityInfo.geoname_id : "0",
+                        cityInfo.country_iso_code,
+                        cityInfo.geo_lat,
+                        cityInfo.geo_lon,
+                        phone,
+                        data.name,
+                        new Date(data.birthday),
+                        data.email,
+                        data.agent_id,
+                        data.subscription_id,
+                        new Date(),
+                        nextthreeMonth,
+                      ]
+                    );
+                    await connect.query(
+                      "INSERT INTO users_contacts SET text=?,user_type = 1,user_id = ?,verify = 1",
+                      [phone, insert.insertId]
+                    );
+                    await connect.query(
+                      "INSERT INTO users_transport SET type = ?,user_id = ?",
+                      [data.type, insert.insertId]
+                    );
+                    appData.id = insert.insertId;
+                    appData.status = true;
+                    res.status(200).json(appData);
+                  } else {
+                    appData.error = "не могу добавить транзакцию подписки";
+                    appData.status = false;
+                    res.status(400).json(appData);
+                  }
                 } else {
                   appData.error = "Не могу установить новый баланс";
                   appData.status = false;
@@ -751,36 +789,52 @@ admin.post("/addUser", async (req, res) => {
                       new Date().getMonth() + subscription[0].duration
                     )
                   );
-                  const [insert] = await connect.query(
-                    "INSERT INTO users_list SET country = ?,city = ?,geo_id = ?,iso_code = ?,city_lat = ?,city_lng = ?,phone = ?,user_type = 1,name = ?,birthday = ?,email = ?, agent_id = ?, subscription_id = ?, date_last_login = NULL, from_subscription = ? , to_subscription=? ",
+                  const subscription_transaction = await connect.query(
+                    "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, agent_id = ?",
                     [
-                      cityInfo.country,
-                      cityInfo.city ? cityInfo.city : cityInfo.region,
-                      cityInfo.geoname_id ? cityInfo.geoname_id : "0",
-                      cityInfo.country_iso_code,
-                      cityInfo.geo_lat,
-                      cityInfo.geo_lon,
-                      phone,
-                      data.name,
-                      new Date(data.birthday),
-                      data.email,
-                      data.agent_id,
+                      user_id,
                       data.subscription_id,
-                      new Date(),
-                      nextthreeMonth,
+                      phone,
+                      valueofPayment,
+                      data.agent_id,
                     ]
                   );
-                  await connect.query(
-                    "INSERT INTO users_contacts SET text=?,user_type = 1,user_id = ?,verify = 1",
-                    [phone, insert.insertId]
-                  );
-                  await connect.query(
-                    "INSERT INTO users_transport SET type = ?,user_id = ?",
-                    [data.type, insert.insertId]
-                  );
-                  appData.id = insert.insertId;
-                  appData.status = true;
-                  res.status(200).json(appData);
+                  if (subscription_transaction.length > 0) {
+                    const [insert] = await connect.query(
+                      "INSERT INTO users_list SET country = ?,city = ?,geo_id = ?,iso_code = ?,city_lat = ?,city_lng = ?,phone = ?,user_type = 1,name = ?,birthday = ?,email = ?, agent_id = ?, subscription_id = ?, date_last_login = NULL, from_subscription = ? , to_subscription=? ",
+                      [
+                        cityInfo.country,
+                        cityInfo.city ? cityInfo.city : cityInfo.region,
+                        cityInfo.geoname_id ? cityInfo.geoname_id : "0",
+                        cityInfo.country_iso_code,
+                        cityInfo.geo_lat,
+                        cityInfo.geo_lon,
+                        phone,
+                        data.name,
+                        new Date(data.birthday),
+                        data.email,
+                        data.agent_id,
+                        data.subscription_id,
+                        new Date(),
+                        nextthreeMonth,
+                      ]
+                    );
+                    await connect.query(
+                      "INSERT INTO users_contacts SET text=?,user_type = 1,user_id = ?,verify = 1",
+                      [phone, insert.insertId]
+                    );
+                    await connect.query(
+                      "INSERT INTO users_transport SET type = ?,user_id = ?",
+                      [data.type, insert.insertId]
+                    );
+                    appData.id = insert.insertId;
+                    appData.status = true;
+                    res.status(200).json(appData);
+                  } else {
+                    appData.error = "не могу добавить транзакцию подписки";
+                    appData.status = false;
+                    res.status(400).json(appData);
+                  }
                 } else {
                   appData.error = "Не могу установить новый баланс";
                   appData.status = false;
@@ -806,36 +860,52 @@ admin.post("/addUser", async (req, res) => {
                       new Date().getMonth() + subscription[0].duration
                     )
                   );
-                  const [insert] = await connect.query(
-                    "INSERT INTO users_list SET country = ?,city = ?,geo_id = ?,iso_code = ?,city_lat = ?,city_lng = ?,phone = ?,user_type = 1,name = ?,birthday = ?,email = ?, agent_id = ?, subscription_id = ?, date_last_login = NULL, from_subscription = ? , to_subscription=? ",
+                  const subscription_transaction = await connect.query(
+                    "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, agent_id = ?",
                     [
-                      cityInfo.country,
-                      cityInfo.city ? cityInfo.city : cityInfo.region,
-                      cityInfo.geoname_id ? cityInfo.geoname_id : "0",
-                      cityInfo.country_iso_code,
-                      cityInfo.geo_lat,
-                      cityInfo.geo_lon,
-                      phone,
-                      data.name,
-                      new Date(data.birthday),
-                      data.email,
-                      data.agent_id,
+                      user_id,
                       data.subscription_id,
-                      new Date(),
-                      nextthreeMonth,
+                      phone,
+                      valueofPayment,
+                      data.agent_id,
                     ]
                   );
-                  await connect.query(
-                    "INSERT INTO users_contacts SET text=?,user_type = 1,user_id = ?,verify = 1",
-                    [phone, insert.insertId]
-                  );
-                  await connect.query(
-                    "INSERT INTO users_transport SET type = ?,user_id = ?",
-                    [data.type, insert.insertId]
-                  );
-                  appData.id = insert.insertId;
-                  appData.status = true;
-                  res.status(200).json(appData);
+                  if (subscription_transaction.length > 0) {
+                    const [insert] = await connect.query(
+                      "INSERT INTO users_list SET country = ?,city = ?,geo_id = ?,iso_code = ?,city_lat = ?,city_lng = ?,phone = ?,user_type = 1,name = ?,birthday = ?,email = ?, agent_id = ?, subscription_id = ?, date_last_login = NULL, from_subscription = ? , to_subscription=? ",
+                      [
+                        cityInfo.country,
+                        cityInfo.city ? cityInfo.city : cityInfo.region,
+                        cityInfo.geoname_id ? cityInfo.geoname_id : "0",
+                        cityInfo.country_iso_code,
+                        cityInfo.geo_lat,
+                        cityInfo.geo_lon,
+                        phone,
+                        data.name,
+                        new Date(data.birthday),
+                        data.email,
+                        data.agent_id,
+                        data.subscription_id,
+                        new Date(),
+                        nextthreeMonth,
+                      ]
+                    );
+                    await connect.query(
+                      "INSERT INTO users_contacts SET text=?,user_type = 1,user_id = ?,verify = 1",
+                      [phone, insert.insertId]
+                    );
+                    await connect.query(
+                      "INSERT INTO users_transport SET type = ?,user_id = ?",
+                      [data.type, insert.insertId]
+                    );
+                    appData.id = insert.insertId;
+                    appData.status = true;
+                    res.status(200).json(appData);
+                  } else {
+                    appData.error = "не могу добавить транзакцию подписки";
+                    appData.status = false;
+                    res.status(400).json(appData);
+                  }
                 } else {
                   appData.error = "Не могу установить новый баланс";
                   appData.status = false;
@@ -1316,16 +1386,16 @@ admin.post("/getAllOrders", async (req, res) => {
               let newItemUsers = item2;
               newItemUsers.avatar = fs.existsSync(
                 process.env.FILES_PATCH +
-                "tirgo/drivers/" +
-                item2.id +
-                "/" +
-                item2.avatar
+                  "tirgo/drivers/" +
+                  item2.id +
+                  "/" +
+                  item2.avatar
               )
                 ? process.env.SERVER_URL +
-                "tirgo/drivers/" +
-                item2.id +
-                "/" +
-                item2.avatar
+                  "tirgo/drivers/" +
+                  item2.id +
+                  "/" +
+                  item2.avatar
                 : null;
               return newItemUsers;
             })
@@ -1425,16 +1495,16 @@ admin.get("/getAllMessages", async (req, res) => {
           let newItem = item;
           newItem.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-            "tirgo/drivers/" +
-            item.user_id +
-            "/" +
-            item.avatar
+              "tirgo/drivers/" +
+              item.user_id +
+              "/" +
+              item.avatar
           )
             ? process.env.SERVER_URL +
-            "tirgo/drivers/" +
-            item.user_id +
-            "/" +
-            item.avatar
+              "tirgo/drivers/" +
+              item.user_id +
+              "/" +
+              item.avatar
             : null;
           const [messages] = await connect.query(
             "SELECT * FROM chat_support WHERE user_id = ? ORDER BY id",
@@ -2219,7 +2289,7 @@ admin.delete("/subscription/:id", async (req, res) => {
 admin.post("/addDriverSubscription", async (req, res) => {
   let connect,
     appData = { status: false },
-    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);;
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   const { user_id, subscription_id, phone } = req.body;
   try {
     connect = await database.connection.getConnection();
@@ -2749,16 +2819,23 @@ admin.post("/addUserByAgent", async (req, res) => {
                     new Date().getMonth() + subscription[0].duration
                   )
                 );
-
-                const [edit] = await connect.query(
-                  "UPDATE users_list SET subscription_id = ? , from_subscription = ? , to_subscription=?  WHERE id =?",
-                  [subscription_id, new Date(), nextthreeMonth, user_id]
+                const subscription_transaction = await connect.query(
+                  "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, agent_id = ?",
+                  [user_id, subscription_id, phone, paymentValue, agent_id]
                 );
-                console.log(user_id);
-                console.log(edit);
-                appData.data = edit;
-                appData.status = true;
-                res.status(200).json(appData);
+                if (subscription_transaction.length > 0) {
+                  const [edit] = await connect.query(
+                    "UPDATE users_list SET subscription_id = ? , from_subscription = ? , to_subscription=?  WHERE id =?",
+                    [subscription_id, new Date(), nextthreeMonth, user_id]
+                  );
+                  appData.data = edit;
+                  appData.status = true;
+                  res.status(200).json(appData);
+                } else {
+                  appData.error = "не могу добавить транзакцию подписки";
+                  appData.status = false;
+                  res.status(400).json(appData);
+                }
               } else {
                 appData.error = "Не могу установить новый баланс";
                 appData.status = false;
@@ -2784,13 +2861,23 @@ admin.post("/addUserByAgent", async (req, res) => {
                     new Date().getMonth() + subscription[0].duration
                   )
                 );
-                const [edit] = await connect.query(
-                  "UPDATE users_list SET from_subscription = ? , to_subscription=?  WHERE id =?",
-                  [new Date(), nextthreeMonth, user_id]
+                const subscription_transaction = await connect.query(
+                  "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, agent_id = ?",
+                  [user_id, subscription_id, phone, paymentValue, agent_id]
                 );
-                appData.data = edit;
-                appData.status = true;
-                res.status(200).json(appData);
+                if (subscription_transaction.length > 0) {
+                  const [edit] = await connect.query(
+                    "UPDATE users_list SET subscription_id = ? , from_subscription = ? , to_subscription=?  WHERE id =?",
+                    [subscription_id, new Date(), nextthreeMonth, user_id]
+                  );
+                  appData.data = edit;
+                  appData.status = true;
+                  res.status(200).json(appData);
+                } else {
+                  appData.error = "не могу добавить транзакцию подписки";
+                  appData.status = false;
+                  res.status(400).json(appData);
+                }
               } else {
                 appData.error = "Не могу установить новый баланс";
                 appData.status = false;
@@ -2816,13 +2903,23 @@ admin.post("/addUserByAgent", async (req, res) => {
                     new Date().getMonth() + subscription[0].duration
                   )
                 );
-                const [edit] = await connect.query(
-                  "UPDATE users_list SET from_subscription = ? , to_subscription=?  WHERE id =?",
-                  [new Date(), nextthreeMonth, user_id]
+                const subscription_transaction = await connect.query(
+                  "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, agent_id = ?",
+                  [user_id, subscription_id, phone, paymentValue, agent_id]
                 );
-                appData.data = edit;
-                appData.status = true;
-                res.status(200).json(appData);
+                if (subscription_transaction.length > 0) {
+                  const [edit] = await connect.query(
+                    "UPDATE users_list SET subscription_id = ? , from_subscription = ? , to_subscription=?  WHERE id =?",
+                    [subscription_id, new Date(), nextthreeMonth, user_id]
+                  );
+                  appData.data = edit;
+                  appData.status = true;
+                  res.status(200).json(appData);
+                } else {
+                  appData.error = "не могу добавить транзакцию подписки";
+                  appData.status = false;
+                  res.status(400).json(appData);
+                }
               } else {
                 appData.error = "Не могу установить новый баланс";
                 appData.status = false;
@@ -2842,6 +2939,62 @@ admin.post("/addUserByAgent", async (req, res) => {
       }
     }
     // res.status(200).json(appData);
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.post("/subscription-history", async (req, res) => {
+  let connect,
+    appData = { status: false };
+  const { agent_id } = req.body;
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      `SELECT 
+      id,
+      (SELECT u.name FROM users_list u WHERE u.id = t.agent_id) AS agent_name,
+      (SELECT u.name FROM users_list u WHERE u.id = t.admin_id) AS admin_name,
+      amount,
+      type,
+      created_at,
+      '' as user_name,
+      '' as userid
+  FROM 
+      agent_transaction t
+  WHERE 
+      t.agent_id = ? 
+  UNION ALL 
+  SELECT 
+      id,
+      (SELECT u.name FROM users_list u WHERE u.id = s.agent_id) AS agent_name,  
+      '' as admin_name,
+      amount,
+      'Подписка' as type,
+      created_at,
+      (SELECT u.name FROM users_list u WHERE u.id = s.userid) AS user_name,
+      s.userid
+  FROM 
+      subscription_transaction s 
+  WHERE 
+      s.agent_id = ? 
+  `,
+      [agent_id, agent_id]
+    );
+    console.log(rows);
+    if (rows.length > 0) {
+      appData.data = rows;
+      appData.status = true;
+      res.status(200).json(appData);
+    } else {
+      appData.status = false;
+      res.status(400).json(appData);
+    }
   } catch (e) {
     appData.error = e.message;
     res.status(400).json(appData);
