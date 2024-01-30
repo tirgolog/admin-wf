@@ -142,7 +142,7 @@ admin.put("/changeAgentBalance", async (req, res) => {
     console.log(agent_id, agent_balance, userInfo.id)
 
     const insertResult = await connect.query(
-      "INSERT INTO agent_transaction SET admin_id = ?, agent_id = ?, amount = ?, created_at = ?",
+      "INSERT INTO agent_transaction SET admin_id = ?, agent_id = ?, amount = ?, created_at = ?, type = 'Пополнение'",
       [userInfo.id, agent_id, agent_balance, new Date()]
     );
 
@@ -688,6 +688,14 @@ admin.post("/addUser", async (req, res) => {
                       new Date().getMonth() + subscription[0].duration
                     )
                   );
+
+
+                  // const subscription_transaction = await connect.query(
+                  //   "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, agent_id = ?",
+                  //   [user_id, subscription_id, phone, valueofPayment, agent_id]
+                  // );
+
+
                   const [insert] = await connect.query(
                     "INSERT INTO users_list SET country = ?,city = ?,geo_id = ?,iso_code = ?,city_lat = ?,city_lng = ?,phone = ?,user_type = 1,name = ?,birthday = ?,email = ?, agent_id = ?, subscription_id = ?, date_last_login = NULL, from_subscription = ? , to_subscription=? ",
                     [
@@ -2311,7 +2319,7 @@ admin.post("/addDriverSubscription", async (req, res) => {
             );
             if (userUpdate.affectedRows == 1) {
               const subscription_transaction = await connect.query(
-                "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, admin_id",
+                "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, admin_id = ?",
                 [user_id, subscription_id, phone, valueofPayment, userInfo.id]
               );
               if (subscription_transaction.length > 0) {
