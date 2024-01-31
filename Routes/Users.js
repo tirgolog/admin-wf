@@ -553,23 +553,24 @@ users.post("/login", async (req, res) => {
       console.log("code Russian", code);
       await rp(options);
       send_sms_res = "waiting";
-    } else {
-      console.log(phone);
-      sendpulse.init(
-        API_USER_ID,
-        API_SECRET,
-        TOKEN_STORAGE,
-        async function (res) {
-          await sendpulse.smsSend(
-            answerGetter,
-            "TIRGO",
-            ["+" + phone],
-            "Confirmation code " + code
-          );
-        }
-      );
-      send_sms_res = "waiting";
     }
+    //  else {
+    //   console.log(phone);
+    //   sendpulse.init(
+    //     API_USER_ID,
+    //     API_SECRET,
+    //     TOKEN_STORAGE,
+    //     async function  (res) {
+    //       await sendpulse.smsSend(
+    //         answerGetter,
+    //         "TIRGO",
+    //         ["+" + phone],
+    //         "Confirmation code " + code
+    //       );
+    //     }
+    //   );
+    //   send_sms_res = "waiting";
+    // }
     const [rows] = await connect.query(
       "SELECT * FROM users_contacts WHERE text = ? AND user_type = 1 AND verify = 1",
       [phone]
@@ -664,22 +665,23 @@ users.post("/sms-verification", async (req, res) => {
       console.log("code Russian", code);
       await rp(options);
       send_sms_res = "waiting";
-    } else {
-      sendpulse.init(
-        API_USER_ID,
-        API_SECRET,
-        TOKEN_STORAGE,
-        async function (res) {
-          await sendpulse.smsSend(
-            answerGetter,
-            "TIRGO",
-            ["+" + phone],
-            "Confirmation code " + code
-          );
-        }
-      );
-      send_sms_res = "waiting";
-    }
+    } 
+    // else {
+    //   sendpulse.init(
+    //     API_USER_ID,
+    //     API_SECRET,
+    //     TOKEN_STORAGE,
+    //     async function (res) {
+    //       await sendpulse.smsSend(
+    //         answerGetter,
+    //         "TIRGO",
+    //         ["+" + phone],
+    //         "Confirmation code " + code
+    //       );
+    //     }
+    //   );
+    //   send_sms_res = "waiting";
+    // }
     await connect.query(
       "UPDATE users_list SET verification_code = ?  WHERE phone= ? ",
       [code, phone]
@@ -735,22 +737,23 @@ users.post("/loginClient", async (req, res) => {
       console.log("code Russian", code);
       await rp(options);
       send_sms_res = "waiting";
-    } else {
-      sendpulse.init(
-        API_USER_ID,
-        API_SECRET,
-        TOKEN_STORAGE,
-        async function (res) {
-          await sendpulse.smsSend(
-            answerGetter,
-            "TIRGO",
-            ["+" + phone],
-            "Confirmation code " + code
-          );
-        }
-      );
-      send_sms_res = "waiting";
-    }
+    } 
+    // else {
+    //   sendpulse.init(
+    //     API_USER_ID,
+    //     API_SECRET,
+    //     TOKEN_STORAGE,
+    //     async function (res) {
+    //       await sendpulse.smsSend(
+    //         answerGetter,
+    //         "TIRGO",
+    //         ["+" + phone],
+    //         "Confirmation code " + code
+    //       );
+    //     }
+    //   );
+    //   send_sms_res = "waiting";
+    // }
     const [rows] = await connect.query(
       "SELECT * FROM users_contacts WHERE text = ? AND user_type = 2",
       [phone]
@@ -974,21 +977,6 @@ users.post("/addContact", async (req, res) => {
         console.log("send_sms_res", send_sms_res);
         //send_sms_res = await sendSms(phone,code,country_code)
       } else if (phone.substr(0, 2) !== "79" && phone.substr(0, 2) !== "77") {
-        sendpulse.init(
-          API_USER_ID,
-          API_SECRET,
-          TOKEN_STORAGE,
-          async function (res) {
-            await sendpulse.smsSend(
-              answerGetter,
-              "TIRGO",
-              ["+" + phone],
-              "Confirmation code " + code
-            );
-          }
-        );
-        send_sms_res = "waiting";
-      } else {
         let options = {
           method: "GET",
           uri:
@@ -1005,7 +993,23 @@ users.post("/addContact", async (req, res) => {
         console.log("code Russian", code);
         await rp(options);
         send_sms_res = "waiting";
-      }
+      } 
+      // else {
+      //   sendpulse.init(
+      //     API_USER_ID,
+      //     API_SECRET,
+      //     TOKEN_STORAGE,
+      //     async function (res) {
+      //       await sendpulse.smsSend(
+      //         answerGetter,
+      //         "TIRGO",
+      //         ["+" + phone],
+      //         "Confirmation code " + code
+      //       );
+      //     }
+      //   );
+      //   send_sms_res = "waiting";
+      // }
       if (send_sms_res === "waiting") {
         const [insert] = await connect.query(
           "INSERT INTO users_contacts SET type = ?,text = ?,telegram = ?,whatsapp = ?,viber = ?,user_id = ?,verify_code = ?",
