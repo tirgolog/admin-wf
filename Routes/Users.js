@@ -276,9 +276,9 @@ async function sendSmsGlobal(phone, code, country_code) {
   }
 }
 async function sendSmsPlayMobile(phone, code, country_code) {
-  console.log(phone, 'playmobile');
-  console.log(code, 'playmobile');
-  console.log(country_code, 'playmobile');
+  console.log(phone, "playmobile");
+  console.log(code, "playmobile");
+  console.log(country_code, "playmobile");
   let options = {
     method: "POST",
     uri: "http://91.204.239.44/broker-api/send",
@@ -302,11 +302,11 @@ async function sendSmsPlayMobile(phone, code, country_code) {
         "Basic " + Buffer.from("tirgo:C63Fs89yuN").toString("base64"),
     },
   };
-  console.log( "a" + new Date().getTime().toString())
+  console.log("a" + new Date().getTime().toString());
   try {
-    console.log('before responce')
+    console.log("before responce");
     let rp_res = await rp(options);
-    console.log(rp_res, 'responce')
+    console.log(rp_res, "responce");
     if (rp_res === "Request is received") {
       return "waiting";
     } else {
@@ -320,18 +320,24 @@ async function sendSmsPlayMobile(phone, code, country_code) {
 }
 
 async function sendSmsOson(phone, code) {
-  console.log(phone, 'phone OSON');
-  console.log(code, 'phone code OSON');
-  const txn_id = generateUniqueId(); 
-  const str_hash = generateHash(txn_id, 'tirgo', 'TIRGO', phone, 'f498f64594b4f0b844ba45b79d4d0d4f');
-  const message =   "Confirmation code " + code;
+  console.log(phone, "phone OSON");
+  console.log(code, "phone code OSON");
+  const txn_id = generateUniqueId();
+  const str_hash = generateHash(
+    txn_id,
+    "tirgo",
+    "TIRGO",
+    phone,
+    "f498f64594b4f0b844ba45b79d4d0d4f"
+  );
+  const message = "Confirmation code " + code;
   const params = {
-    from: 'TIRGO',
+    from: "TIRGO",
     phone_number: phone,
     msg: message,
     str_hash: str_hash,
     txn_id: txn_id,
-    login: 'tirgo',
+    login: "tirgo",
   };
   let options = {
     method: "GET",
@@ -340,7 +346,7 @@ async function sendSmsOson(phone, code) {
   };
   try {
     let rp_res = await rp(options);
-    if ((JSON.parse(rp_res)).status=='ok') {
+    if (JSON.parse(rp_res).status == "ok") {
       return "waiting";
     } else {
       return false;
@@ -406,13 +412,13 @@ async function sendSms(phone, code, country_code) {
 }
 
 function generateUniqueId() {
-  return crypto.randomBytes(16).toString('hex');
+  return crypto.randomBytes(16).toString("hex");
 }
 
 function generateHash(txn_id, login, sender, phone_number, hash) {
   const dlm = ";";
   const hashString = `${txn_id}${dlm}${login}${dlm}${sender}${dlm}${phone_number}${dlm}${hash}`;
-  return crypto.createHash('sha256').update(hashString).digest('hex');
+  return crypto.createHash("sha256").update(hashString).digest("hex");
 }
 
 users.get("/getTokenEskiz", async function (req, res) {
@@ -486,11 +492,11 @@ async function getCityFromLatLng(lat, lng) {
 users.post("/findCity", async (req, res) => {
   console.log(req.body);
   let query = {
-    query: req.body.query,
-    count: 10,
-    restrict_value: true,
-    locations: [{ country: "*" }],
-  },
+      query: req.body.query,
+      count: 10,
+      restrict_value: true,
+      locations: [{ country: "*" }],
+    },
     appData = { status: false },
     options = {
       method: "POST",
@@ -536,7 +542,7 @@ users.post("/login", async (req, res) => {
       send_sms_res = await sendSmsOson(phone, code);
       console.log("send_sms_res", send_sms_res);
       //send_sms_res = await sendSms(phone,code,country_code)
-    }  else if (phone.substr(0, 2) === "79") {
+    } else if (phone.substr(0, 2) === "79") {
       let options = {
         method: "GET",
         uri:
@@ -591,13 +597,13 @@ users.post("/login", async (req, res) => {
           "SELECT * FROM users_contacts WHERE text = ? AND user_type = 1 AND verify = 0",
           [phone]
         );
-        if (notVerified.length>0) {
+        if (notVerified.length > 0) {
           await connect.query(
             "UPDATE users_contacts SET verify_code = ? WHERE text = ? AND user_type = 1",
             [code, phone]
           );
           appData.status = true;
-        }else{
+        } else {
           const [insert] = await connect.query(
             "INSERT INTO users_list SET verify_code=?,phone=?,user_type = 1",
             [code, phone]
@@ -608,7 +614,6 @@ users.post("/login", async (req, res) => {
           );
           appData.status = true;
         }
-    
       } else {
         appData.error = "Не удалось отправить SMS";
       }
@@ -642,13 +647,11 @@ users.post("/sms-verification", async (req, res) => {
     if (phone.substr(0, 3) === "998") {
       send_sms_res = await sendSmsPlayMobile(phone, code, country_code);
       console.log("send_sms_res", send_sms_res);
-    } 
-    else if (phone.substr(0, 3) === "992") {
+    } else if (phone.substr(0, 3) === "992") {
       send_sms_res = await sendSmsOson(phone, code);
       console.log("send_sms_res", send_sms_res);
       //send_sms_res = await sendSms(phone,code,country_code)
-    } 
-    else if (phone.substr(0, 2) === "79") {
+    } else if (phone.substr(0, 2) === "79") {
       let options = {
         method: "GET",
         uri:
@@ -659,13 +662,13 @@ users.post("/sms-verification", async (req, res) => {
         json: false,
         headers: {
           Authorization:
-          "Basic " + Buffer.from("fxkKt7iR:fTsODP6m").toString("base64"),
+            "Basic " + Buffer.from("fxkKt7iR:fTsODP6m").toString("base64"),
         },
       };
       console.log("code Russian", code);
       await rp(options);
       send_sms_res = "waiting";
-    } 
+    }
     // else {
     //   sendpulse.init(
     //     API_USER_ID,
@@ -719,8 +722,7 @@ users.post("/loginClient", async (req, res) => {
       send_sms_res = await sendSmsOson(phone, code);
       console.log("send_sms_res", send_sms_res);
       //send_sms_res = await sendSms(phone,code,country_code)
-    } 
-    else if (phone.substr(0, 2) === "79") {
+    } else if (phone.substr(0, 2) === "79") {
       let options = {
         method: "GET",
         uri:
@@ -731,13 +733,13 @@ users.post("/loginClient", async (req, res) => {
         json: false,
         headers: {
           Authorization:
-          "Basic " + Buffer.from("fxkKt7iR:fTsODP6m").toString("base64"),
+            "Basic " + Buffer.from("fxkKt7iR:fTsODP6m").toString("base64"),
         },
       };
       console.log("code Russian", code);
       await rp(options);
       send_sms_res = "waiting";
-    } 
+    }
     // else {
     //   sendpulse.init(
     //     API_USER_ID,
@@ -892,32 +894,32 @@ users.post("/codeverifyClient", async (req, res) => {
   }
 });
 
-users.use((req, res, next) => {
-  let token =
-    req.body.token ||
-    req.headers["token"] ||
-    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-  let appData = {};
-  
-  if (token) {
-    jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
-      if (err) {
-        console.error('JWT Verification Error:', err);
-        appData["error"] = err;
-        appData["data"] = "Token is invalid";
-        res.status(401).json(appData);
-      } else {
-        // Attach user information from the decoded token to the request
-        req.user = decoded;
-        next();
-      }
-    });
-  } else {
-    appData["error"] = 1;
-    appData["data"] = "Token is null";
-    res.status(401).json(appData);
-  }
-});
+// users.use((req, res, next) => {
+//   let token =
+//     req.body.token ||
+//     req.headers["token"] ||
+//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+//   let appData = {};
+
+//   if (token) {
+//     jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
+//       if (err) {
+//         console.error('JWT Verification Error:', err);
+//         appData["error"] = err;
+//         appData["data"] = "Token is invalid";
+//         res.status(401).json(appData);
+//       } else {
+//         // Attach user information from the decoded token to the request
+//         req.user = decoded;
+//         next();
+//       }
+//     });
+//   } else {
+//     appData["error"] = 1;
+//     appData["data"] = "Token is null";
+//     res.status(401).json(appData);
+//   }
+// });
 
 users.post("/saveDeviceToken", async (req, res) => {
   console.log("/saveDeviceToken");
@@ -972,7 +974,7 @@ users.post("/addContact", async (req, res) => {
     if (!rows.length) {
       if (phone.substr(0, 3) === "998") {
         send_sms_res = await sendSmsPlayMobile(phone, code, country_code);
-       } else if (phone.substr(0, 3) === "992") {
+      } else if (phone.substr(0, 3) === "992") {
         send_sms_res = await sendSmsOson(phone, code);
         console.log("send_sms_res", send_sms_res);
         //send_sms_res = await sendSms(phone,code,country_code)
@@ -987,13 +989,13 @@ users.post("/addContact", async (req, res) => {
           json: false,
           headers: {
             Authorization:
-             "Basic " + Buffer.from("fxkKt7iR:fTsODP6m").toString("base64"),
+              "Basic " + Buffer.from("fxkKt7iR:fTsODP6m").toString("base64"),
           },
         };
         console.log("code Russian", code);
         await rp(options);
         send_sms_res = "waiting";
-      } 
+      }
       // else {
       //   sendpulse.init(
       //     API_USER_ID,
@@ -1086,12 +1088,26 @@ users.get("/getMerchantBalance", async function (req, res) {
   const clientId = req.query.clientId;
   try {
     connect = await database.connection.getConnection();
-    const [removalBalance] = await connect.query(`SELECT * from secure_transaction where userid = ? and status = 2`, [clientId]);
-    const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where userid = ? and status <> 2`, [clientId]);
-    const totalRemovalAmount = removalBalance.reduce((accumulator, secure) => accumulator + (secure.amount + secure.additional_amount), 0);
-    const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + (secure.amount + secure.additional_amount), 0);
+    const [removalBalance] = await connect.query(
+      `SELECT * from secure_transaction where userid = ? and status = 2`,
+      [clientId]
+    );
+    const [frozenBalance] = await connect.query(
+      `SELECT * from secure_transaction where userid = ? and status <> 2`,
+      [clientId]
+    );
+    const totalRemovalAmount = removalBalance.reduce(
+      (accumulator, secure) =>
+        accumulator + (secure.amount + secure.additional_amount),
+      0
+    );
+    const totalFrozenAmount = frozenBalance.reduce(
+      (accumulator, secure) =>
+        accumulator + (secure.amount + secure.additional_amount),
+      0
+    );
     appData.data = { totalFrozenAmount, totalRemovalAmount };
-    res.status(200).json(appData)
+    res.status(200).json(appData);
   } catch (err) {
     appData.message = err.message;
     res.status(403).json(appData);
@@ -1112,57 +1128,113 @@ users.get("/checkSession", async function (req, res) {
       "SELECT * FROM users_list WHERE id = ? AND user_type = 1 AND ban <> 1 AND deleted <> 1",
       [userInfo.id]
     );
-    console.log(userInfo.id, 'userId Sesion')
+    console.log(userInfo.id, "userId Sesion");
     if (rows.length) {
       const [config] = await connect.query("SELECT * FROM config LIMIT 1");
-      const [verification] = await connect.query("SELECT * FROM verification WHERE user_id = ? LIMIT 1",[rows[0].id]);
-      const [transport] = await connect.query("SELECT * FROM  users_transport WHERE user_id = ? LIMIT 1",[rows[0].id]);
-      const [withdrawalsProccess] = await connect.query(`SELECT amount from driver_withdrawal where driver_id = ? and status = 0`, [rows[0]?.id]);
-      const [withdrawals] = await connect.query(`SELECT amount from driver_withdrawal where driver_id = ?`, [rows[0]?.id]);
-      const [frozenBalance] = await connect.query(`SELECT amount from secure_transaction where dirverid = ? and status <> 2`, [rows[0]?.id]);
-      const [activeBalance] = await connect.query(`SELECT amount from secure_transaction where dirverid = ? and status = 2`, [rows[0]?.id]);
-      const [subscriptionPayment] = await connect.query(`SELECT id from subscription_transaction where userid = ?`, [rows[0]?.id]);
-      const [payments] = await connect.query("SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",[rows[0].id]);
-      
-      const totalWithdrawalAmountProcess = withdrawalsProccess.reduce((accumulator, secure) => accumulator + +secure.amount, 0);
-      const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + +secure.amount, 0);
-      const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + +secure.amount, 0);
-      const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + +secure.amount, 0);
-      const totalPayments = payments.reduce((accumulator, secure) => accumulator + +secure.amount, 0);
-      const totalSubscriptionPayment = subscriptionPayment.reduce((accumulator, subPay) => {
-        if (subPay.duration === 1) {
-          return accumulator + 80000;
-        } else if (subPay.duration === 3) {
-          return accumulator + 180000;
-        } else if (subPay.duration === 12) {
-          return accumulator + 570000;
-        }
-        // Default case when none of the conditions are met
-        return accumulator;
-      }, 0);
-      console.log('payments', payments,totalActiveAmount,  totalPayments, totalSubscriptionPayment, totalWithdrawalAmount)
-      console.log(totalActiveAmount + (totalPayments - totalSubscriptionPayment) - totalWithdrawalAmount)
+      const [verification] = await connect.query(
+        "SELECT * FROM verification WHERE user_id = ? LIMIT 1",
+        [rows[0].id]
+      );
+      const [transport] = await connect.query(
+        "SELECT * FROM  users_transport WHERE user_id = ? LIMIT 1",
+        [rows[0].id]
+      );
+      const [withdrawalsProccess] = await connect.query(
+        `SELECT amount from driver_withdrawal where driver_id = ? and status = 0`,
+        [rows[0]?.id]
+      );
+      const [withdrawals] = await connect.query(
+        `SELECT amount from driver_withdrawal where driver_id = ?`,
+        [rows[0]?.id]
+      );
+      const [frozenBalance] = await connect.query(
+        `SELECT amount from secure_transaction where dirverid = ? and status <> 2`,
+        [rows[0]?.id]
+      );
+      const [activeBalance] = await connect.query(
+        `SELECT amount from secure_transaction where dirverid = ? and status = 2`,
+        [rows[0]?.id]
+      );
+      const [subscriptionPayment] = await connect.query(
+        `SELECT id from subscription_transaction where userid = ?`,
+        [rows[0]?.id]
+      );
+      const [payments] = await connect.query(
+        "SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",
+        [rows[0].id]
+      );
+
+      const totalWithdrawalAmountProcess = withdrawalsProccess.reduce(
+        (accumulator, secure) => accumulator + +secure.amount,
+        0
+      );
+      const totalWithdrawalAmount = withdrawals.reduce(
+        (accumulator, secure) => accumulator + +secure.amount,
+        0
+      );
+      const totalFrozenAmount = frozenBalance.reduce(
+        (accumulator, secure) => accumulator + +secure.amount,
+        0
+      );
+      const totalActiveAmount = activeBalance.reduce(
+        (accumulator, secure) => accumulator + +secure.amount,
+        0
+      );
+      const totalPayments = payments.reduce(
+        (accumulator, secure) => accumulator + +secure.amount,
+        0
+      );
+      const totalSubscriptionPayment = subscriptionPayment.reduce(
+        (accumulator, subPay) => {
+          if (subPay.duration === 1) {
+            return accumulator + 80000;
+          } else if (subPay.duration === 3) {
+            return accumulator + 180000;
+          } else if (subPay.duration === 12) {
+            return accumulator + 570000;
+          }
+          // Default case when none of the conditions are met
+          return accumulator;
+        },
+        0
+      );
+      console.log(
+        "payments",
+        payments,
+        totalActiveAmount,
+        totalPayments,
+        totalSubscriptionPayment,
+        totalWithdrawalAmount
+      );
+      console.log(
+        totalActiveAmount +
+          (totalPayments - totalSubscriptionPayment) -
+          totalWithdrawalAmount
+      );
       appData.user = rows[0];
       appData.user.transport = transport[0];
       appData.user.driver_verification = verification[0]?.verified;
       appData.user.send_verification = verification[0]?.send_verification;
-      appData.user.balance = (totalActiveAmount + (totalPayments - totalSubscriptionPayment)) - totalWithdrawalAmount;
+      appData.user.balance =
+        totalActiveAmount +
+        (totalPayments - totalSubscriptionPayment) -
+        totalWithdrawalAmount;
       appData.user.balance_in_proccess = totalWithdrawalAmountProcess;
       appData.user.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
       appData.user.config = config[0];
-      console.log(appData.user, 'users')
+      console.log(appData.user, "users");
       appData.user.avatar = fs.existsSync(
         process.env.FILES_PATCH +
-        "tirgo/drivers/" +
-        userInfo.id +
-        "/" +
-        rows[0].avatar
+          "tirgo/drivers/" +
+          userInfo.id +
+          "/" +
+          rows[0].avatar
       )
         ? process.env.SERVER_URL +
-        "tirgo/drivers/" +
-        userInfo.id +
-        "/" +
-        rows[0].avatar
+          "tirgo/drivers/" +
+          userInfo.id +
+          "/" +
+          rows[0].avatar
         : null;
       const [files] = await connect.query(
         "SELECT *,name as filename FROM users_list_files WHERE user_id = ? AND active = 1",
@@ -1173,16 +1245,16 @@ users.get("/checkSession", async function (req, res) {
           let newItem = item;
           newItem.preview = fs.existsSync(
             process.env.FILES_PATCH +
-            "tirgo/drivers/" +
-            userInfo.id +
-            "/" +
-            item.filename
+              "tirgo/drivers/" +
+              userInfo.id +
+              "/" +
+              item.filename
           )
             ? process.env.SERVER_URL +
-            "tirgo/drivers/" +
-            userInfo.id +
-            "/" +
-            item.filename
+              "tirgo/drivers/" +
+              userInfo.id +
+              "/" +
+              item.filename
             : null;
           return newItem;
         })
@@ -1194,9 +1266,9 @@ users.get("/checkSession", async function (req, res) {
         [
           userInfo.id,
           "Произведен вход " +
-          req.headers["user-agent"].split("(")[1].replace(")", "") +
-          ",IP: " +
-          parseIp(req).replace("::ffff:", ""),
+            req.headers["user-agent"].split("(")[1].replace(")", "") +
+            ",IP: " +
+            parseIp(req).replace("::ffff:", ""),
         ]
       );
       socket.updateActivity("update-activity", "1");
@@ -1204,7 +1276,7 @@ users.get("/checkSession", async function (req, res) {
       res.status(200).json(appData);
     }
   } catch (err) {
-    console.log(err)
+    console.log(err);
     appData.message = err.message;
     res.status(403).json(appData);
   } finally {
@@ -1229,16 +1301,16 @@ users.get("/checkSessionClient", async function (req, res) {
       appData.user.config = config;
       appData.user.avatar = fs.existsSync(
         process.env.FILES_PATCH +
-        "tirgo/clients/" +
-        userInfo.id +
-        "/" +
-        rows[0].avatar
+          "tirgo/clients/" +
+          userInfo.id +
+          "/" +
+          rows[0].avatar
       )
         ? process.env.SERVER_URL +
-        "tirgo/clients/" +
-        userInfo.id +
-        "/" +
-        rows[0].avatar
+          "tirgo/clients/" +
+          userInfo.id +
+          "/" +
+          rows[0].avatar
         : null;
       const [files] = await connect.query(
         "SELECT * FROM users_list_files WHERE user_id = ?",
@@ -1249,16 +1321,16 @@ users.get("/checkSessionClient", async function (req, res) {
           let newItem = item;
           newItem.image = fs.existsSync(
             process.env.FILES_PATCH +
-            "tirgo/drivers/" +
-            userInfo.id +
-            "/" +
-            item.name
+              "tirgo/drivers/" +
+              userInfo.id +
+              "/" +
+              item.name
           )
             ? process.env.SERVER_URL +
-            "tirgo/drivers/" +
-            userInfo.id +
-            "/" +
-            item.name
+              "tirgo/drivers/" +
+              userInfo.id +
+              "/" +
+              item.name
             : null;
           return newItem;
         })
@@ -1270,9 +1342,9 @@ users.get("/checkSessionClient", async function (req, res) {
         [
           userInfo.id,
           "Произведен вход " +
-          req.headers["user-agent"].split("(")[1].replace(")", "") +
-          ",IP: " +
-          parseIp(req).replace("::ffff:", ""),
+            req.headers["user-agent"].split("(")[1].replace(")", "") +
+            ",IP: " +
+            parseIp(req).replace("::ffff:", ""),
         ]
       );
       socket.updateActivity("update-activity", "1");
@@ -1903,13 +1975,9 @@ users.post("/finish-merchant-cargo", async (req, res) => {
     appData = { status: false, timestamp: new Date().getTime() };
 
   try {
-    const {
-      orderId,
-    } = req.body;
+    const { orderId } = req.body;
 
-    if (
-      !orderId
-    ) {
+    if (!orderId) {
       appData.error = "orderId is required";
       res.status(400).json(appData);
     }
@@ -1920,9 +1988,7 @@ users.post("/finish-merchant-cargo", async (req, res) => {
       UPDATE orders_accepted
       SET status_order = 3
       WHERE order_id = ? AND ismerchant = true`,
-      [
-        orderId,
-      ]
+      [orderId]
     );
     if (rows.affectedRows) {
       appData.status = true;
@@ -1931,42 +1997,79 @@ users.post("/finish-merchant-cargo", async (req, res) => {
         `
         SELECT user_id FROM orders_accepted
         WHERE order_id = ? AND ismerchant = true`,
-        [
-          orderId,
-        ]
+        [orderId]
       );
 
       connect.query(
         "UPDATE secure_transaction SET status = 2 WHERE orderid = ?",
         [orderId]
       );
-      const [withdrawalsProccess] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ? and status = 0`, [orders_accepted[0]?.user_id]);
-      const [withdrawals] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ?`, [orders_accepted[0]?.user_id]);
-      const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status <> 2`, [orders_accepted[0]?.user_id]);
-      const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [orders_accepted[0]?.user_id]);
-      const [subscriptionPayment] = await connect.query(`SELECT id from subscription_transaction where userid = ?`, [orders_accepted[0]?.user_id]);
-      const [payments] = await connect.query("SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",[orders_accepted[0].user_id]);
-      const totalWithdrawalAmountProcess = withdrawalsProccess.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      const totalPayments = payments.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      const totalSubscriptionPayment = subscriptionPayment.reduce((accumulator, subPay) => {
-        if (subPay.duration === 1) {
-          return accumulator + 80000;
-        } else if (subPay.duration === 3) {
-          return accumulator + 180000;
-        } else if (subPay.duration === 12) {
-          return accumulator + 570000;
-        }
-        // Default case when none of the conditions are met
-        return accumulator;
-      }, 0);
-      
+      const [withdrawalsProccess] = await connect.query(
+        `SELECT * from driver_withdrawal where driver_id = ? and status = 0`,
+        [orders_accepted[0]?.user_id]
+      );
+      const [withdrawals] = await connect.query(
+        `SELECT * from driver_withdrawal where driver_id = ?`,
+        [orders_accepted[0]?.user_id]
+      );
+      const [frozenBalance] = await connect.query(
+        `SELECT * from secure_transaction where dirverid = ? and status <> 2`,
+        [orders_accepted[0]?.user_id]
+      );
+      const [activeBalance] = await connect.query(
+        `SELECT * from secure_transaction where dirverid = ? and status = 2`,
+        [orders_accepted[0]?.user_id]
+      );
+      const [subscriptionPayment] = await connect.query(
+        `SELECT id from subscription_transaction where userid = ?`,
+        [orders_accepted[0]?.user_id]
+      );
+      const [payments] = await connect.query(
+        "SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",
+        [orders_accepted[0].user_id]
+      );
+      const totalWithdrawalAmountProcess = withdrawalsProccess.reduce(
+        (accumulator, secure) => accumulator + secure.amount,
+        0
+      );
+      const totalWithdrawalAmount = withdrawals.reduce(
+        (accumulator, secure) => accumulator + secure.amount,
+        0
+      );
+      const totalFrozenAmount = frozenBalance.reduce(
+        (accumulator, secure) => accumulator + secure.amount,
+        0
+      );
+      const totalActiveAmount = activeBalance.reduce(
+        (accumulator, secure) => accumulator + secure.amount,
+        0
+      );
+      const totalPayments = payments.reduce(
+        (accumulator, secure) => accumulator + secure.amount,
+        0
+      );
+      const totalSubscriptionPayment = subscriptionPayment.reduce(
+        (accumulator, subPay) => {
+          if (subPay.duration === 1) {
+            return accumulator + 80000;
+          } else if (subPay.duration === 3) {
+            return accumulator + 180000;
+          } else if (subPay.duration === 12) {
+            return accumulator + 570000;
+          }
+          // Default case when none of the conditions are met
+          return accumulator;
+        },
+        0
+      );
+
       const user = {};
-            user.balance = (totalActiveAmount + (totalPayments - totalSubscriptionPayment)) - totalWithdrawalAmount;
-            user.balance_in_proccess = totalWithdrawalAmountProcess;
-            user.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
+      user.balance =
+        totalActiveAmount +
+        (totalPayments - totalSubscriptionPayment) -
+        totalWithdrawalAmount;
+      user.balance_in_proccess = totalWithdrawalAmountProcess;
+      user.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
       socket.updateAllList("update-driver-balance", JSON.stringify(user));
     }
     res.status(200).json(appData);
@@ -1981,7 +2084,7 @@ users.post("/finish-merchant-cargo", async (req, res) => {
 users.post("/verification", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
-    userInfo = jwt.decode(req.headers.authorization.split(' ')[1]);
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   try {
     const {
       user_id,
@@ -2001,7 +2104,7 @@ users.post("/verification", async (req, res) => {
       techpassport_photo2,
       state_registration_truckNumber,
       type,
-      brand_name
+      brand_name,
     } = req.body;
 
     if (
@@ -2019,8 +2122,8 @@ users.post("/verification", async (req, res) => {
       !transportation_license_photo ||
       !techpassport_photo1 ||
       !techpassport_photo2 ||
-      !state_registration_truckNumber||
-      !type||
+      !state_registration_truckNumber ||
+      !type ||
       !brand_name
     ) {
       appData.error = "All fields are required";
@@ -2070,7 +2173,7 @@ users.post("/verification", async (req, res) => {
         state_registration_truckNumber,
         type,
         brand_name,
-        1
+        1,
       ]
     );
     if (rows.affectedRows) {
@@ -2109,7 +2212,7 @@ users.put("/update-verification", async (req, res) => {
       techpassport_photo2,
       state_registration_truckNumber,
       type,
-      brand_name
+      brand_name,
     } = req.body;
     if (
       !id ||
@@ -2178,13 +2281,13 @@ users.put("/update-verification", async (req, res) => {
         type,
         brand_name,
         1,
-        id
+        id,
       ]
     );
-    console.log(rows)
+    console.log(rows);
     if (rows.affectedRows > 0) {
       appData.status = true;
-      console.log(appData)
+      console.log(appData);
       return res.status(200).json(appData);
     } else {
       appData.error = "No records were updated";
@@ -2271,9 +2374,11 @@ users.delete("/delete-verification", async (req, res) => {
 });
 
 users.get("/verified-verifications", async (req, res) => {
-    appData = { status: false, timestamp: new Date().getTime() };
+  appData = { status: false, timestamp: new Date().getTime() };
   try {
-    const [rows] = await database.connection.query('SELECT * from verification where verified = 1');
+    const [rows] = await database.connection.query(
+      "SELECT * from verification where verified = 1"
+    );
     if (rows.length) {
       appData.status = true;
       appData.data = rows;
@@ -2284,7 +2389,7 @@ users.get("/verified-verifications", async (req, res) => {
       res.status(204).json(appData);
     }
   } catch (err) {
-    console.log(err)
+    console.log(err);
     appData.status = false;
     appData.error = err;
     res.status(403).json(appData);
@@ -2292,13 +2397,16 @@ users.get("/verified-verifications", async (req, res) => {
 });
 
 users.get("/verified-driver", async (req, res) => {
-  console.log('verified-driver')
+  console.log("verified-driver");
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   try {
     connect = await database.connection.getConnection();
-    const [rows] = await pool.query(`select * from verification  WHERE verified = 1 and  user_id = ?`,[userInfo.id]);
+    const [rows] = await pool.query(
+      `select * from verification  WHERE verified = 1 and  user_id = ?`,
+      [userInfo.id]
+    );
     if (rows.length) {
       appData.status = true;
       appData.data = rows;
@@ -2309,7 +2417,7 @@ users.get("/verified-driver", async (req, res) => {
       res.status(204).json(appData);
     }
   } catch (err) {
-    console.log(err)
+    console.log(err);
     appData.status = false;
     appData.error = err;
     res.status(403).json(appData);
@@ -2319,7 +2427,9 @@ users.get("/verified-driver", async (req, res) => {
 users.get("/unverified-verifications", async (req, res) => {
   let appData = { status: false, timestamp: new Date().getTime() };
   try {
-    const [rows] = await database.connection.query('SELECT * from verification where verified = 0');
+    const [rows] = await database.connection.query(
+      "SELECT * from verification where verified = 0"
+    );
     if (rows.length) {
       appData.status = true;
       appData.data = rows;
@@ -2457,8 +2567,8 @@ users.post("/acceptOrderDriver", async (req, res) => {
     two_day = 0,
     three_day = 0,
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
-    pricePlus = 0;
-    console.log(req.body)
+  pricePlus = 0;
+  console.log(req.body);
   if (isMerchant) {
     const merchantCargos = await axios.get(
       "https://merchant.tirgo.io/api/v1/cargo/id?id=" + orderid
@@ -2469,7 +2579,6 @@ users.post("/acceptOrderDriver", async (req, res) => {
       let t = (12 / 100) * y;
       pricePlus = t + 100;
     }
-
   }
   try {
     const amqp = require("amqplib");
@@ -2484,10 +2593,19 @@ users.post("/acceptOrderDriver", async (req, res) => {
       "select * from orders_accepted  where user_id = ? AND order_id = ?",
       [userInfo.id, orderid]
     );
-    if(!orders_accepted.length) {
+    if (!orders_accepted.length) {
       const [rows] = await connect.query(
         "INSERT INTO orders_accepted SET user_id = ?,order_id = ?,price = ?, additional_price = ?,one_day = ?,two_day = ?,three_day = ?, ismerchant = ?",
-        [userInfo.id, orderid, price, pricePlus, one_day, two_day, three_day, isMerchant]
+        [
+          userInfo.id,
+          orderid,
+          price,
+          pricePlus,
+          one_day,
+          two_day,
+          three_day,
+          isMerchant,
+        ]
       );
       const [order] = await connect.query(
         "select * from orders  where id = ?",
@@ -2506,7 +2624,14 @@ users.post("/acceptOrderDriver", async (req, res) => {
           push.send(
             user[0].token,
             "Информация о водителе",
-            "Информация об имени водителя " + driver[0].name  +  "Телифон " + driver[0].phone +  "Рейтинг " + driver[0].phone +  "Цена " + price,
+            "Информация об имени водителя " +
+              driver[0].name +
+              "Телифон " +
+              driver[0].phone +
+              "Рейтинг " +
+              driver[0].phone +
+              "Цена " +
+              price,
             "",
             ""
           );
@@ -2521,7 +2646,7 @@ users.post("/acceptOrderDriver", async (req, res) => {
         appData.error = "Невозможно принять заказ";
       }
       res.status(200).json(appData);
-    } else  {
+    } else {
       appData.status = false;
       appData.error = "Вы уже отправили предложение !";
       res.status(400).json(appData);
@@ -2589,7 +2714,12 @@ users.post("/cancelOrderDriver", async (req, res) => {
         push.send(
           user[0].token,
           "Информация о водителе",
-          "Информация об имени водителя " + driver[0].name  +  "Телифон " + driver[0].phone +  "Рейтинг " + driver[0].phone,
+          "Информация об имени водителя " +
+            driver[0].name +
+            "Телифон " +
+            driver[0].phone +
+            "Рейтинг " +
+            driver[0].phone,
           "",
           ""
         );
@@ -2656,7 +2786,7 @@ users.post("/acceptDriverClient", async (req, res) => {
       "UPDATE orders_accepted SET status_order = 1 WHERE order_id = ? AND user_id = ?",
       [orderid, id]
     );
-    
+
     const [user] = await connect.query(
       "select *  from users_list  where  id= ?",
       [userInfo?.id]
@@ -2666,7 +2796,12 @@ users.post("/acceptDriverClient", async (req, res) => {
         push.send(
           user[0].token,
           "Информация о клиенте",
-          "Имя информационного клиента " + user[0].name  +  "Телифон " + user[0].phone +  "Рейтинг " + user[0].phone,
+          "Имя информационного клиента " +
+            user[0].name +
+            "Телифон " +
+            user[0].phone +
+            "Рейтинг " +
+            user[0].phone,
           "",
           ""
         );
@@ -2702,7 +2837,7 @@ users.post("/acceptDriverClient", async (req, res) => {
     }
     res.status(200).json(appData);
   } catch (err) {
-    console.log(err)
+    console.log(err);
     appData.status = false;
     appData.error = err;
     res.status(403).json(appData);
@@ -2736,7 +2871,12 @@ users.post("/cancelDriverClient", async (req, res) => {
         push.send(
           user[0].token,
           "Информация о клиенте",
-          "Имя информационного клиента " + user[0].name  +  "Телифон " + user[0].phone +  "Рейтинг " + user[0].phone,
+          "Имя информационного клиента " +
+            user[0].name +
+            "Телифон " +
+            user[0].phone +
+            "Рейтинг " +
+            user[0].phone,
           "",
           ""
         );
@@ -2764,7 +2904,7 @@ users.post("/delPhotoUser", async (req, res) => {
     appData = { status: false, timestamp: new Date().getTime() },
     file = req.body.filename,
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
-    minioClient.removeObject("tirgo", req.body.filename).then(async () => {
+  minioClient.removeObject("tirgo", req.body.filename).then(async () => {
     try {
       connect = await database.connection.getConnection();
       const [rows] = await connect.query(
@@ -2947,16 +3087,16 @@ users.get("/getMyTrack", async (req, res) => {
               let docks = item2;
               docks.preview = fs.existsSync(
                 process.env.FILES_PATCH +
-                "tirgo/drivers/" +
-                userInfo.id +
-                "/" +
-                item2.filename
+                  "tirgo/drivers/" +
+                  userInfo.id +
+                  "/" +
+                  item2.filename
               )
                 ? process.env.SERVER_URL +
-                "tirgo/drivers/" +
-                userInfo.id +
-                "/" +
-                item2.filename
+                  "tirgo/drivers/" +
+                  userInfo.id +
+                  "/" +
+                  item2.filename
                 : null;
               return docks;
             })
@@ -3226,16 +3366,16 @@ users.get("/getMyOrdersClient", async (req, res) => {
               newItemUsers.contacts = contacts;
               newItemUsers.avatar = fs.existsSync(
                 process.env.FILES_PATCH +
-                "tirgo/drivers/" +
-                item2.id +
-                "/" +
-                item2.avatar
+                  "tirgo/drivers/" +
+                  item2.id +
+                  "/" +
+                  item2.avatar
               )
                 ? process.env.SERVER_URL +
-                "tirgo/drivers/" +
-                item2.id +
-                "/" +
-                item2.avatar
+                  "tirgo/drivers/" +
+                  item2.id +
+                  "/" +
+                  item2.avatar
                 : null;
               newItemUsers.trucks = await Promise.all(
                 trucks.map(async (truck) => {
@@ -3249,16 +3389,16 @@ users.get("/getMyOrdersClient", async (req, res) => {
                       let docks = filetruck;
                       docks.preview = fs.existsSync(
                         process.env.FILES_PATCH +
-                        "tirgo/drivers/" +
-                        item2.id +
-                        "/" +
-                        filetruck.name
+                          "tirgo/drivers/" +
+                          item2.id +
+                          "/" +
+                          filetruck.name
                       )
                         ? process.env.SERVER_URL +
-                        "tirgo/drivers/" +
-                        item2.id +
-                        "/" +
-                        filetruck.name
+                          "tirgo/drivers/" +
+                          item2.id +
+                          "/" +
+                          filetruck.name
                         : null;
                       return docks;
                     })
@@ -3347,7 +3487,7 @@ users.get("/getMyOrdersDriver", async (req, res) => {
           width_box: el.cargoWidth,
           created_at: el.createdAt,
           logo: el.merchant?.logoFilePath,
-          merchant: el.merchant
+          merchant: el.merchant,
         };
       });
     }
@@ -3741,7 +3881,6 @@ users.post("/createOrderClientTypes", async (req, res) => {
   }
 });
 
-
 users.post("/uploadImage", upload.single("file"), async (req, res) => {
   res.set("Access-Control-Allow-Origin", "*");
   let connect,
@@ -3880,83 +4019,133 @@ users.post("/driver-balance/withdraw", async (req, res) => {
       WHERE users_list.id = ? AND users_list.user_type = 1 AND users_list.ban <> 1 AND users_list.deleted <> 1;
       `,
       [userId]
+    );
+    if (row[0]) {
+      const user = row[0];
+      let [activeBalance] = await connect.query(
+        `SELECT * from secure_transaction where dirverid = ? and status = 2`,
+        [user.id]
       );
-      if(row[0]) {
-        const user = row[0];
-        let [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [user.id]);
-        let [withdrawals] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ?`, [row[0]?.id]);
-        const [subscriptionPayment] = await connect.query(`SELECT id from subscription_transaction  where userid = ?`, [user.id]);
-        const [payments] = await connect.query("SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",[user.id]);
-        let totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-        let totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-        const totalPayments = payments.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-        const totalSubscriptionPayment = subscriptionPayment.reduce((accumulator, subPay) => {
-         if (subPay.duration === 1) {
-           return accumulator + 80000;
-         } else if (subPay.duration === 3) {
-           return accumulator + 180000;
-         } else if (subPay.duration === 12) {
-           return accumulator + 570000;
-         }
-         // Default case when none of the conditions are met
-         return accumulator;
-       }, 0);
-        let amount = (totalActiveAmount + (totalPayments - totalSubscriptionPayment)) - totalWithdrawalAmount;
-        
-        if(amount <= 0) {
+      let [withdrawals] = await connect.query(
+        `SELECT * from driver_withdrawal where driver_id = ?`,
+        [row[0]?.id]
+      );
+      const [subscriptionPayment] = await connect.query(
+        `SELECT id from subscription_transaction  where userid = ?`,
+        [user.id]
+      );
+      const [payments] = await connect.query(
+        "SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",
+        [user.id]
+      );
+      let totalActiveAmount = activeBalance.reduce(
+        (accumulator, secure) => accumulator + secure.amount,
+        0
+      );
+      let totalWithdrawalAmount = withdrawals.reduce(
+        (accumulator, secure) => accumulator + secure.amount,
+        0
+      );
+      const totalPayments = payments.reduce(
+        (accumulator, secure) => accumulator + secure.amount,
+        0
+      );
+      const totalSubscriptionPayment = subscriptionPayment.reduce(
+        (accumulator, subPay) => {
+          if (subPay.duration === 1) {
+            return accumulator + 80000;
+          } else if (subPay.duration === 3) {
+            return accumulator + 180000;
+          } else if (subPay.duration === 12) {
+            return accumulator + 570000;
+          }
+          // Default case when none of the conditions are met
+          return accumulator;
+        },
+        0
+      );
+      let amount =
+        totalActiveAmount +
+        (totalPayments - totalSubscriptionPayment) -
+        totalWithdrawalAmount;
+
+      if (amount <= 0) {
         appData.status = false;
-        appData.error = 'No enough balance';
+        appData.error = "No enough balance";
         res.status(400).json(appData);
       } else {
-      await connect.query(
-        "INSERT INTO driver_withdrawal SET driver_id = ?,amount = ?, withdraw_type = 'Вывод средств', status = 0",
-        [
-          user.id,
-          amount
-        ]
-      );
-      appData.status = true;
+        await connect.query(
+          "INSERT INTO driver_withdrawal SET driver_id = ?,amount = ?, withdraw_type = 'Вывод средств', status = 0",
+          [user.id, amount]
+        );
+        appData.status = true;
 
-      [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [user.id]);
-      [withdrawals] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ?`, [row[0]?.id]);
-      totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      const [withdrawalsProccess] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ? and status = 0`, [user.id]);
-      const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status <> 2`, [user.id]);
-      // const [subscriptionPayment] = await connect.query(`SELECT id from subscription_transaction  where userid = ?`, [user.id]);
-      // const [payments] = await connect.query("SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",[user.id]);
-      const totalWithdrawalAmountProcess = withdrawalsProccess.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-    //   const totalPayments = payments.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-    //   const totalSubscriptionPayment = subscriptionPayment.reduce((accumulator, subPay) => {
-    //    if (subPay.duration === 1) {
-    //      return accumulator + 80000;
-    //    } else if (subPay.duration === 3) {
-    //      return accumulator + 180000;
-    //    } else if (subPay.duration === 12) {
-    //      return accumulator + 570000;
-    //    }
-    //    // Default case when none of the conditions are met
-    //    return accumulator;
-    //  }, 0);
+        [activeBalance] = await connect.query(
+          `SELECT * from secure_transaction where dirverid = ? and status = 2`,
+          [user.id]
+        );
+        [withdrawals] = await connect.query(
+          `SELECT * from driver_withdrawal where driver_id = ?`,
+          [row[0]?.id]
+        );
+        totalActiveAmount = activeBalance.reduce(
+          (accumulator, secure) => accumulator + secure.amount,
+          0
+        );
+        totalWithdrawalAmount = withdrawals.reduce(
+          (accumulator, secure) => accumulator + secure.amount,
+          0
+        );
+        const [withdrawalsProccess] = await connect.query(
+          `SELECT * from driver_withdrawal where driver_id = ? and status = 0`,
+          [user.id]
+        );
+        const [frozenBalance] = await connect.query(
+          `SELECT * from secure_transaction where dirverid = ? and status <> 2`,
+          [user.id]
+        );
+        // const [subscriptionPayment] = await connect.query(`SELECT id from subscription_transaction  where userid = ?`, [user.id]);
+        // const [payments] = await connect.query("SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",[user.id]);
+        const totalWithdrawalAmountProcess = withdrawalsProccess.reduce(
+          (accumulator, secure) => accumulator + secure.amount,
+          0
+        );
+        const totalFrozenAmount = frozenBalance.reduce(
+          (accumulator, secure) => accumulator + secure.amount,
+          0
+        );
+        //   const totalPayments = payments.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+        //   const totalSubscriptionPayment = subscriptionPayment.reduce((accumulator, subPay) => {
+        //    if (subPay.duration === 1) {
+        //      return accumulator + 80000;
+        //    } else if (subPay.duration === 3) {
+        //      return accumulator + 180000;
+        //    } else if (subPay.duration === 12) {
+        //      return accumulator + 570000;
+        //    }
+        //    // Default case when none of the conditions are met
+        //    return accumulator;
+        //  }, 0);
 
-      const obj = {
-        balance: (totalActiveAmount + (totalPayments - totalSubscriptionPayment)) - totalWithdrawalAmount,
-        balance_in_proccess: totalWithdrawalAmountProcess,
-        balance_off: totalFrozenAmount ? totalFrozenAmount : 0,
-      }  
-      socket.updateAllList("update-driver-balance", JSON.stringify(obj));
-      socket.updateAllList("update-driver-withdraw-request", '1');
-      res.status(200).json(appData);
-    }
+        const obj = {
+          balance:
+            totalActiveAmount +
+            (totalPayments - totalSubscriptionPayment) -
+            totalWithdrawalAmount,
+          balance_in_proccess: totalWithdrawalAmountProcess,
+          balance_off: totalFrozenAmount ? totalFrozenAmount : 0,
+        };
+        socket.updateAllList("update-driver-balance", JSON.stringify(obj));
+        socket.updateAllList("update-driver-withdraw-request", "1");
+        res.status(200).json(appData);
+      }
     } else {
       appData.status = false;
-      appData.error = 'User not found';
+      appData.error = "User not found";
       res.status(200).json(appData);
     }
-    
   } catch (err) {
-    console.log(err)
+    console.log(err);
     appData.status = false;
     appData.error = err;
     res.status(403).json(appData);
@@ -3974,9 +4163,8 @@ users.get("/driver/withdrawals", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
 
-    
     const [rows] = await connect.query(
-       `SELECT 
+      `SELECT 
             wd.*,
             ul.name,
             ul.phone,
@@ -3987,30 +4175,58 @@ users.get("/driver/withdrawals", async (req, res) => {
         LEFT JOIN users_list ul ON wd.driver_id = ul.id
         LEFT JOIN verification v ON ul.id = v.user_id
         WHERE ul.user_type = 1 AND ul.ban <> 1 AND ul.deleted <> 1;
-       `);
-       
-       if(rows.length) {
-      for(let el of rows) {
-        const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [el.driver_id]);
-        const [withdrawals] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ?`, [el.driver_id]);
-        const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-        const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-        const [subscriptionPayment] = await connect.query(`SELECT id from subscription_transaction  where userid = ?`, [el.driver_id]);
-        const [payments] = await connect.query("SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",[el.driver_id]);
-        const totalPayments = payments.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-        const totalSubscriptionPayment = subscriptionPayment.reduce((accumulator, subPay) => {
-         if (subPay.duration === 1) {
-           return accumulator + 80000;
-         } else if (subPay.duration === 3) {
-           return accumulator + 180000;
-         } else if (subPay.duration === 12) {
-           return accumulator + 570000;
-         }
-         // Default case when none of the conditions are met
-         return accumulator;
-       }, 0);
-        
-        el.balance = (totalActiveAmount + (totalPayments - totalSubscriptionPayment)) - totalWithdrawalAmount;
+       `
+    );
+
+    if (rows.length) {
+      for (let el of rows) {
+        const [activeBalance] = await connect.query(
+          `SELECT * from secure_transaction where dirverid = ? and status = 2`,
+          [el.driver_id]
+        );
+        const [withdrawals] = await connect.query(
+          `SELECT * from driver_withdrawal where driver_id = ?`,
+          [el.driver_id]
+        );
+        const totalWithdrawalAmount = withdrawals.reduce(
+          (accumulator, secure) => accumulator + secure.amount,
+          0
+        );
+        const totalActiveAmount = activeBalance.reduce(
+          (accumulator, secure) => accumulator + secure.amount,
+          0
+        );
+        const [subscriptionPayment] = await connect.query(
+          `SELECT id from subscription_transaction  where userid = ?`,
+          [el.driver_id]
+        );
+        const [payments] = await connect.query(
+          "SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",
+          [el.driver_id]
+        );
+        const totalPayments = payments.reduce(
+          (accumulator, secure) => accumulator + secure.amount,
+          0
+        );
+        const totalSubscriptionPayment = subscriptionPayment.reduce(
+          (accumulator, subPay) => {
+            if (subPay.duration === 1) {
+              return accumulator + 80000;
+            } else if (subPay.duration === 3) {
+              return accumulator + 180000;
+            } else if (subPay.duration === 12) {
+              return accumulator + 570000;
+            }
+            // Default case when none of the conditions are met
+            return accumulator;
+          },
+          0
+        );
+
+        el.balance =
+          totalActiveAmount +
+          (totalPayments - totalSubscriptionPayment) -
+          totalWithdrawalAmount;
       }
       appData.status = true;
       appData.data = rows;
@@ -4019,10 +4235,8 @@ users.get("/driver/withdrawals", async (req, res) => {
       appData.status = false;
       res.status(204).json(appData);
     }
-
-
   } catch (err) {
-    console.log(err)
+    console.log(err);
     appData.status = false;
     appData.error = err;
     res.status(403).json(appData);
@@ -4033,16 +4247,16 @@ users.get("/driver/withdrawals", async (req, res) => {
   }
 });
 
-users.patch('/verify-withdrawal/verify/:id', async (req, res) => {
+users.patch("/verify-withdrawal/verify/:id", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
     withdrawId = req.params.id;
 
   try {
     connect = await database.connection.getConnection();
-    if(!withdrawId) {
+    if (!withdrawId) {
       appData.status = false;
-      appData.error = 'Id is required';
+      appData.error = "Id is required";
       res.status(400).json(appData);
     }
     const [withdrawal] = await connect.query(
@@ -4055,46 +4269,85 @@ users.patch('/verify-withdrawal/verify/:id', async (req, res) => {
       await connect.query(
         "UPDATE driver_withdrawal SET status = 1 WHERE id = ?",
         [withdrawId]
-      ); 
+      );
 
       appData.status = true;
-      const [withdrawalsProccess] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ? and status = 0`, [withdrawal[0].driver_id]);
-      const [withdrawals] = await connect.query(`SELECT * from driver_withdrawal where driver_id = ?`, [withdrawal[0].driver_id]);
-      const [frozenBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status <> 2`, [withdrawal[0].driver_id]);
-      const [activeBalance] = await connect.query(`SELECT * from secure_transaction where dirverid = ? and status = 2`, [withdrawal[0].driver_id]);
-      const [subscriptionPayment] = await connect.query(`SELECT id from subscription_transaction where userid = ?`, [withdrawal[0].driver_id]);
-      const [payments] = await connect.query("SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",[withdrawal[0].driver_id]);
-      const totalWithdrawalAmountProcess = withdrawalsProccess.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      const totalWithdrawalAmount = withdrawals.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      const totalFrozenAmount = frozenBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      const totalActiveAmount = activeBalance.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      const totalPayments = payments.reduce((accumulator, secure) => accumulator + secure.amount, 0);
-      const totalSubscriptionPayment = subscriptionPayment.reduce((accumulator, subPay) => {
-       if (subPay.duration === 1) {
-         return accumulator + 80000;
-       } else if (subPay.duration === 3) {
-         return accumulator + 180000;
-       } else if (subPay.duration === 12) {
-         return accumulator + 570000;
-       }
-       // Default case when none of the conditions are met
-       return accumulator;
-     }, 0);
+      const [withdrawalsProccess] = await connect.query(
+        `SELECT * from driver_withdrawal where driver_id = ? and status = 0`,
+        [withdrawal[0].driver_id]
+      );
+      const [withdrawals] = await connect.query(
+        `SELECT * from driver_withdrawal where driver_id = ?`,
+        [withdrawal[0].driver_id]
+      );
+      const [frozenBalance] = await connect.query(
+        `SELECT * from secure_transaction where dirverid = ? and status <> 2`,
+        [withdrawal[0].driver_id]
+      );
+      const [activeBalance] = await connect.query(
+        `SELECT * from secure_transaction where dirverid = ? and status = 2`,
+        [withdrawal[0].driver_id]
+      );
+      const [subscriptionPayment] = await connect.query(
+        `SELECT id from subscription_transaction where userid = ?`,
+        [withdrawal[0].driver_id]
+      );
+      const [payments] = await connect.query(
+        "SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",
+        [withdrawal[0].driver_id]
+      );
+      const totalWithdrawalAmountProcess = withdrawalsProccess.reduce(
+        (accumulator, secure) => accumulator + secure.amount,
+        0
+      );
+      const totalWithdrawalAmount = withdrawals.reduce(
+        (accumulator, secure) => accumulator + secure.amount,
+        0
+      );
+      const totalFrozenAmount = frozenBalance.reduce(
+        (accumulator, secure) => accumulator + secure.amount,
+        0
+      );
+      const totalActiveAmount = activeBalance.reduce(
+        (accumulator, secure) => accumulator + secure.amount,
+        0
+      );
+      const totalPayments = payments.reduce(
+        (accumulator, secure) => accumulator + secure.amount,
+        0
+      );
+      const totalSubscriptionPayment = subscriptionPayment.reduce(
+        (accumulator, subPay) => {
+          if (subPay.duration === 1) {
+            return accumulator + 80000;
+          } else if (subPay.duration === 3) {
+            return accumulator + 180000;
+          } else if (subPay.duration === 12) {
+            return accumulator + 570000;
+          }
+          // Default case when none of the conditions are met
+          return accumulator;
+        },
+        0
+      );
 
       const obj = {
-        balance: (totalActiveAmount + (totalPayments - totalSubscriptionPayment)) - totalWithdrawalAmount,
+        balance:
+          totalActiveAmount +
+          (totalPayments - totalSubscriptionPayment) -
+          totalWithdrawalAmount,
         balance_in_proccess: totalWithdrawalAmountProcess,
         balance_off: totalFrozenAmount ? totalFrozenAmount : 0,
-      }
+      };
       socket.updateAllList("update-driver-balance", JSON.stringify(obj));
       res.status(200).json(appData);
     } else {
       appData.status = false;
-      appData.error = 'Withdrawal not found or already verified';
+      appData.error = "Withdrawal not found or already verified";
       res.status(200).json(appData);
     }
   } catch (err) {
-    console.log(err)
+    console.log(err);
     appData.status = false;
     appData.error = err;
     res.status(403).json(appData);
@@ -4125,6 +4378,202 @@ users.post("/delUser", async (req, res) => {
     appData.status = false;
     appData.error = err;
     res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+users.get("/subscription", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  try {
+    connect = await database.connection.getConnection();
+    const [subscription] = await connect.query("SELECT * FROM subscription");
+    if (subscription.length) {
+      appData.status = true;
+      appData.data = subscription;
+      res.status(200).json(appData);
+    } else {
+      appData.error = "Данные для входа введены неверно";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+users.get("/checksubscription/:userid", async (req, res) => {
+  const { userid } = req.params;
+  let connect, appData = { status: false, timestamp: new Date().getTime() };
+  try {
+    connect = await database.connection.getConnection();
+    const [user] = await connect.query(
+      `SELECT id, to_subscription, from_subscription
+       FROM users_list
+       WHERE 
+          to_subscription > CURDATE() 
+          AND from_subscription IS NOT NULL 
+          AND to_subscription IS NOT NULL
+          AND id = ? 
+         `,
+      [userid]
+    );
+    if (user.length) {
+      appData.status = true;
+      appData.data = user;
+      res.status(200).json(appData);
+    } else {
+      appData.error = "Данные для входа введены неверно";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+users.post("/addDriverSubscription", async (req, res) => {
+  let connect, appData = { status: false };
+  const { user_id, subscription_id, phone } = req.body;
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      "SELECT * FROM users_contacts WHERE text = ? AND verify = 1",
+      [phone]
+    );
+    if (rows.length < 0) {
+      appData.error = " Не найден Пользователь";
+      appData.status = false;
+      res.status(400).json(appData);
+    } else {
+      const [user] = await connect.query(
+        "SELECT * FROM users_list WHERE to_subscription > CURDATE() AND id = ?",
+        [user_id]
+      );
+      if (user.length > 0) {
+        appData.error = "Пользователь уже имеет подписку";
+        appData.status = false;
+        res.status(400).json(appData);
+      } else {
+        const [paymentUser] = await connect.query(
+          "SELECT * FROM payment where  userid = ? ",
+          [user_id]
+        );
+        if (paymentUser.length > 0) {
+          const [subscription] = await connect.query(
+            "SELECT * FROM subscription where id = ? ",
+            [subscription_id]
+          );
+          let valueofPayment;
+          if (subscription[0].duration == 1) {
+            valueofPayment = 80000;
+          } else if (subscription[0].duration == 3) {
+            valueofPayment = 180000;
+          }
+          if (subscription[0].duration == 12) {
+            valueofPayment = 570000;
+          }
+          const [withdrawals] = await connect.query(
+            `SELECT * from driver_withdrawal where driver_id = ?`,
+            [user_id]
+          );
+          const [activeBalance] = await connect.query(
+            `SELECT * from secure_transaction where dirverid = ? and status = 2`,
+            [user_id]
+          );
+          const [payments] = await connect.query(
+            "SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",
+            [user_id]
+          );
+          const [subscriptionPayment] = await connect.query(
+            `SELECT id from subscription_transaction where userid = ?`,
+            [user_id]
+          );
+          const totalWithdrawalAmount = withdrawals.reduce(
+            (accumulator, secure) => accumulator + secure.amount,
+            0
+          );
+          const totalActiveAmount = activeBalance.reduce(
+            (accumulator, secure) => accumulator + secure.amount,
+            0
+          );
+          const totalPayments = payments.reduce(
+            (accumulator, secure) => accumulator + secure.amount,
+            0
+          );
+          console.log(totalPayments)
+          const totalSubscriptionPayment = subscriptionPayment.reduce(
+            (accumulator, subPay) => {
+              if (subPay.duration === 1) {
+                return accumulator + 80000;
+              } else if (subPay.duration === 3) {
+                return accumulator + 180000;
+              } else if (subPay.duration === 12) {
+                return accumulator + 570000;
+              }
+              // Default case when none of the conditions are met
+              return accumulator;
+            },
+            0
+          );
+          let balance =
+            totalActiveAmount +
+            (totalPayments - totalSubscriptionPayment) -
+            totalWithdrawalAmount;
+   console.log(balance)
+          // paymentUser active balance
+          if (balance > valueofPayment) {
+            let nextMonth = new Date(
+              new Date().setMonth(
+                new Date().getMonth() + subscription[0].duration
+              )
+            );
+            const [userUpdate] = await connect.query(
+              "UPDATE users_list SET subscription_id = ?, from_subscription = ? , to_subscription=?  WHERE id = ?",
+              [subscription_id, new Date(), nextMonth, user_id]
+            );
+            if (userUpdate.affectedRows == 1) {
+              const subscription_transaction = await connect.query(
+                "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?",
+                [user_id, subscription_id, phone, valueofPayment]
+              );
+              if (subscription_transaction.length > 0) {
+                appData.status = true;
+                res.status(200).json(appData);
+              }
+            } else {
+              appData.error = "Невозможно обновить данные пользователя";
+              appData.status = false;
+              res.status(400).json(appData);
+            }
+          } else {
+            appData.error = "Недостаточно средств на балансе";
+            appData.status = false;
+            res.status(400).json(appData);
+          }
+        } else {
+          appData.error = "пользователь не произвел оплату";
+          appData.status = false;
+          res.status(400).json(appData);
+        }
+      }
+    }
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
   } finally {
     if (connect) {
       connect.release();
