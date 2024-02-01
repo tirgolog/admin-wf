@@ -897,32 +897,32 @@ users.post("/codeverifyClient", async (req, res) => {
   }
 });
 
-users.use((req, res, next) => {
-  let token =
-    req.body.token ||
-    req.headers["token"] ||
-    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-  let appData = {};
+// users.use((req, res, next) => {
+//   let token =
+//     req.body.token ||
+//     req.headers["token"] ||
+//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+//   let appData = {};
 
-  if (token) {
-    jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
-      if (err) {
-        console.error('JWT Verification Error:', err);
-        appData["error"] = err;
-        appData["data"] = "Token is invalid";
-        res.status(401).json(appData);
-      } else {
-        // Attach user information from the decoded token to the request
-        req.user = decoded;
-        next();
-      }
-    });
-  } else {
-    appData["error"] = 1;
-    appData["data"] = "Token is null";
-    res.status(401).json(appData);
-  }
-});
+//   if (token) {
+//     jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
+//       if (err) {
+//         console.error('JWT Verification Error:', err);
+//         appData["error"] = err;
+//         appData["data"] = "Token is invalid";
+//         res.status(401).json(appData);
+//       } else {
+//         // Attach user information from the decoded token to the request
+//         req.user = decoded;
+//         next();
+//       }
+//     });
+//   } else {
+//     appData["error"] = 1;
+//     appData["data"] = "Token is null";
+//     res.status(401).json(appData);
+//   }
+// });
 
 users.post("/saveDeviceToken", async (req, res) => {
   console.log("/saveDeviceToken");
@@ -1102,12 +1102,12 @@ users.get("/getMerchantBalance", async function (req, res) {
     );
     const totalRemovalAmount = removalBalance.reduce(
       (accumulator, secure) =>
-        accumulator + (secure.amount + secure.additional_amount),
+        accumulator + (Number(secure.amount) + secure.additional_amount),
       0
     );
     const totalFrozenAmount = frozenBalance.reduce(
       (accumulator, secure) =>
-        accumulator + (secure.amount + secure.additional_amount),
+        accumulator + (Number(secure.amount) + secure.additional_amount),
       0
     );
     appData.data = { totalFrozenAmount, totalRemovalAmount };
@@ -1181,23 +1181,23 @@ users.get("/checkSession", async function (req, res) {
       );
 
       const totalWithdrawalAmountProcess = withdrawalsProccess.reduce(
-        (accumulator, secure) => accumulator + +secure.amount,
+        (accumulator, secure) => accumulator + +Number(secure.amount),
         0
       );
       const totalWithdrawalAmount = withdrawals.reduce(
-        (accumulator, secure) => accumulator + +secure.amount,
+        (accumulator, secure) => accumulator + +Number(secure.amount),
         0
       );
       const totalFrozenAmount = frozenBalance.reduce(
-        (accumulator, secure) => accumulator + +secure.amount,
+        (accumulator, secure) => accumulator + +Number(secure.amount),
         0
       );
       const totalActiveAmount = activeBalance.reduce(
-        (accumulator, secure) => accumulator + +secure.amount,
+        (accumulator, secure) => accumulator + +Number(secure.amount),
         0
       );
       const totalPayments = payments.reduce(
-        (accumulator, secure) => accumulator + +secure.amount,
+        (accumulator, secure) => accumulator + +Number(secure.amount),
         0
       );
       const totalSubscriptionPayment = subscriptionPayment.reduce(
@@ -2039,23 +2039,23 @@ users.post("/finish-merchant-cargo", async (req, res) => {
         [orders_accepted[0].user_id]
       );
       const totalWithdrawalAmountProcess = withdrawalsProccess.reduce(
-        (accumulator, secure) => accumulator + secure.amount,
+        (accumulator, secure) => accumulator + Number(secure.amount),
         0
       );
       const totalWithdrawalAmount = withdrawals.reduce(
-        (accumulator, secure) => accumulator + secure.amount,
+        (accumulator, secure) => accumulator + Number(secure.amount),
         0
       );
       const totalFrozenAmount = frozenBalance.reduce(
-        (accumulator, secure) => accumulator + secure.amount,
+        (accumulator, secure) => accumulator + Number(secure.amount),
         0
       );
       const totalActiveAmount = activeBalance.reduce(
-        (accumulator, secure) => accumulator + secure.amount,
+        (accumulator, secure) => accumulator + Number(secure.amount),
         0
       );
       const totalPayments = payments.reduce(
-        (accumulator, secure) => accumulator + secure.amount,
+        (accumulator, secure) => accumulator + Number(secure.amount),
         0
       );
       const totalSubscriptionPayment = subscriptionPayment.reduce(
@@ -4041,15 +4041,15 @@ users.post("/driver-balance/withdraw", async (req, res) => {
         [user.id]
       );
       let totalActiveAmount = activeBalance.reduce(
-        (accumulator, secure) => accumulator + secure.amount,
+        (accumulator, secure) => accumulator + Number(secure.amount),
         0
       );
       let totalWithdrawalAmount = withdrawals.reduce(
-        (accumulator, secure) => accumulator + secure.amount,
+        (accumulator, secure) => accumulator + Number(secure.amount),
         0
       );
       const totalPayments = payments.reduce(
-        (accumulator, secure) => accumulator + secure.amount,
+        (accumulator, secure) => accumulator + Number(secure.amount),
         0
       );
       const totalSubscriptionPayment = subscriptionPayment.reduce(
@@ -4083,11 +4083,11 @@ users.post("/driver-balance/withdraw", async (req, res) => {
           [row[0]?.id]
         );
         totalActiveAmount = activeBalance.reduce(
-          (accumulator, secure) => accumulator + secure.amount,
+          (accumulator, secure) => accumulator + Number(secure.amount),
           0
         );
         totalWithdrawalAmount = withdrawals.reduce(
-          (accumulator, secure) => accumulator + secure.amount,
+          (accumulator, secure) => accumulator + Number(secure.amount),
           0
         );
         const [withdrawalsProccess] = await connect.query(
@@ -4101,14 +4101,14 @@ users.post("/driver-balance/withdraw", async (req, res) => {
         // const [subscriptionPayment] = await connect.query(`SELECT id from subscription_transaction  where userid = ?`, [user.id]);
         // const [payments] = await connect.query("SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",[user.id]);
         const totalWithdrawalAmountProcess = withdrawalsProccess.reduce(
-          (accumulator, secure) => accumulator + secure.amount,
+          (accumulator, secure) => accumulator + Number(secure.amount),
           0
         );
         const totalFrozenAmount = frozenBalance.reduce(
-          (accumulator, secure) => accumulator + secure.amount,
+          (accumulator, secure) => accumulator + Number(secure.amount),
           0
         );
-        //   const totalPayments = payments.reduce((accumulator, secure) => accumulator + secure.amount, 0);
+        //   const totalPayments = payments.reduce((accumulator, secure) => accumulator + Number(secure.amount), 0);
         //   const totalSubscriptionPayment = subscriptionPayment.reduce((accumulator, subPay) => {
         //    if (subPay.duration === 1) {
         //      return accumulator + 80000;
@@ -4183,11 +4183,11 @@ users.get("/driver/withdrawals", async (req, res) => {
           [el.driver_id]
         );
         const totalWithdrawalAmount = withdrawals.reduce(
-          (accumulator, secure) => accumulator + secure.amount,
+          (accumulator, secure) => accumulator + Number(secure.amount),
           0
         );
         const totalActiveAmount = activeBalance.reduce(
-          (accumulator, secure) => accumulator + secure.amount,
+          (accumulator, secure) => accumulator + Number(secure.amount),
           0
         );
         const [subscriptionPayment] = await connect.query(
@@ -4199,7 +4199,7 @@ users.get("/driver/withdrawals", async (req, res) => {
           [el.driver_id]
         );
         const totalPayments = payments.reduce(
-          (accumulator, secure) => accumulator + secure.amount,
+          (accumulator, secure) => accumulator + Number(secure.amount),
           0
         );
         const totalSubscriptionPayment = subscriptionPayment.reduce(
@@ -4283,23 +4283,23 @@ users.patch("/verify-withdrawal/verify/:id", async (req, res) => {
         [withdrawal[0].driver_id]
       );
       const totalWithdrawalAmountProcess = withdrawalsProccess.reduce(
-        (accumulator, secure) => accumulator + secure.amount,
+        (accumulator, secure) => accumulator + Number(secure.amount),
         0
       );
       const totalWithdrawalAmount = withdrawals.reduce(
-        (accumulator, secure) => accumulator + secure.amount,
+        (accumulator, secure) => accumulator + Number(secure.amount),
         0
       );
       const totalFrozenAmount = frozenBalance.reduce(
-        (accumulator, secure) => accumulator + secure.amount,
+        (accumulator, secure) => accumulator + Number(secure.amount),
         0
       );
       const totalActiveAmount = activeBalance.reduce(
-        (accumulator, secure) => accumulator + secure.amount,
+        (accumulator, secure) => accumulator + Number(secure.amount),
         0
       );
       const totalPayments = payments.reduce(
-        (accumulator, secure) => accumulator + secure.amount,
+        (accumulator, secure) => accumulator + Number(secure.amount),
         0
       );
       const totalSubscriptionPayment = subscriptionPayment.reduce(
@@ -4481,27 +4481,38 @@ users.post("/addDriverSubscription", async (req, res) => {
             [user_id]
           );
           const totalWithdrawalAmount = withdrawals.reduce(
-            (accumulator, secure) => accumulator + secure.amount,
+            (accumulator, secure) => accumulator + Number(secure.amount),
             0
           );
+
+          console.log(totalWithdrawalAmount, 'totalWithdrawalAmount')
           const totalActiveAmount = activeBalance.reduce(
-            (accumulator, secure) => accumulator + secure.amount,
+            (accumulator, secure) => accumulator + Number(secure.amount),
             0
           );
+          console.log(totalActiveAmount, 'activeBalance')
           const totalPayments = payments.reduce(
-            (accumulator, secure) => accumulator + secure.amount,
+            (accumulator, secure) => accumulator + Number(secure.amount),
             0
           );
+          console.log(totalPayments, 'totalPayments')
+
           const totalSubscriptionPayment = subscriptionPayment.reduce(
             (accumulator, subPay) => {
+              console.log(subPay.amount, 'amount')
+              console.log(accumulator, 'accumulator')
                 return accumulator + Number(subPay.amount);
             },
             0
           );
+
+          console.log(totalSubscriptionPayment, 'totalPayments')
+
           let balance =
             totalActiveAmount +
             (totalPayments - totalSubscriptionPayment) -
             totalWithdrawalAmount;
+            console.log(balance, 'balance')
           // paymentUser active balance
           if (balance > valueofPayment) {
             let nextMonth = new Date(
@@ -4509,7 +4520,6 @@ users.post("/addDriverSubscription", async (req, res) => {
                 new Date().getMonth() + subscription[0].duration
               )
             );
-            console.log(nextMonth, 'nextMonth')
             const [userUpdate] = await connect.query(
               "UPDATE users_list SET subscription_id = ?, from_subscription = ? , to_subscription=?  WHERE id = ?",
               [subscription_id, new Date(), nextMonth, user_id]

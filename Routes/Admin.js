@@ -2346,15 +2346,15 @@ admin.post("/addDriverSubscription", async (req, res) => {
             [rows[0]?.id]
           );
           const totalWithdrawalAmount = withdrawals.reduce(
-            (accumulator, secure) => accumulator + secure.amount,
+            (accumulator, secure) => accumulator + Number(secure.amount),
             0
           );
           const totalActiveAmount = activeBalance.reduce(
-            (accumulator, secure) => accumulator + secure.amount,
+            (accumulator, secure) => accumulator + Number(secure.amount),
             0
           );
           const totalPayments = payments.reduce(
-            (accumulator, secure) => accumulator + secure.amount,
+            (accumulator, secure) => accumulator + Number(secure.amount),
             0
           );
           const totalSubscriptionPayment = subscriptionPayment.reduce(
@@ -2451,23 +2451,23 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
         [rows[0].id]
       );
       const totalWithdrawalAmountProcess = withdrawalsProccess.reduce(
-        (accumulator, secure) => accumulator + +secure.amount,
+        (accumulator, secure) => accumulator + +Number(secure.amount),
         0
       );
       const totalWithdrawalAmount = withdrawals.reduce(
-        (accumulator, secure) => accumulator + +secure.amount,
+        (accumulator, secure) => accumulator + +Number(secure.amount),
         0
       );
       const totalFrozenAmount = frozenBalance.reduce(
-        (accumulator, secure) => accumulator + +secure.amount,
+        (accumulator, secure) => accumulator + +Number(secure.amount),
         0
       );
       const totalActiveAmount = activeBalance.reduce(
-        (accumulator, secure) => accumulator + +secure.amount,
+        (accumulator, secure) => accumulator + +Number(secure.amount),
         0
       );
       const totalPayments = payments.reduce(
-        (accumulator, secure) => accumulator + +secure.amount,
+        (accumulator, secure) => accumulator + +Number(secure.amount),
         0
       );
       const totalSubscriptionPayment = subscriptionPayment.reduce(
@@ -2566,23 +2566,23 @@ admin.get("/paymentFullBalance/:userId", async (req, res) => {
         [rows[0].id]
       );
       const totalWithdrawalAmountProcess = withdrawalsProccess.reduce(
-        (accumulator, secure) => accumulator + +secure.amount,
+        (accumulator, secure) => accumulator + Number(secure.amount),
         0
       );
       const totalWithdrawalAmount = withdrawals.reduce(
-        (accumulator, secure) => accumulator + +secure.amount,
+        (accumulator, secure) => accumulator + Number(secure.amount),
         0
       );
       const totalFrozenAmount = frozenBalance.reduce(
-        (accumulator, secure) => accumulator + +secure.amount,
+        (accumulator, secure) => accumulator + Number(secure.amount),
         0
       );
       const totalActiveAmount = activeBalance.reduce(
-        (accumulator, secure) => accumulator + +secure.amount,
+        (accumulator, secure) => accumulator + Number(secure.amount),
         0
       );
       const totalPayments = payments.reduce(
-        (accumulator, secure) => accumulator + +secure.amount,
+        (accumulator, secure) => accumulator + Number(secure.amount),
         0
       );
       const totalSubscriptionPayment = subscriptionPayment.reduce(
