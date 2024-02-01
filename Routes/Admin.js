@@ -2342,7 +2342,7 @@ admin.post("/addDriverSubscription", async (req, res) => {
             [rows[0].id]
           );
           const [subscriptionPayment] = await connect.query(
-            `SELECT id from subscription_transaction where userid = ?`,
+            `SELECT id, amount from subscription_transaction where userid = ?`,
             [rows[0]?.id]
           );
           const totalWithdrawalAmount = withdrawals.reduce(
@@ -2359,15 +2359,7 @@ admin.post("/addDriverSubscription", async (req, res) => {
           );
           const totalSubscriptionPayment = subscriptionPayment.reduce(
             (accumulator, subPay) => {
-              if (subPay.duration === 1) {
-                return accumulator + 80000;
-              } else if (subPay.duration === 3) {
-                return accumulator + 180000;
-              } else if (subPay.duration === 12) {
-                return accumulator + 570000;
-              }
-              // Default case when none of the conditions are met
-              return accumulator;
+                return accumulator + Number(subPay.amount);
             },
             0
           );
@@ -2451,7 +2443,7 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
         [rows[0]?.id]
       );
       const [subscriptionPayment] = await connect.query(
-        `SELECT id from subscription_transaction where userid = ?`,
+        `SELECT id, amount from subscription_transaction where userid = ?`,
         [rows[0]?.id]
       );
       const [payments] = await connect.query(
@@ -2480,14 +2472,7 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
       );
       const totalSubscriptionPayment = subscriptionPayment.reduce(
         (accumulator, subPay) => {
-          if (subPay.duration === 1) {
-            return accumulator + 80000;
-          } else if (subPay.duration === 3) {
-            return accumulator + 180000;
-          } else if (subPay.duration === 12) {
-            return accumulator + 570000;
-          }
-          return accumulator;
+            return accumulator + Number(subPay.amount);
         },
         0
       );
@@ -2573,7 +2558,7 @@ admin.get("/paymentFullBalance/:userId", async (req, res) => {
         [rows[0]?.id]
       );
       const [subscriptionPayment] = await connect.query(
-        `SELECT id from subscription_transaction where userid = ?`,
+        `SELECT id ,amount from subscription_transaction where userid = ?`,
         [rows[0]?.id]
       );
       const [payments] = await connect.query(
@@ -2602,14 +2587,7 @@ admin.get("/paymentFullBalance/:userId", async (req, res) => {
       );
       const totalSubscriptionPayment = subscriptionPayment.reduce(
         (accumulator, subPay) => {
-          if (subPay.duration === 1) {
-            return accumulator + 80000;
-          } else if (subPay.duration === 3) {
-            return accumulator + 180000;
-          } else if (subPay.duration === 12) {
-            return accumulator + 570000;
-          }
-          return accumulator;
+            return accumulator + Number(subPay.amount);
         },
         0
       );

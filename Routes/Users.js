@@ -559,24 +559,24 @@ users.post("/login", async (req, res) => {
       await rp(options);
       send_sms_res = "waiting";
     }
-    //  else {
-    //   sendpulse.init(
-    //     API_USER_ID,
-    //     API_SECRET,
-    //     TOKEN_STORAGE,
-    //     async function  (res) {
-    //       sendpulse.smsSend(
-    //         function(data) {
-    //           console.log(data);
-    //         },
-    //         'TIRGO',
-    //         ['+' + phone],
-    //         'Confirmation code ' + code
-    //       );
-    //     }
-    //   );
-    //   send_sms_res = "waiting";
-    // }
+     else {
+      sendpulse.init(
+        API_USER_ID,
+        API_SECRET,
+        TOKEN_STORAGE,
+        async function  (res) {
+          sendpulse.smsSend(
+            function(data) {
+              console.log(data, 'senpulse');
+            },
+            'TIRGO',
+            ['+' + phone],
+            'Confirmation code ' + code
+          );
+        }
+      );
+      send_sms_res = "waiting";
+    }
     const [rows] = await connect.query(
       "SELECT * FROM users_contacts WHERE text = ? AND user_type = 1 AND verify = 1",
       [phone]
@@ -636,7 +636,6 @@ users.post("/sms-verification", async (req, res) => {
     appData = { status: false },
     country_code = req.body.country_code,
     send_sms_res = "",
-    answerGetter,
     code = Math.floor(10000 + Math.random() * 89999),
     phone = req.body.phone.replace(/[^0-9, ]/g, "").replace(/ /g, "");
   try {
@@ -669,22 +668,24 @@ users.post("/sms-verification", async (req, res) => {
       await rp(options);
       send_sms_res = "waiting";
     }
-    // else {
-    //   sendpulse.init(
-    //     API_USER_ID,
-    //     API_SECRET,
-    //     TOKEN_STORAGE,
-    //     async function (res) {
-    //       await sendpulse.smsSend(
-    //         answerGetter,
-    //         "TIRGO",
-    //         ["+" + phone],
-    //         "Confirmation code " + code
-    //       );
-    //     }
-    //   );
-    //   send_sms_res = "waiting";
-    // }
+    else {
+      sendpulse.init(
+        API_USER_ID,
+        API_SECRET,
+        TOKEN_STORAGE,
+        async function  (res) {
+          sendpulse.smsSend(
+            function(data) {
+              console.log(data, 'senpulse');
+            },
+            'TIRGO',
+            ['+' + phone],
+            'Confirmation code ' + code
+          );
+        }
+      );
+      send_sms_res = "waiting";
+    }
     await connect.query(
       "UPDATE users_list SET verification_code = ?  WHERE phone= ? ",
       [code, phone]
@@ -740,22 +741,24 @@ users.post("/loginClient", async (req, res) => {
       await rp(options);
       send_sms_res = "waiting";
     }
-    // else {
-    //   sendpulse.init(
-    //     API_USER_ID,
-    //     API_SECRET,
-    //     TOKEN_STORAGE,
-    //     async function (res) {
-    //       await sendpulse.smsSend(
-    //         answerGetter,
-    //         "TIRGO",
-    //         ["+" + phone],
-    //         "Confirmation code " + code
-    //       );
-    //     }
-    //   );
-    //   send_sms_res = "waiting";
-    // }
+    else {
+      sendpulse.init(
+        API_USER_ID,
+        API_SECRET,
+        TOKEN_STORAGE,
+        async function  (res) {
+          sendpulse.smsSend(
+            function(data) {
+              console.log(data, 'senpulse');
+            },
+            'TIRGO',
+            ['+' + phone],
+            'Confirmation code ' + code
+          );
+        }
+      );
+      send_sms_res = "waiting";
+    }
     const [rows] = await connect.query(
       "SELECT * FROM users_contacts WHERE text = ? AND user_type = 2",
       [phone]
@@ -958,7 +961,6 @@ users.post("/addContact", async (req, res) => {
     whatsapp = req.body.whatsapp,
     viber = req.body.viber,
     send_sms_res = "",
-    answerGetter,
     phone = req.body.phone.replace(/[^0-9, ]/g, "").replace(/ /g, ""),
     code = Math.floor(10000 + Math.random() * 89999),
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
@@ -996,22 +998,24 @@ users.post("/addContact", async (req, res) => {
         await rp(options);
         send_sms_res = "waiting";
       }
-      // else {
-      //   sendpulse.init(
-      //     API_USER_ID,
-      //     API_SECRET,
-      //     TOKEN_STORAGE,
-      //     async function (res) {
-      //       await sendpulse.smsSend(
-      //         answerGetter,
-      //         "TIRGO",
-      //         ["+" + phone],
-      //         "Confirmation code " + code
-      //       );
-      //     }
-      //   );
-      //   send_sms_res = "waiting";
-      // }
+      else {
+        sendpulse.init(
+          API_USER_ID,
+          API_SECRET,
+          TOKEN_STORAGE,
+          async function  (res) {
+            sendpulse.smsSend(
+              function(data) {
+                console.log(data, 'senpulse');
+              },
+              'TIRGO',
+              ['+' + phone],
+              'Confirmation code ' + code
+            );
+          }
+        );
+        send_sms_res = "waiting";
+      }
       if (send_sms_res === "waiting") {
         const [insert] = await connect.query(
           "INSERT INTO users_contacts SET type = ?,text = ?,telegram = ?,whatsapp = ?,viber = ?,user_id = ?,verify_code = ?",
@@ -1156,7 +1160,7 @@ users.get("/checkSession", async function (req, res) {
         [rows[0]?.id]
       );
       const [subscriptionPayment] = await connect.query(
-        `SELECT id from subscription_transaction where userid = ?`,
+        `SELECT id, amount from subscription_transaction where userid = ?`,
         [rows[0]?.id]
       );
       const [subscription] = await connect.query(
@@ -1198,15 +1202,7 @@ users.get("/checkSession", async function (req, res) {
       );
       const totalSubscriptionPayment = subscriptionPayment.reduce(
         (accumulator, subPay) => {
-          if (subPay.duration === 1) {
-            return accumulator + 80000;
-          } else if (subPay.duration === 3) {
-            return accumulator + 180000;
-          } else if (subPay.duration === 12) {
-            return accumulator + 570000;
-          }
-          // Default case when none of the conditions are met
-          return accumulator;
+            return accumulator + Number(subPay.amount);
         },
         0
       );
@@ -2035,7 +2031,7 @@ users.post("/finish-merchant-cargo", async (req, res) => {
         [orders_accepted[0]?.user_id]
       );
       const [subscriptionPayment] = await connect.query(
-        `SELECT id from subscription_transaction where userid = ?`,
+        `SELECT id, amount from subscription_transaction where userid = ?`,
         [orders_accepted[0]?.user_id]
       );
       const [payments] = await connect.query(
@@ -2064,15 +2060,7 @@ users.post("/finish-merchant-cargo", async (req, res) => {
       );
       const totalSubscriptionPayment = subscriptionPayment.reduce(
         (accumulator, subPay) => {
-          if (subPay.duration === 1) {
-            return accumulator + 80000;
-          } else if (subPay.duration === 3) {
-            return accumulator + 180000;
-          } else if (subPay.duration === 12) {
-            return accumulator + 570000;
-          }
-          // Default case when none of the conditions are met
-          return accumulator;
+            return accumulator + Number(subPay.amount);
         },
         0
       );
@@ -4045,7 +4033,7 @@ users.post("/driver-balance/withdraw", async (req, res) => {
         [row[0]?.id]
       );
       const [subscriptionPayment] = await connect.query(
-        `SELECT id from subscription_transaction  where userid = ?`,
+        `SELECT id,amount from subscription_transaction  where userid = ?`,
         [user.id]
       );
       const [payments] = await connect.query(
@@ -4066,15 +4054,7 @@ users.post("/driver-balance/withdraw", async (req, res) => {
       );
       const totalSubscriptionPayment = subscriptionPayment.reduce(
         (accumulator, subPay) => {
-          if (subPay.duration === 1) {
-            return accumulator + 80000;
-          } else if (subPay.duration === 3) {
-            return accumulator + 180000;
-          } else if (subPay.duration === 12) {
-            return accumulator + 570000;
-          }
-          // Default case when none of the conditions are met
-          return accumulator;
+            return accumulator + Number(subPay.amount);
         },
         0
       );
@@ -4211,7 +4191,7 @@ users.get("/driver/withdrawals", async (req, res) => {
           0
         );
         const [subscriptionPayment] = await connect.query(
-          `SELECT id from subscription_transaction  where userid = ?`,
+          `SELECT id, amount from subscription_transaction  where userid = ?`,
           [el.driver_id]
         );
         const [payments] = await connect.query(
@@ -4224,15 +4204,7 @@ users.get("/driver/withdrawals", async (req, res) => {
         );
         const totalSubscriptionPayment = subscriptionPayment.reduce(
           (accumulator, subPay) => {
-            if (subPay.duration === 1) {
-              return accumulator + 80000;
-            } else if (subPay.duration === 3) {
-              return accumulator + 180000;
-            } else if (subPay.duration === 12) {
-              return accumulator + 570000;
-            }
-            // Default case when none of the conditions are met
-            return accumulator;
+              return accumulator + Number(subPay.amount);
           },
           0
         );
@@ -4303,7 +4275,7 @@ users.patch("/verify-withdrawal/verify/:id", async (req, res) => {
         [withdrawal[0].driver_id]
       );
       const [subscriptionPayment] = await connect.query(
-        `SELECT id from subscription_transaction where userid = ?`,
+        `SELECT id, amount from subscription_transaction where userid = ?`,
         [withdrawal[0].driver_id]
       );
       const [payments] = await connect.query(
@@ -4332,15 +4304,7 @@ users.patch("/verify-withdrawal/verify/:id", async (req, res) => {
       );
       const totalSubscriptionPayment = subscriptionPayment.reduce(
         (accumulator, subPay) => {
-          if (subPay.duration === 1) {
-            return accumulator + 80000;
-          } else if (subPay.duration === 3) {
-            return accumulator + 180000;
-          } else if (subPay.duration === 12) {
-            return accumulator + 570000;
-          }
-          // Default case when none of the conditions are met
-          return accumulator;
+            return accumulator + Number(subPay.amount);
         },
         0
       );
@@ -4513,7 +4477,7 @@ users.post("/addDriverSubscription", async (req, res) => {
             [user_id]
           );
           const [subscriptionPayment] = await connect.query(
-            `SELECT id from subscription_transaction where userid = ?`,
+            `SELECT id, amount from subscription_transaction where userid = ?`,
             [user_id]
           );
           const totalWithdrawalAmount = withdrawals.reduce(
@@ -4528,18 +4492,9 @@ users.post("/addDriverSubscription", async (req, res) => {
             (accumulator, secure) => accumulator + secure.amount,
             0
           );
-          console.log(totalPayments)
           const totalSubscriptionPayment = subscriptionPayment.reduce(
             (accumulator, subPay) => {
-              if (subPay.duration === 1) {
-                return accumulator + 80000;
-              } else if (subPay.duration === 3) {
-                return accumulator + 180000;
-              } else if (subPay.duration === 12) {
-                return accumulator + 570000;
-              }
-              // Default case when none of the conditions are met
-              return accumulator;
+                return accumulator + Number(subPay.amount);
             },
             0
           );
@@ -4554,15 +4509,13 @@ users.post("/addDriverSubscription", async (req, res) => {
                 new Date().getMonth() + subscription[0].duration
               )
             );
+            console.log(nextMonth, 'nextMonth')
             const [userUpdate] = await connect.query(
               "UPDATE users_list SET subscription_id = ?, from_subscription = ? , to_subscription=?  WHERE id = ?",
               [subscription_id, new Date(), nextMonth, user_id]
             );
             if (userUpdate.affectedRows == 1) {
-              const subscription_transaction = await connect.query(
-                "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?",
-                [user_id, subscription_id, phone, valueofPayment]
-              );
+           
               if (subscription_transaction.length > 0) {
                 appData.status = true;
                 res.status(200).json(appData);
