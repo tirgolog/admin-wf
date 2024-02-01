@@ -4515,7 +4515,10 @@ users.post("/addDriverSubscription", async (req, res) => {
               [subscription_id, new Date(), nextMonth, user_id]
             );
             if (userUpdate.affectedRows == 1) {
-           
+              const subscription_transaction = await connect.query(
+                "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?",
+                [user_id, subscription_id, phone, valueofPayment]
+              );
               if (subscription_transaction.length > 0) {
                 appData.status = true;
                 res.status(200).json(appData);
