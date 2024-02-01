@@ -1170,6 +1170,7 @@ users.get("/checkSession", async function (req, res) {
            `,
         [userInfo.id]
       );
+      console.log(subscription.length, 'subscription');
       const [payments] = await connect.query(
         "SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",
         [rows[0].id]
@@ -1232,8 +1233,8 @@ users.get("/checkSession", async function (req, res) {
         totalWithdrawalAmount;
       appData.user.balance_in_proccess = totalWithdrawalAmountProcess;
       appData.user.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
-      appData.user.issubscription = subscription? true : false;
-      appData.user.subscription = subscription? subscription : [];
+      appData.user.issubscription = subscription.length>0? true : false;
+      appData.user.subscription = subscription.length>0? subscription : [];
       appData.user.config = config[0];
       console.log(appData.user, "users");
       appData.user.avatar = fs.existsSync(
