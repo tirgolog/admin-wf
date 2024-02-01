@@ -525,8 +525,7 @@ users.post("/login", async (req, res) => {
   let connect,
     appData = { status: false },
     country_code = req.body.country_code,
-    send_sms_res = "",
-    answerGetter,
+    send_sms_res = ""
     code = Math.floor(10000 + Math.random() * 89999),
     phone = req.body.phone.replace(/[^0-9, ]/g, "").replace(/ /g, "");
   try {
@@ -561,17 +560,18 @@ users.post("/login", async (req, res) => {
       send_sms_res = "waiting";
     }
     //  else {
-    //   console.log(phone);
     //   sendpulse.init(
     //     API_USER_ID,
     //     API_SECRET,
     //     TOKEN_STORAGE,
     //     async function  (res) {
-    //       await sendpulse.smsSend(
-    //         answerGetter,
-    //         "TIRGO",
-    //         ["+" + phone],
-    //         "Confirmation code " + code
+    //       sendpulse.smsSend(
+    //         function(data) {
+    //           console.log(data);
+    //         },
+    //         'TIRGO',
+    //         ['+' + phone],
+    //         'Confirmation code ' + code
     //       );
     //     }
     //   );
@@ -1159,6 +1159,17 @@ users.get("/checkSession", async function (req, res) {
         `SELECT id from subscription_transaction where userid = ?`,
         [rows[0]?.id]
       );
+      const [subscription] = await connect.query(
+        `SELECT id, to_subscription, from_subscription
+         FROM users_list
+         WHERE 
+            to_subscription > CURDATE() 
+            AND from_subscription IS NOT NULL 
+            AND to_subscription IS NOT NULL
+            AND id = ? 
+           `,
+        [userInfo.id]
+      );
       const [payments] = await connect.query(
         "SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",
         [rows[0].id]
@@ -1221,6 +1232,8 @@ users.get("/checkSession", async function (req, res) {
         totalWithdrawalAmount;
       appData.user.balance_in_proccess = totalWithdrawalAmountProcess;
       appData.user.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
+      appData.user.issubscription = subscription? true : false;
+      appData.user.subscription = subscription? subscription : [];
       appData.user.config = config[0];
       console.log(appData.user, "users");
       appData.user.avatar = fs.existsSync(
@@ -4533,7 +4546,6 @@ users.post("/addDriverSubscription", async (req, res) => {
             totalActiveAmount +
             (totalPayments - totalSubscriptionPayment) -
             totalWithdrawalAmount;
-   console.log(balance)
           // paymentUser active balance
           if (balance > valueofPayment) {
             let nextMonth = new Date(
