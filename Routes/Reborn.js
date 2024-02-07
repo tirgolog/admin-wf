@@ -236,7 +236,28 @@ reborn.post('/getAllUsers', async (req, res) => {
         appData = {status: false};
     try {
         connect = await database.connection.getConnection();
-        const [rows] = await connect.query('SELECT * FROM users_list WHERE user_type = 2 AND id LIKE ? AND IFNULL(name, ?) LIKE ? AND IFNULL(phone, ?) LIKE ? AND IFNULL(city, ?) LIKE ? AND IFNULL(date_reg, ?) LIKE ? AND IFNULL(date_last_login, ?) LIKE ? ORDER BY id DESC LIMIT ?, ?',
+        const [rows] = await connect.query(`
+        WITH TotalCount AS (
+            SELECT COUNT(*) AS total_count FROM users_list
+        ),
+        RankedUsers AS (
+            SELECT *,
+                   ROW_NUMBER() OVER (ORDER BY id DESC) AS row_num
+            FROM users_list
+            WHERE user_type = 2 
+              AND id LIKE ? 
+              AND IFNULL(name, ?) LIKE ? 
+              AND IFNULL(phone, ?) LIKE ? 
+              AND IFNULL(city, ?) LIKE ? 
+              AND IFNULL(date_reg, ?) LIKE ? 
+              AND IFNULL(date_last_login, ?) LIKE ? 
+        )
+        SELECT TotalCount.total_count - RankedUsers.row_num + 1 AS descending_count, TotalCount.total_count, RankedUsers.*
+        FROM RankedUsers
+        CROSS JOIN TotalCount
+        ORDER BY RankedUsers.id DESC
+        LIMIT ?, ?;
+         `,
             [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',city ? '%'+city+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%',from,limit]);
         const [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 2 AND id LIKE ? ORDER BY id DESC',[id ? id:'%']);
         if (rows.length){
