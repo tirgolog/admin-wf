@@ -3028,6 +3028,7 @@ users.post("/finishMerchantOrderDriver", async (req, res) => {
           "UPDATE secure_transaction SET status = 1 WHERE orderid = ?",
           [orderid]
         );
+        console.log('channel.sendToQueue("finishOrderDriver", Buffer.from(orderid))', orderId,  1)
         channel.sendToQueue("finishOrderDriver", Buffer.from(orderid));
         socket.updateAllList("update-all-list", "1");
         appData.status = true;
