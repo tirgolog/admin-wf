@@ -3030,8 +3030,8 @@ users.post("/finishMerchantOrderDriver", async (req, res) => {
           "UPDATE secure_transaction SET status = 1 WHERE orderid = ?",
           [orderid]
         );
-        console.log('channel.sendToQueue("finishOrderDriver", Buffer.from(orderid))', orderId,  1)
-        channel.sendToQueue("finishOrderDriver", Buffer.from(orderid));
+        console.log('channel.sendToQueue("finishOrderDriver", Buffer.from(orderid))', orderid,  1)
+        channel.sendToQueue("finishOrderDriver", Buffer.from(JSON.stringify(orderid)));
         socket.updateAllList("update-all-list", "1");
         appData.status = true;
       } else {
@@ -3044,8 +3044,8 @@ users.post("/finishMerchantOrderDriver", async (req, res) => {
         [orderid]
       );
       socket.updateAllList("update-all-list", "1");
-      console.log('channel.sendToQueue("finishOrderDriver", Buffer.from(orderid))', orderId)
-      channel.sendToQueue("finishOrderDriver", Buffer.from(orderid));
+      console.log('channel.sendToQueue("finishOrderDriver", Buffer.from(orderid))', orderid)
+      channel.sendToQueue("finishOrderDriver", Buffer.from(JSON.stringify(orderid)));
       await connect.query(
         "UPDATE orders_accepted SET status_order = 2 WHERE order_id = ?",
         [orderid]
