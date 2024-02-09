@@ -3041,6 +3041,7 @@ users.post("/finishMerchantOrderDriver", async (req, res) => {
         [orderid]
       );
       socket.updateAllList("update-all-list", "1");
+      console.log('channel.sendToQueue("finishOrderDriver", Buffer.from(orderid))', orderId)
       channel.sendToQueue("finishOrderDriver", Buffer.from(orderid));
       await connect.query(
         "UPDATE orders_accepted SET status_order = 2 WHERE order_id = ?",
