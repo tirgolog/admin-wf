@@ -1136,7 +1136,7 @@ users.get("/checkSession", async function (req, res) {
     if (rows.length) {
       const [config] = await connect.query("SELECT * FROM config LIMIT 1");
       const [verification] = await connect.query(
-        "SELECT * FROM verification WHERE user_id = ? LIMIT 1",
+        "SELECT * FROM verification WHERE  user_id = ? LIMIT 1",
         [rows[0].id]
       );
       const [transport] = await connect.query(
@@ -1222,6 +1222,7 @@ users.get("/checkSession", async function (req, res) {
       appData.user = rows[0];
       appData.user.transport = transport[0];
       appData.user.driver_verification = verification[0]?.verified;
+      console.log(appData.user.driver_verification, "driver_verification");
       appData.user.send_verification = verification[0]?.send_verification;
       appData.user.balance =
         totalActiveAmount +
@@ -2336,9 +2337,10 @@ users.patch("/unverify-driver", async (req, res) => {
       res.status(400).json(appData);
     }
     const [rows] = await connect.query(
-      "UPDATE verification SET verified = 0 WHERE id = ?",
+      "UPDATE verification SET  send_verification = 0 , verified = 0 WHERE id = ?",
       [id]
     );
+    console.log(rows);
     if (rows.affectedRows) {
       appData.status = true;
       res.status(200).json(appData);
