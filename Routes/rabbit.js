@@ -20,6 +20,7 @@
 
         try {
             connect = await database.connection.getConnection();
+            await connect.query('DELETE FROM orders_accepted WHERE user_id = ? AND order_id <> ?', [driverId, orderid]);
             await connect.query('DELETE FROM orders_accepted WHERE user_id <> ? AND order_id = ?', [driverId, orderid]);
             const [rows] = await connect.query('UPDATE orders_accepted SET status_order = 1 WHERE order_id = ? AND user_id = ?', [orderid, driverId]);
             if (rows.affectedRows) {
