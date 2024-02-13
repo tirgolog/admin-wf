@@ -2690,6 +2690,45 @@ users.get("/getAcceptedOrdersDriver", async (req, res) => {
   }
 });
 
+users.post("/acceptDriverOffer", async (req, res) => {
+  let connect,
+      orderid = req.body.orderId,
+      clientId = req.body.clientId,
+      driverId = req.body.driverId,
+      amount = req.body.amount,
+      addAmount = req.body.additionalAmount,
+      appData = { status: false, timestamp: new Date().getTime() },
+      isSafe = req.body.isSafe;
+      console.log(`HTTP acceptDriverOffer: driverId ${driverId} orderId ${orderid}`)
+
+  try {
+    connect = await database.connection.getConnection();
+    await connect.query('DELETE FROM orders_accepted WHERE user_id = ? AND order_id <> ?', [driverId, orderid]);
+    await connect.query('DELETE FROM orders_accepted WHERE user_id <> ? AND order_id = ?', [driverId, orderid]);
+    const [rows] = await connect.query('UPDATE orders_accepted SET status_order = 1 WHERE order_id = ? AND user_id = ?', [orderid, driverId]);
+    if (rows.affectedRows) {
+        if (isSafe) {
+            connect.query(`INSERT INTO secure_transaction set userid = ?, dirverid = ?, orderid = ?, amount = ?, additional_amount = ?`, [clientId, driverId, orderid, amount, addAmount]);
+        }
+        socket.updateAllList('update-all-list', '1')
+        appData.status = true;
+        res.status(200).json(appData);
+    } else {
+      res.status(200).json(appData);
+    }
+  } catch (err) {
+    console.log(err);
+    appData.status = false;
+    appData.error = err;
+    res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+
 users.post("/cancelOrderDriver", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
