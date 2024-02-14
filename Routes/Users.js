@@ -522,6 +522,7 @@ users.post("/findCity", async (req, res) => {
 
 // (999) 13-37-913
 users.post("/login", async (req, res) => {
+  console.log(req.body, 'login')
   let connect,
     appData = { status: false },
     country_code = req.body.country_code,
@@ -2943,6 +2944,7 @@ users.post("/cancelDriverClient", async (req, res) => {
   }
 });
 users.post("/delPhotoUser", async (req, res) => {
+  console.log(req.body, 'delPhotoUser');
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
     file = req.body.filename,
@@ -2954,6 +2956,7 @@ users.post("/delPhotoUser", async (req, res) => {
         "UPDATE users_list_files SET active = 0 WHERE name = ? AND user_id = ?",
         [file, userInfo.id]
       );
+      console.log(rows, 'rows');
       if (rows.affectedRows) {
         appData.status = true;
       } else {
