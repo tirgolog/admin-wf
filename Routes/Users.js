@@ -2220,6 +2220,7 @@ users.put("/update-verification", async (req, res) => {
     } = req.body;
     if (
       !id ||
+      !user_id ||
       !full_name ||
       !phone ||
       !selfies_with_passport ||
@@ -2241,73 +2242,76 @@ users.put("/update-verification", async (req, res) => {
       appData.error = "All fields are required";
       res.status(400).json(appData);
     }
-    connect = await database.connection.getConnection();
-    const [rows] = await connect.query(
-      `UPDATE verification
-        SET
-            user_id = ?,
-            full_name = ?,
-            phone = ?,
-            selfies_with_passport = ?,
-            bank_card = ?,
-            bank_cardname = ?,
-            transport_front_photo = ?,
-            transport_back_photo = ?,
-            transport_side_photo = ?,
-            adr_photo = ?,
-            transport_registration_country = ?,
-            driver_license = ?,
-            transportation_license_photo = ?,
-            techpassport_photo1 = ?,
-            techpassport_photo2 = ?,
-            state_registration_truckNumber = ?,
-            type = ?,
-            brand_name = ?,
-            send_verification = ?
-        WHERE id = ?`,
-      [
-        user_id,
-        full_name,
-        phone,
-        selfies_with_passport,
-        bank_card,
-        bank_cardname,
-        transport_front_photo,
-        transport_back_photo,
-        transport_side_photo,
-        adr_photo,
-        transport_registration_country,
-        driver_license,
-        transportation_license_photo,
-        techpassport_photo1,
-        techpassport_photo2,
-        state_registration_truckNumber,
-        type,
-        brand_name,
-        1,
-        id,
-      ]
-    );
-    console.log(rows);
-    if (rows.affectedRows > 0) {
-      appData.status = true;
-      console.log(appData);
-      return res.status(200).json(appData);
-    } else {
-      appData.error = "No records were updated";
-      return res.status(404).json(appData);
-    }
+    console.log(req.body);
+    // connect = await database.connection.getConnection();
+    // const [rows] = await connect.query(
+    //   `UPDATE verification
+    //     SET
+    //         user_id = ?,
+    //         full_name = ?,
+    //         phone = ?,
+    //         selfies_with_passport = ?,
+    //         bank_card = ?,
+    //         bank_cardname = ?,
+    //         transport_front_photo = ?,
+    //         transport_back_photo = ?,
+    //         transport_side_photo = ?,
+    //         adr_photo = ?,
+    //         transport_registration_country = ?,
+    //         driver_license = ?,
+    //         transportation_license_photo = ?,
+    //         techpassport_photo1 = ?,
+    //         techpassport_photo2 = ?,
+    //         state_registration_truckNumber = ?,
+    //         type = ?,
+    //         brand_name = ?,
+    //         verified = ?
+    //     WHERE id = ?`,
+    //   [
+    //     user_id,
+    //     full_name,
+    //     phone,
+    //     selfies_with_passport,
+    //     bank_card,
+    //     bank_cardname,
+    //     transport_front_photo,
+    //     transport_back_photo,
+    //     transport_side_photo,
+    //     adr_photo,
+    //     transport_registration_country,
+    //     driver_license,
+    //     transportation_license_photo,
+    //     techpassport_photo1,
+    //     techpassport_photo2,
+    //     state_registration_truckNumber,
+    //     type,
+    //     brand_name,
+    //     1,
+    //     id,
+    //   ]
+    // );
+    // console.log(rows);
+    // if (rows.affectedRows > 0) {
+    //   appData.status = true;
+    //   console.log(appData);
+    //   return res.status(200).json(appData);
+    // } else {
+    //   appData.error = "No records were updated";
+    //   return res.status(404).json(appData);
+    // }
   } catch (err) {
     res.status(403).json(appData);
   }
 });
 
 users.patch("/verify-driver", async (req, res) => {
+
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
   try {
     connect = await database.connection.getConnection();
     const { id } = req.body;
+    console.log(req.body);
     if (!id) {
       appData.error = "VerificationId is required";
       res.status(400).json(appData);
@@ -2316,6 +2320,7 @@ users.patch("/verify-driver", async (req, res) => {
       "UPDATE verification SET verified = 1 WHERE id = ?",
       [id]
     );
+    console.log(rows);
     if (rows.affectedRows) {
       appData.status = true;
       res.status(200).json(appData);
@@ -2338,7 +2343,7 @@ users.patch("/unverify-driver", async (req, res) => {
       res.status(400).json(appData);
     }
     const [rows] = await connect.query(
-      "UPDATE verification SET  send_verification = 0 , verified = 0 WHERE id = ?",
+      "UPDATE verification SET send_verification = 0, verified = 0 WHERE id = ?",
       [id]
     );
     console.log(rows);
