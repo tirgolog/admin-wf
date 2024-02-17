@@ -4595,7 +4595,7 @@ users.post("/addDriverSubscription", async (req, res) => {
             res.status(400).json(appData);
           }
         } else {
-          appData.error = "пользователь не произвел оплату";
+          appData.error = "Недостаточно средств на балансе";
           appData.status = false;
           res.status(400).json(appData);
         }
