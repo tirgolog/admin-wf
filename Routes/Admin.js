@@ -1064,7 +1064,6 @@ admin.post("/addAdmin", async (req, res) => {
     username = req.body.username,
     role = req.body.role,
     password = req.body.password,
-    agent_balance = req.body.agent_balance,
     editaid = req.body.editaid ? req.body.editaid : 0,
     appData = { status: false };
   try {
@@ -1080,16 +1079,16 @@ admin.post("/addAdmin", async (req, res) => {
       if (editaid > 0) {
         if (password === "") {
           const [edit] = await connect.query(
-            "UPDATE users_list SET phone = ?,name = ?,username = ?,role = ?,user_type = ? , agent_balance = ? WHERE id = ?",
-            [phone, name, username, role, 4, agent_balance, editaid]
+            "UPDATE users_list SET phone = ?,name = ?,username = ?,role = ?,user_type = ?  WHERE id = ?",
+            [phone, name, username, role, 4, editaid]
           );
           if (edit.affectedRows) {
             appData.status = true;
           }
         } else {
           const [edit] = await connect.query(
-            "UPDATE users_list SET phone = ?,name = ?,username = ?,role = ?,password = ?,user_type = ?, agent_balance = ? WHERE id = ?",
-            [phone, name, username, role, password, 4, agent_balance, editaid]
+            "UPDATE users_list SET phone = ?,name = ?,username = ?,role = ?,password = ?,user_type = ? WHERE id = ?",
+            [phone, name, username, role, password, 4, editaid]
           );
           if (edit.affectedRows) {
             appData.status = true;
@@ -1097,8 +1096,8 @@ admin.post("/addAdmin", async (req, res) => {
         }
       } else {
         const [rows] = await connect.query(
-          "INSERT INTO users_list SET phone = ?,name = ?,username = ?,role = ?,password = ?,user_type = ?, agent_balance=?",
-          [phone, name, username, role, password, 4, agent_balance]
+          "INSERT INTO users_list SET phone = ?,name = ?,username = ?,role = ?,password = ?,user_type = ?",
+          [phone, name, username, role, password, 4]
         );
         if (rows.affectedRows) {
           appData.status = true;
@@ -2359,7 +2358,7 @@ admin.post("/addDriverSubscription", async (req, res) => {
           );
           const totalSubscriptionPayment = subscriptionPayment.reduce(
             (accumulator, subPay) => {
-                return accumulator + Number(subPay.amount);
+              return accumulator + Number(subPay.amount);
             },
             0
           );
@@ -2472,7 +2471,7 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
       );
       const totalSubscriptionPayment = subscriptionPayment.reduce(
         (accumulator, subPay) => {
-            return accumulator + Number(subPay.amount);
+          return accumulator + Number(subPay.amount);
         },
         0
       );
@@ -2587,7 +2586,7 @@ admin.get("/paymentFullBalance/:userId", async (req, res) => {
       );
       const totalSubscriptionPayment = subscriptionPayment.reduce(
         (accumulator, subPay) => {
-            return accumulator + Number(subPay.amount);
+          return accumulator + Number(subPay.amount);
         },
         0
       );
@@ -2687,6 +2686,7 @@ admin.get("/searchdriverAgent/:driverId", async (req, res) => {
       appData.status = true;
       res.status(200).json(appData);
     } else {
+      appData.error = "Нет такого драйвера";
       appData.status = false;
       res.status(400).json(appData);
     }
@@ -2704,37 +2704,30 @@ admin.post("/connectDriverToAgent", async (req, res) => {
   let connect,
     appData = { status: false };
   const { user_id, agent_id } = req.body;
+  console.log(req.body);
   try {
     connect = await database.connection.getConnection();
-    const [transport] = await connect.query(
-      "SELECT * FROM users_transport where user_id=? ",
+    const [driver] = await connect.query(
+      "SELECT * FROM users_list where id=? AND user_type = 1 AND ban <> 1 AND deleted <> 1 ",
       [user_id]
     );
-    if (transport.length > 0) {
-      const [driver] = await connect.query(
-        "SELECT * FROM users_list where id=? ",
-        [user_id]
+    console.log(driver);
+    if (!driver[0].agent_id) {
+      const [userUpdate] = await connect.query(
+        "UPDATE users_list SET agent_id = ? WHERE id = ?",
+        [agent_id, user_id]
       );
-      if (!driver[0].agent_id) {
-        const [userUpdate] = await connect.query(
-          "UPDATE users_list SET agent_id =? WHERE id =?",
-          [agent_id, user_id]
-        );
-        if (userUpdate.affectedRows == 1) {
-          appData.status = true;
-          res.status(200).json(appData);
-        } else {
-          appData.error = "Невозможно обновить данные пользователя";
-          appData.status = false;
-          res.status(400).json(appData);
-        }
+      console.log(userUpdate);
+      if (userUpdate.affectedRows == 1) {
+        appData.status = true;
+        res.status(200).json(appData);
       } else {
-        appData.error = "У этого водителя есть агент";
+        appData.error = "Невозможно обновить данные пользователя";
         appData.status = false;
         res.status(400).json(appData);
       }
     } else {
-      appData.error = "У водителя нет транспорта";
+      appData.error = "У этого водителя есть агент";
       appData.status = false;
       res.status(400).json(appData);
     }
@@ -2971,6 +2964,7 @@ admin.post("/subscription-history", async (req, res) => {
       res.status(200).json(appData);
     } else {
       appData.status = false;
+      appData.error = "У нас нет транзакции";
       res.status(400).json(appData);
     }
   } catch (e) {

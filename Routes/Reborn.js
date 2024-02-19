@@ -667,9 +667,17 @@ reborn.post("/getAllDriversByAgent", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     [rows] = await connect.query(
-      "SELECT ul.* FROM users_transport ut LEFT JOIN users_list ul ON ul.id = ut.user_id WHERE ul.user_type = 1 AND ul.agent_id = ?  ORDER BY ul.id DESC LIMIT ?, ? ",
+      `SELECT DISTINCT ul.*
+      FROM users_transport ut 
+      LEFT JOIN users_list ul ON ul.id = ut.user_id  
+      WHERE ul.user_type = 1  
+      AND ul.agent_id = ? 
+      ORDER BY ul.id DESC 
+      LIMIT ?, ?;
+      `,
       [agent_id, from, limit]
     );
+    console.log(rows)
     const [rows_count] = await connect.query(
       "SELECT count(*) as allcount FROM users_list WHERE user_type = 1 ORDER BY id DESC"
     );
