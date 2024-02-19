@@ -49,7 +49,9 @@ module.exports = {
         });
     },
     emit: function (room, name, data) {
-        socketIO.in(room).emit(name, data)
+        // const activeRooms = Object.keys(socketIO.nsps['/'].adapter.rooms);
+        // console.log("Active rooms:", activeRooms);
+        socketIO.in('s' + room).emit(name, data)
     },
     updatebalance: function (name, data) {
         socketIO.emit(name, data)

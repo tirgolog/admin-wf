@@ -1133,6 +1133,7 @@ users.get("/checkSession", async function (req, res) {
       "SELECT * FROM users_list WHERE id = ? AND user_type = 1 AND ban <> 1 AND deleted <> 1",
       [userInfo.id]
     );
+
     console.log(userInfo.id, "userId Sesion");
     if (rows.length) {
       const [config] = await connect.query("SELECT * FROM config LIMIT 1");
@@ -1175,7 +1176,7 @@ users.get("/checkSession", async function (req, res) {
            `,
         [userInfo.id]
       );
-      console.log(subscription.length, 'subscription');
+      // console.log(subscription.length, 'subscription');
       const [payments] = await connect.query(
         "SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",
         [rows[0].id]
@@ -1207,23 +1208,23 @@ users.get("/checkSession", async function (req, res) {
         },
         0
       );
-      console.log(
-        "payments",
-        payments,
-        totalActiveAmount,
-        totalPayments,
-        totalSubscriptionPayment,
-        totalWithdrawalAmount
-      );
-      console.log(
-        totalActiveAmount +
-          (totalPayments - totalSubscriptionPayment) -
-          totalWithdrawalAmount
-      );
+      // console.log(
+      //   "payments",
+      //   payments,
+      //   totalActiveAmount,
+      //   totalPayments,
+      //   totalSubscriptionPayment,
+      //   totalWithdrawalAmount
+      // );
+      // console.log(
+      //   totalActiveAmount +
+      //     (totalPayments - totalSubscriptionPayment) -
+      //     totalWithdrawalAmount
+      // );
       appData.user = rows[0];
       appData.user.transport = transport[0];
       appData.user.driver_verification = verification[0]?.verified;
-      console.log(appData.user.driver_verification, "driver_verification");
+      // console.log(appData.user.driver_verification, "driver_verification");
       appData.user.send_verification = verification[0]?.send_verification;
       appData.user.balance =
         totalActiveAmount +
@@ -1234,7 +1235,7 @@ users.get("/checkSession", async function (req, res) {
       appData.user.issubscription = subscription.length>0? true : false;
       appData.user.subscription = subscription.length>0? subscription : [];
       appData.user.config = config[0];
-      console.log(appData.user, "users");
+      // console.log(appData.user, "users");
       appData.user.avatar = fs.existsSync(
         process.env.FILES_PATCH +
           "tirgo/drivers/" +
@@ -2074,7 +2075,7 @@ users.post("/finish-merchant-cargo", async (req, res) => {
         totalWithdrawalAmount;
       user.balance_in_proccess = totalWithdrawalAmountProcess;
       user.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
-      socket.updateAllList("update-driver-balance", JSON.stringify(user));
+      socket.emit(orders_accepted[0]?.user_id, "update-driver-balance", JSON.stringify(user));
     }
     res.status(200).json(appData);
     //    }
@@ -4180,8 +4181,8 @@ users.post("/driver-balance/withdraw", async (req, res) => {
           balance_in_proccess: totalWithdrawalAmountProcess,
           balance_off: totalFrozenAmount ? totalFrozenAmount : 0,
         };
-        socket.updateAllList("update-driver-balance", JSON.stringify(obj));
-        socket.updateAllList("update-driver-withdraw-request", "1");
+        socket.emit(user.id, "update-driver-balance", JSON.stringify(obj));
+        socket.emit(user.id, "update-driver-withdraw-request", "1");
         res.status(200).json(appData);
       }
     } else {
@@ -4368,7 +4369,7 @@ users.patch("/verify-withdrawal/verify/:id", async (req, res) => {
         balance_in_proccess: totalWithdrawalAmountProcess,
         balance_off: totalFrozenAmount ? totalFrozenAmount : 0,
       };
-      socket.updateAllList("update-driver-balance", JSON.stringify(obj));
+      socket.emit(withdrawal[0].driver_id, "update-driver-balance", JSON.stringify(obj));
       res.status(200).json(appData);
     } else {
       appData.status = false;
