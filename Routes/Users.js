@@ -1162,7 +1162,7 @@ users.get("/checkSession", async function (req, res) {
         [rows[0]?.id]
       );
       const [subscriptionPayment] = await connect.query(
-        `SELECT id, amount from subscription_transaction where userid = ?`,
+        `SELECT id, amount from subscription_transaction where userid = ? and agent_id = 0`,
         [rows[0]?.id]
       );
       const [subscription] = await connect.query(
@@ -2034,7 +2034,7 @@ users.post("/finish-merchant-cargo", async (req, res) => {
         [orders_accepted[0]?.user_id]
       );
       const [subscriptionPayment] = await connect.query(
-        `SELECT id, amount from subscription_transaction where userid = ?`,
+        `SELECT id, amount from subscription_transaction where userid = ? and agent_id = 0`,
         [orders_accepted[0]?.user_id]
       );
       const [payments] = await connect.query(
@@ -4085,7 +4085,7 @@ users.post("/driver-balance/withdraw", async (req, res) => {
         [row[0]?.id]
       );
       const [subscriptionPayment] = await connect.query(
-        `SELECT id,amount from subscription_transaction  where userid = ?`,
+        `SELECT id,amount from subscription_transaction  where userid = ? and  agent_id = 0`,
         [user.id]
       );
       const [payments] = await connect.query(
@@ -4243,7 +4243,7 @@ users.get("/driver/withdrawals", async (req, res) => {
           0
         );
         const [subscriptionPayment] = await connect.query(
-          `SELECT id, amount from subscription_transaction  where userid = ?`,
+          `SELECT id, amount from subscription_transaction  where userid = ? and agent_id = 0`,
           [el.driver_id]
         );
         const [payments] = await connect.query(
@@ -4327,7 +4327,7 @@ users.patch("/verify-withdrawal/verify/:id", async (req, res) => {
         [withdrawal[0].driver_id]
       );
       const [subscriptionPayment] = await connect.query(
-        `SELECT id, amount from subscription_transaction where userid = ?`,
+        `SELECT id, amount from subscription_transaction where userid = ? and agent_id = 0`,
         [withdrawal[0].driver_id]
       );
       const [payments] = await connect.query(
@@ -4529,7 +4529,7 @@ users.post("/addDriverSubscription", async (req, res) => {
             [user_id]
           );
           const [subscriptionPayment] = await connect.query(
-            `SELECT id, amount from subscription_transaction where userid = ?`,
+            `SELECT id, amount from subscription_transaction where userid = ? and agent_id = 0`,
             [user_id]
           );
           const totalWithdrawalAmount = withdrawals.reduce(
