@@ -2415,7 +2415,7 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
         [rows[0]?.id]
       );
       const [subscriptionPayment] = await connect.query(
-        `SELECT id, amount from subscription_transaction where userid = ?`,
+        `SELECT id, amount from subscription_transaction where userid = ? and agent_id = 0`,
         [rows[0]?.id]
       );
       const [payments] = await connect.query(
@@ -2530,7 +2530,7 @@ admin.get("/paymentFullBalance/:userId", async (req, res) => {
         [rows[0]?.id]
       );
       const [subscriptionPayment] = await connect.query(
-        `SELECT id ,amount from subscription_transaction where userid = ?`,
+        `SELECT id ,amount from subscription_transaction where userid = ? and agent_id = 0`,
         [rows[0]?.id]
       );
       const [payments] = await connect.query(
