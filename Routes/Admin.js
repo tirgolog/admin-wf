@@ -199,14 +199,17 @@ admin.get("/getAgentBalanse/:agent_id", async (req, res) => {
   let connect,
     appData = { status: false },
     agent_id = req.params.agent_id;
+    console.log(agent_id);
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      `SELECT (SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'Пополнение') -
-      (SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'Подписка') AS total_amount
+      `SELECT 
+      COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'Пополнение'), 0) - 
+      COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'Подписка'), 0) AS total_amount
     `,
       [agent_id, agent_id]
     );
+    console.log(rows)
     if (rows.length) {
       appData.status = true;
       appData.data = rows[0];
