@@ -708,7 +708,9 @@ admin.post("/addUser", async (req, res) => {
           if (agentBalance.length) {
             if (subscription[0].duration === 1) {
               let paymentValue = 80000;
-              if (Number(agentBalance[0].total_amount )>= Number(paymentValue)) {
+              if (
+                Number(agentBalance[0].total_amount) >= Number(paymentValue)
+              ) {
                 const insertResult = await connect.query(
                   "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, created_at = ?, type = 'Подписка'",
                   [data.agent_id, paymentValue, new Date()]
@@ -771,7 +773,9 @@ admin.post("/addUser", async (req, res) => {
               }
             } else if (subscription[0].duration === 3) {
               let paymentValue = 180000;
-              if (Number(agentBalance[0].total_amount) >= Number(paymentValue)) {
+              if (
+                Number(agentBalance[0].total_amount) >= Number(paymentValue)
+              ) {
                 const insertResult = await connect.query(
                   "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, created_at = ?, type = 'Подписка'",
                   [data.agent_id, paymentValue, new Date()]
@@ -834,7 +838,9 @@ admin.post("/addUser", async (req, res) => {
               }
             } else if (subscription[0].duration === 12) {
               let paymentValue = 570000;
-              if (Number(agentBalance[0].total_amount) >= Number(paymentValue)) {
+              if (
+                Number(agentBalance[0].total_amount) >= Number(paymentValue)
+              ) {
                 const insertResult = await connect.query(
                   "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, created_at = ?, type = 'Подписка'",
                   [data.agent_id, paymentValue, new Date()]
@@ -2532,7 +2538,7 @@ admin.get("/paymentFullBalance/:userId", async (req, res) => {
         [rows[0]?.id]
       );
       const [subscriptionPayment] = await connect.query(
-        `SELECT id ,amount from subscription_transaction where userid = ? `,
+        `SELECT id ,amount from subscription_transaction where userid = ? and agent_id=0 `,
         [rows[0]?.id]
       );
       const [payments] = await connect.query(
@@ -2807,7 +2813,9 @@ admin.post("/addUserByAgent", async (req, res) => {
           if (agentBalance.length) {
             if (subscription[0].duration === 1) {
               let paymentValue = 80000;
-              if (Number(agentBalance[0].total_amount) >= Number(paymentValue)) {
+              if (
+                Number(agentBalance[0].total_amount) >= Number(paymentValue)
+              ) {
                 const insertResult = await connect.query(
                   "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, created_at = ?, type = 'Подписка'",
                   [agent_id, paymentValue, new Date()]
@@ -2851,7 +2859,9 @@ admin.post("/addUserByAgent", async (req, res) => {
               }
             } else if (subscription[0].duration === 3) {
               let paymentValue = 180000;
-              if (Number(agentBalance[0].total_amount) >= Number(paymentValue)) {
+              if (
+                Number(agentBalance[0].total_amount) >= Number(paymentValue)
+              ) {
                 const insertResult = await connect.query(
                   "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, created_at = ?, type = 'Подписка'",
                   [agent_id, paymentValue, new Date()]
@@ -2891,7 +2901,9 @@ admin.post("/addUserByAgent", async (req, res) => {
               }
             } else if (subscription[0].duration === 12) {
               let paymentValue = 570000;
-              if (Number(agentBalance[0].total_amount) >= Number(paymentValue)) {
+              if (
+                Number(agentBalance[0].total_amount) >= Number(paymentValue)
+              ) {
                 const insertResult = await connect.query(
                   "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, created_at = ?, type = 'Подписка'",
                   [agent_id, paymentValue, new Date()]
