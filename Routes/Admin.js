@@ -2836,8 +2836,8 @@ admin.post("/addUserByAgent", async (req, res) => {
                   );
                   if (subscription_transaction.length > 0) {
                     const [edit] = await connect.query(
-                      "UPDATE users_list SET subscription_id = ? , from_subscription = ? , to_subscription=?  WHERE id =?",
-                      [subscription_id, new Date(), nextthreeMonth, user_id]
+                      "UPDATE users_list SET subscription_id = ? , from_subscription = ? , to_subscription=?,  agent_id = ?  WHERE id =?",
+                      [subscription_id, new Date(), nextthreeMonth, agent_id, user_id]
                     );
                     appData.data = edit;
                     appData.status = true;
@@ -2878,8 +2878,8 @@ admin.post("/addUserByAgent", async (req, res) => {
                   );
                   if (subscription_transaction.length > 0) {
                     const [edit] = await connect.query(
-                      "UPDATE users_list SET subscription_id = ? , from_subscription = ? , to_subscription=?  WHERE id =?",
-                      [subscription_id, new Date(), nextthreeMonth, user_id]
+                      "UPDATE users_list SET subscription_id = ? , from_subscription = ? , to_subscription=?, agent_id = ? WHERE id =?",
+                      [subscription_id, new Date(), nextthreeMonth, agent_id, user_id]
                     );
                     appData.data = edit;
                     appData.status = true;
@@ -2920,8 +2920,8 @@ admin.post("/addUserByAgent", async (req, res) => {
                   );
                   if (subscription_transaction.length > 0) {
                     const [edit] = await connect.query(
-                      "UPDATE users_list SET subscription_id = ? , from_subscription = ? , to_subscription=?  WHERE id =?",
-                      [subscription_id, new Date(), nextthreeMonth, user_id]
+                      "UPDATE users_list SET subscription_id = ? , from_subscription = ? , to_subscription=?, agent_id = ? WHERE id =?",
+                      [subscription_id, new Date(), nextthreeMonth, agent_id, user_id]
                     );
                     appData.data = edit;
                     appData.status = true;
