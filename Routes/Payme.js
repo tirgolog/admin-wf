@@ -226,6 +226,7 @@ payme.post('/payMeMerchantAlpha', async function(req, res) {
     try {
         connect = await database.connection.getConnection();
         console.log(parseIp(req))
+        console.log(req.body)
         if (addresses.findIndex(e => e.ip === parseIp(req).replace('::ffff:','')) >= 0){
             console.log('keld')
             if (req.header('authorization') === 'Basic '+btoa(login+':'+allpha_password)){
@@ -251,6 +252,10 @@ payme.post('/payMeMerchantAlpha', async function(req, res) {
                     }
                 }else if(method === 'CreateTransaction'){
                     const [checkclient] = await connect.query('SELECT * FROM users_list WHERE id = ? LIMIT 1', [+params.account.UserID]);
+                   console.log('CreateTransaction')
+                   console.log(params.account.UserID)
+                   console.log('params.account.UserID')
+                   console.log(checkclient)
                     if (checkclient.length>0){
                         const [checkpay] = await connect.query('SELECT * FROM alpha_payment WHERE payid = ? LIMIT 1', [params.id]);
                         if (checkpay.length>0){
@@ -361,6 +366,8 @@ payme.post('/payMeMerchantAlpha', async function(req, res) {
                     }
                 }else if(method === 'CheckPerformTransaction'){
                     const [checkclient] = await connect.query('SELECT * FROM users_list WHERE id = ? LIMIT 1', [+params.account.UserID]);
+                    console.log(checkclient,'checkclient');
+                    console.log(params.account.UserID, 'params.account.UserID');
                     if (checkclient.length){
                         appData.result = {
                             "allow" : true,
