@@ -258,6 +258,7 @@ payme.post('/payMeMerchantAlpha', async function(req, res) {
                    console.log(checkclient)
                     if (checkclient.length>0){
                         const [checkpay] = await connect.query('SELECT * FROM alpha_payment WHERE payid = ? LIMIT 1', [params.id]);
+                       console.log(checkpay, 'checkpay')
                         if (checkpay.length>0){
                             appData.result = {
                                 "create_time" : +checkpay[0].date_timestamp,
@@ -267,7 +268,8 @@ payme.post('/payMeMerchantAlpha', async function(req, res) {
                             res.status(200).json(appData);
                         }else {
                             const [insertpay] = await connect.query('INSERT INTO alpha_payment SET pay_method = ?,userid = ?, date_timestamp = ?,payid = ?,amount = ?,status_pay_me = ?', ['payme_merchant',+params.account.UserID,params.time,params.id,params.amount.toString().slice(0, params.amount.toString().length - 2),1]);
-                            if (insertpay.affectedRows > 0){
+                            console.log(insertpay, 'insertpay')
+                             if (insertpay.affectedRows > 0){
                                 appData.result = {
                                     "create_time" : params.time,
                                     "transaction" : insertpay.insertId.toString(),
@@ -366,8 +368,6 @@ payme.post('/payMeMerchantAlpha', async function(req, res) {
                     }
                 }else if(method === 'CheckPerformTransaction'){
                     const [checkclient] = await connect.query('SELECT * FROM users_list WHERE id = ? LIMIT 1', [+params.account.UserID]);
-                    console.log(checkclient,'checkclient');
-                    console.log(params.account.UserID, 'params.account.UserID');
                     if (checkclient.length){
                         appData.result = {
                             "allow" : true,
