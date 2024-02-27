@@ -8,7 +8,7 @@ const
     parseIp = (req) => (typeof req.headers['x-forwarded-for'] === 'string' && req.headers['x-forwarded-for'].split(',').shift()) || (req.connection && req.connection.remoteAddress) || (req.socket && req.socket.remoteAddress),
     login = 'Paycom',
     password = 'IhUEFPpO%mRU0eZgmQJV42Api7Ee@Zb4RWwr',
-    allpha_password='p?%4T33d#G#Z?YTDSGivW%R%jRyD7XFxQ2JG'
+    allpha_password='aAw@yrup#VbOh6PRP5TMGWaSkQzVg1ZHFysT'
     btoa = require('btoa');
 const socket = require("../Modules/Socket");
 
@@ -376,7 +376,7 @@ payme.post('/payMeMerchantAlpha', async function(req, res) {
                         res.status(200).json(appData);
                     }else {
                         appData.error =  {
-                            "code" : -31001,
+                            "code" : -31050,
                             "message" : "Данный пользователь не найден"
                         };
                         appData.id = id;
