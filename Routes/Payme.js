@@ -278,7 +278,7 @@ payme.post('/payMeMerchantAlpha', async function(req, res) {
                                 res.status(200).json(appData);
                             }else {
                                 appData.error =  {
-                                    "code" : -31050,
+                                    "code" : -31001,
                                 };
                                 appData.id = id;
                                 res.status(200).json(appData);
@@ -376,7 +376,7 @@ payme.post('/payMeMerchantAlpha', async function(req, res) {
                         res.status(200).json(appData);
                     }else {
                         appData.error =  {
-                            "code" : -31050,
+                            "code" : -31001,
                             "message" : "Данный пользователь не найден"
                         };
                         appData.id = id;
