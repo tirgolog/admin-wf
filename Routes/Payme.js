@@ -8,6 +8,7 @@ const
     parseIp = (req) => (typeof req.headers['x-forwarded-for'] === 'string' && req.headers['x-forwarded-for'].split(',').shift()) || (req.connection && req.connection.remoteAddress) || (req.socket && req.socket.remoteAddress),
     login = 'Paycom',
     password = 'IhUEFPpO%mRU0eZgmQJV42Api7Ee@Zb4RWwr',
+    allpha_password='p?%4T33d#G#Z?YTDSGivW%R%jRyD7XFxQ2JG'
     btoa = require('btoa');
 const socket = require("../Modules/Socket");
 
@@ -227,7 +228,7 @@ payme.post('/payMeMerchantAlpha', async function(req, res) {
         console.log(parseIp(req))
         if (addresses.findIndex(e => e.ip === parseIp(req).replace('::ffff:','')) >= 0){
             console.log('keld')
-            if (req.header('authorization') === 'Basic '+btoa(login+':'+password)){
+            if (req.header('authorization') === 'Basic '+btoa(login+':'+allpha_password)){
                 if (method === 'CheckTransaction'){
                     const [checkpay] = await connect.query('SELECT * FROM alpha_payment WHERE payid = ? LIMIT 1', [params.id]);
                     if (checkpay.length>0){
