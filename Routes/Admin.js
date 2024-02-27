@@ -11,6 +11,7 @@ const crypto = require("crypto");
 const socket = require("../Modules/Socket");
 const { userInfo } = require("os");
 const amqp = require("amqplib");
+const axios=require('axios')
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
@@ -36,7 +37,7 @@ const minioClient = new Minio.Client({
   accessKey: "2ByR3PpFGckilG4fhSaJ",
   secretKey: "8UH4HtIBc7WCwgCVshcxmQslHFyJB8Y79Bauq5Xd",
 });
-admin.use(cors());
+// admin.use(cors());
 
 admin.post("/loginAdmin", async (req, res) => {
   let connect,
@@ -85,28 +86,28 @@ admin.post("/loginAdmin", async (req, res) => {
   }
 });
 
-admin.use((req, res, next) => {
-  let token =
-    req.body.token ||
-    req.headers["token"] ||
-    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-  let appData = {};
-  if (token) {
-    jwt.verify(token, process.env.SECRET_KEY, function (err) {
-      if (err) {
-        appData["error"] = err;
-        appData["data"] = "Token is invalid";
-        res.status(403).json(appData);
-      } else {
-        next();
-      }
-    });
-  } else {
-    appData["error"] = 1;
-    appData["data"] = "Token is null";
-    res.status(200).json(appData);
-  }
-});
+// admin.use((req, res, next) => {
+//   let token =
+//     req.body.token ||
+//     req.headers["token"] ||
+//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+//   let appData = {};
+//   if (token) {
+//     jwt.verify(token, process.env.SECRET_KEY, function (err) {
+//       if (err) {
+//         appData["error"] = err;
+//         appData["data"] = "Token is invalid";
+//         res.status(403).json(appData);
+//       } else {
+//         next();
+//       }
+//     });
+//   } else {
+//     appData["error"] = 1;
+//     appData["data"] = "Token is null";
+//     res.status(200).json(appData);
+//   }
+// });
 
 admin.get("/getAllAgent", async (req, res) => {
   let connect,
@@ -2837,7 +2838,13 @@ admin.post("/addUserByAgent", async (req, res) => {
                   if (subscription_transaction.length > 0) {
                     const [edit] = await connect.query(
                       "UPDATE users_list SET subscription_id = ? , from_subscription = ? , to_subscription=?,  agent_id = ?  WHERE id =?",
-                      [subscription_id, new Date(), nextthreeMonth, agent_id, user_id]
+                      [
+                        subscription_id,
+                        new Date(),
+                        nextthreeMonth,
+                        agent_id,
+                        user_id,
+                      ]
                     );
                     appData.data = edit;
                     appData.status = true;
@@ -2879,7 +2886,13 @@ admin.post("/addUserByAgent", async (req, res) => {
                   if (subscription_transaction.length > 0) {
                     const [edit] = await connect.query(
                       "UPDATE users_list SET subscription_id = ? , from_subscription = ? , to_subscription=?, agent_id = ? WHERE id =?",
-                      [subscription_id, new Date(), nextthreeMonth, agent_id, user_id]
+                      [
+                        subscription_id,
+                        new Date(),
+                        nextthreeMonth,
+                        agent_id,
+                        user_id,
+                      ]
                     );
                     appData.data = edit;
                     appData.status = true;
@@ -2921,7 +2934,13 @@ admin.post("/addUserByAgent", async (req, res) => {
                   if (subscription_transaction.length > 0) {
                     const [edit] = await connect.query(
                       "UPDATE users_list SET subscription_id = ? , from_subscription = ? , to_subscription=?, agent_id = ? WHERE id =?",
-                      [subscription_id, new Date(), nextthreeMonth, agent_id, user_id]
+                      [
+                        subscription_id,
+                        new Date(),
+                        nextthreeMonth,
+                        agent_id,
+                        user_id,
+                      ]
                     );
                     appData.data = edit;
                     appData.status = true;
@@ -3019,4 +3038,285 @@ admin.post("/subscription-history", async (req, res) => {
     }
   }
 });
+
+admin.get("/services/:id", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  try {
+    const { id } = req.params;
+    connect = await database.connection.getConnection();
+    const [subscription] = await connect.query(
+      "SELECT * FROM services where id = ?",
+      [id]
+    );
+    if (subscription.length) {
+      appData.status = true;
+      appData.data = subscription;
+      res.status(200).json(appData);
+    } else {
+      appData.error = "Услуги не найдены";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.put("/services/:id", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  try {
+    connect = await database.connection.getConnection();
+    const { id } = req.params;
+    const { name, price_uzs, price_kzs } = req.body;
+    if (!id || !name || !price_uzs || !price_kzs) {
+      appData.error = "All fields are required";
+      return res.status(400).json(appData);
+    }
+    const [rows] = await connect.query(
+      `UPDATE services SET name = ? , price_uzs = ?, price_kzs = ? WHERE id = ?`,
+      [name, price_uzs, price_kzs, id]
+    );
+    if (rows.affectedRows > 0) {
+      appData.status = true;
+      return res.status(200).json(appData);
+    } else {
+      appData.error = "Ни одна запись не была обновлена";
+      return res.status(404).json(appData);
+    }
+  } catch (err) {
+    appData.error = "Internal error";
+    res.status(500).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.delete("/services/:id", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  try {
+    connect = await database.connection.getConnection();
+    const { id } = req.params;
+    const [rows] = await connect.query("DELETE FROM services WHERE id = ?", [
+      id,
+    ]);
+    if (rows.affectedRows) {
+      appData.status = true;
+      res.status(200).json(appData);
+    }
+  } catch (err) {
+    console.log(err);
+    appData.error = "Internal error";
+    res.status(403).json(appData);
+  }
+});
+
+admin.post("/services", async (req, res) => {
+  let connect,
+    name = req.body.name,
+    price_uzs = req.body.price_uzs,
+    price_kzs = req.body.price_kzs,
+    appData = { status: false };
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      "SELECT * FROM services where name = ?",
+      [name]
+    );
+    if (rows.length > 0) {
+      appData.error = "если уже есть услуги.";
+      res.status(400).json(appData);
+    } else {
+      const [subscription] = await connect.query(
+        "INSERT INTO services SET name = ?, price_uzs = ?, price_kzs = ?",
+        [name, price_uzs, price_kzs]
+      );
+      appData.status = true;
+      appData.data = subscription;
+      res.status(200).json(appData);
+    }
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/services", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  try {
+    connect = await database.connection.getConnection();
+    const [subscription] = await connect.query("SELECT * FROM services");
+    if (subscription.length) {
+      appData.status = true;
+      appData.data = subscription;
+      res.status(200).json(appData);
+    } else {
+      appData.error = "Услуги не найдены";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.post("/addDriverServices", async (req, res) => {
+  let connect,
+    appData = { status: false };
+  const { user_id, phone, services_id, price_uzs, price_kzs } = req.body;
+  try {
+    if (!services_id) {
+      appData.error = "Необходимо оформить подписку";
+      return res.status(400).json(appData);
+    }
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      "SELECT * FROM users_contacts WHERE text = ? AND verify = 1",
+      [phone]
+    );
+    if (rows.length < 0) {
+      appData.error = " Не найден Пользователь";
+      appData.status = false;
+      res.status(400).json(appData);
+    } else {
+        const [payment] = await connect.query(
+          "SELECT * FROM alpha_payment where  userid = ? ",
+          [user_id]
+        );
+        const totalPaymentAmount = payment.reduce(
+          (accumulator, secure) => accumulator + Number(secure.amount),
+          0
+        );
+        if (paymentUser.length > 0) {
+          const [services] = await connect.query(
+            "SELECT * FROM services where id = ? ",
+            [services_id]
+          );
+          if (totalPaymentAmount > services[0].price_uzs) {
+            const [editUser] = await connect.query(
+              "UPDATE users_list SET is_service = 1  WHERE id = ?",
+              [user_id]
+            );
+            if (editUser.length > 0) {
+              const services_transaction = await connect.query(
+                "INSERT INTO services_transaction SET userid = ?, service_id = ?, price_uzs = ?, price_kzs = ?",
+                [user_id, services_id, price_uzs, price_kzs]
+              );
+              if (services_transaction.length > 0) {
+                appData.status = true;
+                res.status(200).json(appData);
+              }
+            }else{
+              appData.error = "Пользователь не может обновить"
+              appData.status = false;
+              res.status(400).json(appData);
+            }
+          } else {
+            appData.error = "Недостаточно средств на балансе";
+            appData.status = false;
+            res.status(400).json(appData);
+          }
+        } else {
+          appData.error = "Не найден Пользователь";
+          appData.status = false;
+          res.status(400).json(appData);
+        }
+    }
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/services-transaction", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  try {
+    connect = await database.connection.getConnection();
+    const [services_transaction] = await connect.query("SELECT * FROM services_transaction");
+    if (services_transaction.length) {
+      appData.status = true;
+      appData.data = services_transaction;
+      res.status(200).json(appData);
+    } else {
+      appData.error = "Услуги не найдены";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/services-transaction/:userid", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  try {
+    const { userid } = req.params;
+    connect = await database.connection.getConnection();
+    const [services_transaction] = await connect.query("SELECT * FROM services_transaction where userid = ?", [userid]);
+    if (services_transaction.length) {
+      appData.status = true;
+      appData.data = services_transaction;
+      res.status(200).json(appData);
+    } else {
+      appData.error = "Услуги не найдены";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/curence/:key/:value", async (req, res) => {
+  let appData = { status: false, timestamp: new Date().getTime() };
+  if (req.params.key=='UZS') {
+    let result =await fetch('https://cbu.uz/ru/arkhiv-kursov-valyut/json/').then(res => res.json())
+    result=result.find(res=> res.Ccy==req.params.key)
+    appData.data = req.params.value/result.Rate;
+    appData.status=true;
+    res.status(400).json(appData);
+  }else{
+    let result =await fetch('https://cbu.uz/ru/arkhiv-kursov-valyut/json/').then(res => res.json())
+    result=result.find(res=> res.Ccy==req.params.key)
+    appData.data = req.params.value*result.Rate;
+    appData.status=true;
+    res.status(400).json(appData);
+  }
+})
+
 module.exports = admin;
