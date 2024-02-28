@@ -3256,6 +3256,36 @@ admin.post("/addDriverServices", async (req, res) => {
   }
 });
 
+admin.get("/alpha-payment/:userid", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  try {
+    const { userid } = req.params;
+    connect = await database.connection.getConnection();
+    const [payment] = await connect.query("SELECT * FROM alpha_payment where userid = ?", [userid]);
+    const totalPaymentAmount = payment.reduce(
+      (accumulator, secure) => accumulator + Number(secure.amount),
+      0
+    );
+    if (payment.length) {
+      appData.status = true;
+      appData.data = {total_amount:totalPaymentAmount};
+      res.status(200).json(appData);
+    } else {
+      appData.error = "Услуги не найдены";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 admin.get("/services-transaction", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
