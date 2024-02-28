@@ -178,7 +178,7 @@ payme.post('/payMeMerchantApi', async function(req, res) {
                                 "items": [
                                     {
                                         "title": "Tirgo Service",
-                                        "price": +params.amount*100,
+                                        "price": +params.amount,
                                         "count": 1,
                                         "vat_percent": 12,
                                         "package_code": "1495342",
@@ -385,7 +385,7 @@ payme.post('/payMeMerchantAlpha', async function(req, res) {
                                 "items": [
                                     {
                                         "title": "Tirgo Service",
-                                        "price": +params.amount*100,
+                                        "price": +params.amount,
                                         "count": 1,
                                         "vat_percent": 12,
                                         "package_code": "1495342",
