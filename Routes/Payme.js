@@ -173,6 +173,20 @@ payme.post('/payMeMerchantApi', async function(req, res) {
                     if (checkclient.length){
                         appData.result = {
                             "allow" : true,
+                            "detail": {
+                                "receipt_type": 0,
+                                "items": [
+                                    {
+                                        "title": "Tirgo Service",
+                                        "price": +params.amount*100,
+                                        "count": 1,
+                                        "vat_percent": 12,
+                                        "package_code": "1495342",
+                                        "code": "10716001001000000",
+                                        "discount": 0
+                                    }
+                                ]
+                            }
                         };
                         appData.id = id;
                         res.status(200).json(appData);
@@ -374,8 +388,8 @@ payme.post('/payMeMerchantAlpha', async function(req, res) {
                                         "price": +params.amount*100,
                                         "count": 1,
                                         "vat_percent": 12,
-                                        "package_code": "1372862",
-                                        "code": "10202001001000001",
+                                        "package_code": "1495342",
+                                        "code": "10716001001000000",
                                         "discount": 0
                                     }
                                 ]
