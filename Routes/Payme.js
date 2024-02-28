@@ -252,13 +252,8 @@ payme.post('/payMeMerchantAlpha', async function(req, res) {
                     }
                 }else if(method === 'CreateTransaction'){
                     const [checkclient] = await connect.query('SELECT * FROM users_list WHERE id = ? LIMIT 1', [+params.account.UserID]);
-                   console.log('CreateTransaction')
-                   console.log(params.account.UserID)
-                   console.log('params.account.UserID')
-                   console.log(checkclient)
                     if (checkclient.length>0){
                         const [checkpay] = await connect.query('SELECT * FROM alpha_payment WHERE payid = ? LIMIT 1', [params.id]);
-                       console.log(checkpay, 'checkpay')
                         if (checkpay.length>0){
                             appData.result = {
                                 "create_time" : +checkpay[0].date_timestamp,
@@ -371,6 +366,20 @@ payme.post('/payMeMerchantAlpha', async function(req, res) {
                     if (checkclient.length){
                         appData.result = {
                             "allow" : true,
+                            "detail": {
+                                "receipt_type": 0,
+                                "items": [
+                                    {
+                                        "title": "Tirgo Service",
+                                        "price": +params.amount*100,
+                                        "count": 1,
+                                        "vat_percent": 12,
+                                        "package_code": "1372862",
+                                        "code": "10202001001000001",
+                                        "discount": 0
+                                    }
+                                ]
+                            }
                         };
                         appData.id = id;
                         res.status(200).json(appData);

@@ -37,7 +37,7 @@ const minioClient = new Minio.Client({
   accessKey: "2ByR3PpFGckilG4fhSaJ",
   secretKey: "8UH4HtIBc7WCwgCVshcxmQslHFyJB8Y79Bauq5Xd",
 });
-// admin.use(cors());
+admin.use(cors());
 
 admin.post("/loginAdmin", async (req, res) => {
   let connect,
@@ -86,28 +86,28 @@ admin.post("/loginAdmin", async (req, res) => {
   }
 });
 
-// admin.use((req, res, next) => {
-//   let token =
-//     req.body.token ||
-//     req.headers["token"] ||
-//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-//   let appData = {};
-//   if (token) {
-//     jwt.verify(token, process.env.SECRET_KEY, function (err) {
-//       if (err) {
-//         appData["error"] = err;
-//         appData["data"] = "Token is invalid";
-//         res.status(403).json(appData);
-//       } else {
-//         next();
-//       }
-//     });
-//   } else {
-//     appData["error"] = 1;
-//     appData["data"] = "Token is null";
-//     res.status(200).json(appData);
-//   }
-// });
+admin.use((req, res, next) => {
+  let token =
+    req.body.token ||
+    req.headers["token"] ||
+    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+  let appData = {};
+  if (token) {
+    jwt.verify(token, process.env.SECRET_KEY, function (err) {
+      if (err) {
+        appData["error"] = err;
+        appData["data"] = "Token is invalid";
+        res.status(403).json(appData);
+      } else {
+        next();
+      }
+    });
+  } else {
+    appData["error"] = 1;
+    appData["data"] = "Token is null";
+    res.status(200).json(appData);
+  }
+});
 
 admin.get("/getAllAgent", async (req, res) => {
   let connect,
@@ -3083,6 +3083,7 @@ admin.put("/services/:id", async (req, res) => {
       `UPDATE services SET name = ? , price_uzs = ?, price_kzs = ? WHERE id = ?`,
       [name, price_uzs, price_kzs, id]
     );
+    console.log(rows);
     if (rows.affectedRows > 0) {
       appData.status = true;
       return res.status(200).json(appData);
@@ -3127,6 +3128,10 @@ admin.post("/services", async (req, res) => {
     price_kzs = req.body.price_kzs,
     appData = { status: false };
   try {
+    if (!name || !price_uzs || !price_kzs) {
+      appData.error = "All fields are required";
+      return res.status(400).json(appData);
+    }
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
       "SELECT * FROM services where name = ?",
@@ -3198,11 +3203,11 @@ admin.post("/addDriverServices", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
-        const [payment] = await connect.query(
+        const [paymentUser] = await connect.query(
           "SELECT * FROM alpha_payment where  userid = ? ",
           [user_id]
         );
-        const totalPaymentAmount = payment.reduce(
+        const totalPaymentAmount = paymentUser.reduce(
           (accumulator, secure) => accumulator + Number(secure.amount),
           0
         );
@@ -3216,7 +3221,7 @@ admin.post("/addDriverServices", async (req, res) => {
               "UPDATE users_list SET is_service = 1  WHERE id = ?",
               [user_id]
             );
-            if (editUser.length > 0) {
+            if (editUser.affectedRows > 0) {
               const services_transaction = await connect.query(
                 "INSERT INTO services_transaction SET userid = ?, service_id = ?, price_uzs = ?, price_kzs = ?",
                 [user_id, services_id, price_uzs, price_kzs]

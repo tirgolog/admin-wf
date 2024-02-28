@@ -20,11 +20,12 @@ reborn.post('/getAllDrivers', async (req, res) => {
         dateReg = req.body.dateReg ? req.body.dateReg:'',
         dateLogin = req.body.dateLogin ? req.body.dateLogin:'',
         subscription = req.body.subscription ? req.body.subscription:'',
+        is_service = req.body.is_service ? req.body.is_service:0,
         [rows] = [],
         appData = {status: false};
     try {
         connect = await database.connection.getConnection();
-        if (!typetransport && subscription !== 'subscription') {
+        if (!typetransport && subscription !== 'subscription'&&is_service==0) {
             [rows] = await connect.query(`
             WITH TotalCount AS (
                 SELECT COUNT(*) AS total_count FROM users_list WHERE user_type = 1
@@ -34,6 +35,7 @@ reborn.post('/getAllDrivers', async (req, res) => {
                        ROW_NUMBER() OVER (ORDER BY id DESC) AS row_num
                 FROM users_list
                 WHERE user_type = 1 
+                  AND is_service = 0
                   AND id LIKE ? 
                   AND IFNULL(name, ?) LIKE ? 
                   AND IFNULL(phone, ?) LIKE ? 
@@ -48,7 +50,8 @@ reborn.post('/getAllDrivers', async (req, res) => {
             LIMIT ?, ?
             `,
             [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
-        } else if (typetransport === '' && subscription === 'subscription') {
+        } 
+        else if (!typetransport && subscription !== 'subscription'&&is_service==1) {
             [rows] = await connect.query(`
             WITH TotalCount AS (
                 SELECT COUNT(*) AS total_count FROM users_list WHERE user_type = 1
@@ -58,6 +61,33 @@ reborn.post('/getAllDrivers', async (req, res) => {
                        ROW_NUMBER() OVER (ORDER BY id DESC) AS row_num
                 FROM users_list
                 WHERE user_type = 1 
+                  AND is_service = 1
+                  AND id LIKE ? 
+                  AND IFNULL(name, ?) LIKE ? 
+                  AND IFNULL(phone, ?) LIKE ? 
+                  AND IFNULL(date_reg, ?) LIKE ? 
+                  AND IFNULL(date_last_login, ?) LIKE ? 
+                  AND IFNULL(iso_code, ?) LIKE ? 
+            )
+            SELECT TotalCount.total_count - RankedUsers.row_num + 1 AS descending_count, TotalCount.total_count, RankedUsers.*
+            FROM RankedUsers
+            CROSS JOIN TotalCount
+            ORDER BY RankedUsers.id DESC
+            LIMIT ?, ?
+            `,
+            [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
+        }
+        else if (typetransport === '' && subscription === 'subscription' &&is_service==0) {
+            [rows] = await connect.query(`
+            WITH TotalCount AS (
+                SELECT COUNT(*) AS total_count FROM users_list WHERE user_type = 1
+            ),
+            RankedUsers AS (
+                SELECT *,
+                       ROW_NUMBER() OVER (ORDER BY id DESC) AS row_num
+                FROM users_list
+                WHERE user_type = 1 
+                  AND is_service = 0
                   AND id LIKE ? 
                   AND IFNULL(name, ?) LIKE ? 
                   AND IFNULL(phone, ?) LIKE ? 
@@ -73,7 +103,35 @@ reborn.post('/getAllDrivers', async (req, res) => {
             LIMIT ?, ?`,
             [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
         }
-        else if (typetransport && subscription === 'subscription') {
+
+        else if (typetransport === '' && subscription === 'subscription' && is_service==1) {
+            [rows] = await connect.query(`
+            WITH TotalCount AS (
+                SELECT COUNT(*) AS total_count FROM users_list WHERE user_type = 1
+            ),
+            RankedUsers AS (
+                SELECT *,
+                       ROW_NUMBER() OVER (ORDER BY id DESC) AS row_num
+                FROM users_list
+                WHERE user_type = 1 
+                  AND is_service = 1
+                  AND id LIKE ? 
+                  AND IFNULL(name, ?) LIKE ? 
+                  AND IFNULL(phone, ?) LIKE ? 
+                  AND IFNULL(date_reg, ?) LIKE ? 
+                  AND IFNULL(date_last_login, ?) LIKE ? 
+                  AND IFNULL(iso_code, ?) LIKE ? 
+                  AND subscription_id IS NOT NULL
+            )
+            SELECT TotalCount.total_count - RankedUsers.row_num + 1 AS descending_count, TotalCount.total_count, RankedUsers.*
+            FROM RankedUsers
+            CROSS JOIN TotalCount
+            ORDER BY RankedUsers.id DESC
+            LIMIT ?, ?`,
+            [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
+        }
+
+        else if (typetransport && subscription === 'subscription'&& is_service==0) {
             [rows] = await connect.query(`
             SELECT 
             TotalCount.total_count - RankedUsers.row_num + 1 AS descending_count, 
@@ -95,6 +153,7 @@ reborn.post('/getAllDrivers', async (req, res) => {
                 WHERE 
                     ut.type = ? 
                     AND ul.user_type = 1 
+                    AND ul.is_service = 0
                     AND ul.id LIKE ? 
                     AND IFNULL(ul.name, ?) LIKE ? 
                     AND IFNULL(ul.phone, ?) LIKE ? 
@@ -111,6 +170,7 @@ reborn.post('/getAllDrivers', async (req, res) => {
         WHERE 
             ut.type = ? 
             AND ul.user_type = 1 
+            AND ul.is_service = 0
             AND ul.id LIKE ? 
             AND IFNULL(ul.name, ?) LIKE ? 
             AND IFNULL(ul.phone, ?) LIKE ? 
@@ -146,6 +206,7 @@ reborn.post('/getAllDrivers', async (req, res) => {
                 WHERE 
                     ut.type = ? 
                     AND ul.user_type = 1 
+                    AND ul.is_service = 1
                     AND ul.id LIKE ? 
                     AND IFNULL(ul.name, ?) LIKE ? 
                     AND IFNULL(ul.phone, ?) LIKE ? 
@@ -161,6 +222,7 @@ reborn.post('/getAllDrivers', async (req, res) => {
         WHERE 
             ut.type = ? 
             AND ul.user_type = 1 
+            AND ul.is_service = 1
             AND ul.id LIKE ? 
             AND IFNULL(ul.name, ?) LIKE ? 
             AND IFNULL(ul.phone, ?) LIKE ? 
