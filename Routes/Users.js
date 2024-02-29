@@ -4611,4 +4611,64 @@ users.post("/addDriverSubscription", async (req, res) => {
     }
   }
 });
+
+users.get("/alpha-payment/:userid", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  try {
+    const { userid } = req.params;
+    connect = await database.connection.getConnection();
+    const [payment] = await connect.query(
+      `SELECT *  FROM alpha_payment JOIN users_list ON alpha_payment.userid = users_list.id
+         WHERE alpha_payment.userid = ? `,
+      [userid]
+    );
+    const totalPaymentAmount = payment.reduce(
+      (accumulator, secure) => accumulator + Number(secure.amount),
+      0
+    );
+    if (payment.length) {
+      appData.status = true;
+      appData.data = { user: payment[0], total_amount: totalPaymentAmount };
+      res.status(200).json(appData);
+    } else {
+      appData.error = "Услуги не найдены";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+users.get("/services", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  try {
+    connect = await database.connection.getConnection();
+    const [subscription] = await connect.query("SELECT * FROM services");
+    if (subscription.length) {
+      appData.status = true;
+      appData.data = subscription;
+      res.status(200).json(appData);
+    } else {
+      appData.error = "Услуги не найдены";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 module.exports = users;
