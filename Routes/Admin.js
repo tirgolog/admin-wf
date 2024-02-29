@@ -11,7 +11,7 @@ const crypto = require("crypto");
 const socket = require("../Modules/Socket");
 const { userInfo } = require("os");
 const amqp = require("amqplib");
-const axios=require('axios')
+const axios = require("axios");
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
@@ -37,7 +37,7 @@ const minioClient = new Minio.Client({
   accessKey: "2ByR3PpFGckilG4fhSaJ",
   secretKey: "8UH4HtIBc7WCwgCVshcxmQslHFyJB8Y79Bauq5Xd",
 });
-admin.use(cors());
+// admin.use(cors());
 
 admin.post("/loginAdmin", async (req, res) => {
   let connect,
@@ -86,28 +86,28 @@ admin.post("/loginAdmin", async (req, res) => {
   }
 });
 
-admin.use((req, res, next) => {
-  let token =
-    req.body.token ||
-    req.headers["token"] ||
-    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-  let appData = {};
-  if (token) {
-    jwt.verify(token, process.env.SECRET_KEY, function (err) {
-      if (err) {
-        appData["error"] = err;
-        appData["data"] = "Token is invalid";
-        res.status(403).json(appData);
-      } else {
-        next();
-      }
-    });
-  } else {
-    appData["error"] = 1;
-    appData["data"] = "Token is null";
-    res.status(200).json(appData);
-  }
-});
+// admin.use((req, res, next) => {
+//   let token =
+//     req.body.token ||
+//     req.headers["token"] ||
+//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+//   let appData = {};
+//   if (token) {
+//     jwt.verify(token, process.env.SECRET_KEY, function (err) {
+//       if (err) {
+//         appData["error"] = err;
+//         appData["data"] = "Token is invalid";
+//         res.status(403).json(appData);
+//       } else {
+//         next();
+//       }
+//     });
+//   } else {
+//     appData["error"] = 1;
+//     appData["data"] = "Token is null";
+//     res.status(200).json(appData);
+//   }
+// });
 
 admin.get("/getAllAgent", async (req, res) => {
   let connect,
@@ -3203,48 +3203,48 @@ admin.post("/addDriverServices", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
-        const [paymentUser] = await connect.query(
-          "SELECT * FROM alpha_payment where  userid = ? ",
-          [user_id]
+      const [paymentUser] = await connect.query(
+        "SELECT * FROM alpha_payment where  userid = ? ",
+        [user_id]
+      );
+      const totalPaymentAmount = paymentUser.reduce(
+        (accumulator, secure) => accumulator + Number(secure.amount),
+        0
+      );
+      if (paymentUser.length > 0) {
+        const [services] = await connect.query(
+          "SELECT * FROM services where id = ? ",
+          [services_id]
         );
-        const totalPaymentAmount = paymentUser.reduce(
-          (accumulator, secure) => accumulator + Number(secure.amount),
-          0
-        );
-        if (paymentUser.length > 0) {
-          const [services] = await connect.query(
-            "SELECT * FROM services where id = ? ",
-            [services_id]
+        if (totalPaymentAmount > services[0].price_uzs) {
+          const [editUser] = await connect.query(
+            "UPDATE users_list SET is_service = 1  WHERE id = ?",
+            [user_id]
           );
-          if (totalPaymentAmount > services[0].price_uzs) {
-            const [editUser] = await connect.query(
-              "UPDATE users_list SET is_service = 1  WHERE id = ?",
-              [user_id]
+          if (editUser.affectedRows > 0) {
+            const services_transaction = await connect.query(
+              "INSERT INTO services_transaction SET userid = ?, service_id = ?, price_uzs = ?, price_kzs = ?",
+              [user_id, services_id, price_uzs, price_kzs]
             );
-            if (editUser.affectedRows > 0) {
-              const services_transaction = await connect.query(
-                "INSERT INTO services_transaction SET userid = ?, service_id = ?, price_uzs = ?, price_kzs = ?",
-                [user_id, services_id, price_uzs, price_kzs]
-              );
-              if (services_transaction.length > 0) {
-                appData.status = true;
-                res.status(200).json(appData);
-              }
-            }else{
-              appData.error = "Пользователь не может обновить"
-              appData.status = false;
-              res.status(400).json(appData);
+            if (services_transaction.length > 0) {
+              appData.status = true;
+              res.status(200).json(appData);
             }
           } else {
-            appData.error = "Недостаточно средств на балансе";
+            appData.error = "Пользователь не может обновить";
             appData.status = false;
             res.status(400).json(appData);
           }
         } else {
-          appData.error = "Не найден Пользователь";
+          appData.error = "Недостаточно средств на балансе";
           appData.status = false;
           res.status(400).json(appData);
         }
+      } else {
+        appData.error = "Не найден Пользователь";
+        appData.status = false;
+        res.status(400).json(appData);
+      }
     }
   } catch (e) {
     appData.error = e.message;
@@ -3262,15 +3262,18 @@ admin.get("/alpha-payment/:userid", async (req, res) => {
   try {
     const { userid } = req.params;
     connect = await database.connection.getConnection();
-    const [payment] = await connect.query(`SELECT *  FROM alpha_payment JOIN users_list ON alpha_payment.userid = users_list.id
-         WHERE alpha_payment.userid = ? `, [userid]);
+    const [payment] = await connect.query(
+      `SELECT *  FROM alpha_payment JOIN users_list ON alpha_payment.userid = users_list.id
+         WHERE alpha_payment.userid = ? `,
+      [userid]
+    );
     const totalPaymentAmount = payment.reduce(
       (accumulator, secure) => accumulator + Number(secure.amount),
       0
     );
     if (payment.length) {
       appData.status = true;
-      appData.data = {user:payment[0],total_amount:totalPaymentAmount};
+      appData.data = { user: payment[0], total_amount: totalPaymentAmount };
       res.status(200).json(appData);
     } else {
       appData.error = "Услуги не найдены";
@@ -3290,10 +3293,11 @@ admin.get("/alpha-payment/:userid", async (req, res) => {
 admin.post("/services-transaction", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
-    const { from, limit } = req.body;
+  const { from, limit } = req.body;
   try {
     connect = await database.connection.getConnection();
-    const [services_transaction] = await connect.query(`SELECT  
+    const [services_transaction] = await connect.query(
+      `SELECT  
     id,
     service_id,
     (select name from services where id = services_transaction.service_id) as name,
@@ -3302,7 +3306,9 @@ admin.post("/services-transaction", async (req, res) => {
     createAt
     FROM services_transaction 
     ORDER BY id DESC LIMIT ?, ?
-    `, [ from, limit]);
+    `,
+      [from, limit]
+    );
     if (services_transaction.length) {
       appData.status = true;
       appData.data = services_transaction;
@@ -3325,18 +3331,21 @@ admin.post("/services-transaction", async (req, res) => {
 admin.post("/services-transaction/:userId", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
-   const { from, limit } = req.body;
+  const { from, limit } = req.body;
   try {
-   const { userid }=req.params
+    const { userid } = req.params;
     connect = await database.connection.getConnection();
-    const [services_transaction] = await connect.query(`SELECT 
+    const [services_transaction] = await connect.query(
+      `SELECT 
     id,
     service_id,
     (select name from services where id = services_transaction.service_id) as name,
     price_uzs,
     price_kzs,
     createAt
-    FROM services_transaction where userid = ?  ORDER BY id DESC LIMIT ?, ?`, [userid, from, limit]);
+    FROM services_transaction where userid = ?  ORDER BY id DESC LIMIT ?, ?`,
+      [userid, from, limit]
+    );
     if (services_transaction.length) {
       appData.status = true;
       appData.data = services_transaction;
@@ -3358,21 +3367,27 @@ admin.post("/services-transaction/:userId", async (req, res) => {
 
 admin.get("/curence/:key/:value", async (req, res) => {
   let appData = { status: false, timestamp: new Date().getTime() };
-  if (req.params.key=='UZS') {
-    let result =await fetch('https://cbu.uz/ru/arkhiv-kursov-valyut/json/').then(res => res.json()).catch(error => { throw error})
-    result=result.find(res=> res.Ccy=='KZT')
-    console.log(result)
-    appData.data = req.params.value/result?.Rate;
-    appData.status=true;
+  if (req.params.key == "UZS") {
+    let result = await axios.get(
+      "https://cbu.uz/ru/arkhiv-kursov-valyut/json/"
+    );
+    result = result.data.find((res) => res.Ccy == "KZT");
+    appData.data = req.params.value / result?.Rate;
+    appData.status = true;
     res.status(200).json(appData);
-  }else{
-    let result =await fetch('https://cbu.uz/ru/arkhiv-kursov-valyut/json/').then(res => res.json()).catch(error => { throw error})
-    result=result.find(res=> res.Ccy==req.params.key)
-    console.log(result)
-    appData.data = req.params.value*result?.Rate;
-    appData.status=true;
-    res.status(200).json(appData);
+  } else {
+    try {
+      let result = await axios.get(
+        "https://cbu.uz/ru/arkhiv-kursov-valyut/json/"
+      );
+      result = result.data.find((res) => res.Ccy == req.params.key);
+      appData.data = req.params.value * result?.Rate;
+      appData.status = true;
+      res.status(200).json(appData);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
   }
-})
+});
 
 module.exports = admin;
