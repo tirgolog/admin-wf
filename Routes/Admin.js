@@ -3359,14 +3359,14 @@ admin.post("/services-transaction/:userId", async (req, res) => {
 admin.get("/curence/:key/:value", async (req, res) => {
   let appData = { status: false, timestamp: new Date().getTime() };
   if (req.params.key=='UZS') {
-    let result =await fetch('https://cbu.uz/ru/arkhiv-kursov-valyut/json/').then(res => res.json())
+    let result =await fetch('https://cbu.uz/ru/arkhiv-kursov-valyut/json/').then(res => res.json()).catch(error => { throw error})
     result=result.find(res=> res.Ccy=='KZT')
     console.log(result)
     appData.data = req.params.value/result?.Rate;
     appData.status=true;
     res.status(200).json(appData);
   }else{
-    let result =await fetch('https://cbu.uz/ru/arkhiv-kursov-valyut/json/').then(res => res.json())
+    let result =await fetch('https://cbu.uz/ru/arkhiv-kursov-valyut/json/').then(res => res.json()).catch(error => { throw error})
     result=result.find(res=> res.Ccy==req.params.key)
     console.log(result)
     appData.data = req.params.value*result?.Rate;
