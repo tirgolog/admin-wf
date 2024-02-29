@@ -3262,14 +3262,15 @@ admin.get("/alpha-payment/:userid", async (req, res) => {
   try {
     const { userid } = req.params;
     connect = await database.connection.getConnection();
-    const [payment] = await connect.query("SELECT * FROM alpha_payment where userid = ?", [userid]);
+    const [payment] = await connect.query(`SELECT *  FROM alpha_payment JOIN users_list ON alpha_payment.userid = users_list.id
+         WHERE alpha_payment.userid = ? `, [userid]);
     const totalPaymentAmount = payment.reduce(
       (accumulator, secure) => accumulator + Number(secure.amount),
       0
     );
     if (payment.length) {
       appData.status = true;
-      appData.data = {total_amount:totalPaymentAmount};
+      appData.data = {user:payment[0],total_amount:totalPaymentAmount};
       res.status(200).json(appData);
     } else {
       appData.error = "Услуги не найдены";
@@ -3286,12 +3287,22 @@ admin.get("/alpha-payment/:userid", async (req, res) => {
   }
 });
 
-admin.get("/services-transaction", async (req, res) => {
+admin.post("/services-transaction", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
+    const { from, limit } = req.body;
   try {
     connect = await database.connection.getConnection();
-    const [services_transaction] = await connect.query("SELECT * FROM services_transaction");
+    const [services_transaction] = await connect.query(`SELECT  
+    id,
+    service_id,
+    (select name from services where id = services_transaction.service_id) as name,
+    price_uzs,
+    price_kzs,
+    createAt
+    FROM services_transaction 
+    ORDER BY id DESC LIMIT ?, ?
+    `, [ from, limit]);
     if (services_transaction.length) {
       appData.status = true;
       appData.data = services_transaction;
@@ -3311,13 +3322,21 @@ admin.get("/services-transaction", async (req, res) => {
   }
 });
 
-admin.get("/services-transaction/:userid", async (req, res) => {
+admin.post("/services-transaction/:userId", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
+   const { from, limit } = req.body;
   try {
-    const { userid } = req.params;
+   const { userid }=req.params
     connect = await database.connection.getConnection();
-    const [services_transaction] = await connect.query("SELECT * FROM services_transaction where userid = ?", [userid]);
+    const [services_transaction] = await connect.query(`SELECT 
+    id,
+    service_id,
+    (select name from services where id = services_transaction.service_id) as name,
+    price_uzs,
+    price_kzs,
+    createAt
+    FROM services_transaction where userid = ?  ORDER BY id DESC LIMIT ?, ?`, [userid, from, limit]);
     if (services_transaction.length) {
       appData.status = true;
       appData.data = services_transaction;
