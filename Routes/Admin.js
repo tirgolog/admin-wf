@@ -3341,16 +3341,18 @@ admin.get("/curence/:key/:value", async (req, res) => {
   let appData = { status: false, timestamp: new Date().getTime() };
   if (req.params.key=='UZS') {
     let result =await fetch('https://cbu.uz/ru/arkhiv-kursov-valyut/json/').then(res => res.json())
-    result=result.find(res=> res.Ccy==req.params.key)
-    appData.data = req.params.value/result.Rate;
+    result=result.find(res=> res.Ccy=='KZT')
+    console.log(result)
+    appData.data = req.params.value/result?.Rate;
     appData.status=true;
-    res.status(400).json(appData);
+    res.status(200).json(appData);
   }else{
     let result =await fetch('https://cbu.uz/ru/arkhiv-kursov-valyut/json/').then(res => res.json())
     result=result.find(res=> res.Ccy==req.params.key)
-    appData.data = req.params.value*result.Rate;
+    console.log(result)
+    appData.data = req.params.value*result?.Rate;
     appData.status=true;
-    res.status(400).json(appData);
+    res.status(200).json(appData);
   }
 })
 
