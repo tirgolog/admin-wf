@@ -156,6 +156,100 @@ users.post("/prepareClickPay", async function (req, res) {
     }
   }
 });
+
+users.post("/alphaCompleteClickPay", async function (req, res) {
+  let connect,
+    merchant_prepare_id = "",
+    data = [],
+    appData = { status: false };
+  try {
+    connect = await database.connection.getConnection();
+    appData.error = 0;
+    appData.error_note = "success";
+    appData.click_trans_id = req.body.click_trans_id;
+    appData.merchant_trans_id = req.body.merchant_trans_id;
+    merchant_prepare_id = null;
+    const [rows] = await connect.query(
+      "SELECT * FROM alpha_payment WHERE click_trans_id = ? LIMIT 1",
+      [req.body.click_trans_id]
+    );
+    if (rows.length > 0 && rows[0].status === 0 && +req.body.error >= 0) {
+      await connect.query("UPDATE alpha_payment SET status = 1 WHERE id = ?", [
+        rows[0].id,
+      ]);
+      const [insert] = await connect.query(
+        "UPDATE users_list SET balance = balance + ? WHERE id = ?",
+        [rows[0].amount, +req.body.merchant_trans_id]
+      );
+      if (insert.affectedRows > 0) {
+        const [token] = await connect.query(
+          "SELECT * FROM users_list WHERE id = ?",
+          [+req.body.merchant_trans_id]
+        );
+        if (token.length) {
+          if (token[0].token !== "" && token[0].token !== null) {
+            push.send(
+              token[0].token,
+              "Пополнение баланса",
+              "Ваш баланс успешно пополнен на сумму " + rows[0].amount,
+              "",
+              ""
+            );
+          }
+        }
+        data = {
+          userid: req.body.merchant_trans_id,
+          amount: rows[0].amount,
+        };
+        socket.updatebalance("updatebalanceuser", data);
+      }
+    }
+    res.status(200).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+users.post("/alphaPrepareClickPay", async function (req, res) {
+  let connect,
+    prepareid = Math.floor(10000000 + Math.random() * 89999999),
+    appData = { status: false };
+  try {
+    connect = await database.connection.getConnection();
+    appData.error = req.body.error;
+    appData.error_note = req.body.error_note;
+    appData.click_trans_id = req.body.click_trans_id;
+    appData.merchant_trans_id = req.body.merchant_trans_id;
+    appData.merchant_prepare_id = prepareid;
+    const [insert] = await connect.query(
+      "INSERT INTO alpha_payment SET click_trans_id = ?,userid = ?,merchant_prepare_id = ?,error = ?,error_note = ?,amount = ?",
+      [
+        req.body.click_trans_id,
+        req.body.merchant_trans_id,
+        prepareid,
+        req.body.error,
+        req.body.error_note,
+        req.body.amount,
+      ]
+    );
+    if (insert.affectedRows > 0) {
+      res.status(200).json(appData);
+    }
+  } catch (err) {
+    appData.status = false;
+    appData.error = err;
+    appData.message = err.message;
+    appData.data = "Неизвестная ошибка";
+    res.status(200).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 users.get("/pushOne", async function (req, res) {
   let connect,
     header = "Test",
@@ -898,32 +992,32 @@ users.post("/codeverifyClient", async (req, res) => {
   }
 });
 
-// users.use((req, res, next) => {
-//   let token =
-//     req.body.token ||
-//     req.headers["token"] ||
-//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-//   let appData = {};
+users.use((req, res, next) => {
+  let token =
+    req.body.token ||
+    req.headers["token"] ||
+    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+  let appData = {};
 
-//   if (token) {
-//     jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
-//       if (err) {
-//         console.error('JWT Verification Error:', err);
-//         appData["error"] = err;
-//         appData["data"] = "Token is invalid";
-//         res.status(401).json(appData);
-//       } else {
-//         // Attach user information from the decoded token to the request
-//         req.user = decoded;
-//         next();
-//       }
-//     });
-//   } else {
-//     appData["error"] = 1;
-//     appData["data"] = "Token is null";
-//     res.status(401).json(appData);
-//   }
-// });
+  if (token) {
+    jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
+      if (err) {
+        console.error('JWT Verification Error:', err);
+        appData["error"] = err;
+        appData["data"] = "Token is invalid";
+        res.status(401).json(appData);
+      } else {
+        // Attach user information from the decoded token to the request
+        req.user = decoded;
+        next();
+      }
+    });
+  } else {
+    appData["error"] = 1;
+    appData["data"] = "Token is null";
+    res.status(401).json(appData);
+  }
+});
 
 users.post("/saveDeviceToken", async (req, res) => {
   console.log("/saveDeviceToken");

@@ -3074,14 +3074,14 @@ admin.put("/services/:id", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const { id } = req.params;
-    const { name, price_uzs, price_kzs } = req.body;
-    if (!id || !name || !price_uzs || !price_kzs) {
+    const { name, price_uzs, price_kzs, rate } = req.body;
+    if (!id || !name || !price_uzs || !price_kzs || !rate) {
       appData.error = "All fields are required";
       return res.status(400).json(appData);
     }
     const [rows] = await connect.query(
-      `UPDATE services SET name = ? , price_uzs = ?, price_kzs = ? WHERE id = ?`,
-      [name, price_uzs, price_kzs, id]
+      `UPDATE services SET name = ? , price_uzs = ?, price_kzs = ?, rate = ? WHERE id = ?`,
+      [name, price_uzs, price_kzs, rate, id]
     );
     console.log(rows);
     if (rows.affectedRows > 0) {
@@ -3126,9 +3126,10 @@ admin.post("/services", async (req, res) => {
     name = req.body.name,
     price_uzs = req.body.price_uzs,
     price_kzs = req.body.price_kzs,
+    rate = req.body.rate,
     appData = { status: false };
   try {
-    if (!name || !price_uzs || !price_kzs) {
+    if (!name || !price_uzs || !price_kzs || !rate) {
       appData.error = "All fields are required";
       return res.status(400).json(appData);
     }
@@ -3142,8 +3143,8 @@ admin.post("/services", async (req, res) => {
       res.status(400).json(appData);
     } else {
       const [subscription] = await connect.query(
-        "INSERT INTO services SET name = ?, price_uzs = ?, price_kzs = ?",
-        [name, price_uzs, price_kzs]
+        "INSERT INTO services SET name = ?, price_uzs = ?, price_kzs = ?, rate = ?",
+        [name, price_uzs, price_kzs, rate]
       );
       appData.status = true;
       appData.data = subscription;
@@ -3187,7 +3188,8 @@ admin.get("/services", async (req, res) => {
 admin.post("/addDriverServices", async (req, res) => {
   let connect,
     appData = { status: false };
-  const { user_id, phone, services_id, price_uzs, price_kzs } = req.body;
+  const { user_id, phone, services_id, price_uzs, price_kzs, rate } = req.body;
+  console.log(req.body);
   try {
     if (!services_id) {
       appData.error = "Необходимо оформить подписку";
@@ -3223,8 +3225,8 @@ admin.post("/addDriverServices", async (req, res) => {
           );
           if (editUser.affectedRows > 0) {
             const services_transaction = await connect.query(
-              "INSERT INTO services_transaction SET userid = ?, service_id = ?, price_uzs = ?, price_kzs = ?",
-              [user_id, services_id, price_uzs, price_kzs]
+              "INSERT INTO services_transaction SET userid = ?, service_id = ?, price_uzs = ?, price_kzs = ?, rate = ?",
+              [user_id, services_id, price_uzs, price_kzs, rate]
             );
             if (services_transaction.length > 0) {
               appData.status = true;
@@ -3303,6 +3305,7 @@ admin.post("/services-transaction", async (req, res) => {
     (select name from services where id = services_transaction.service_id) as name,
     price_uzs,
     price_kzs,
+    rate,
     createAt
     FROM services_transaction 
     ORDER BY id DESC LIMIT ?, ?
@@ -3314,7 +3317,7 @@ admin.post("/services-transaction", async (req, res) => {
       appData.data = services_transaction;
       res.status(200).json(appData);
     } else {
-      appData.error = "Услуги не найдены";
+      appData.error = "Транзакция не найдена";
       res.status(400).json(appData);
     }
   } catch (e) {
@@ -3328,12 +3331,12 @@ admin.post("/services-transaction", async (req, res) => {
   }
 });
 
-admin.post("/services-transaction/:userId", async (req, res) => {
+admin.post("/services-transaction/user", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
-  const { from, limit } = req.body;
+  const { userid, from, limit } = req.body;
+  console.log(userid);
   try {
-    const { userid } = req.params;
     connect = await database.connection.getConnection();
     const [services_transaction] = await connect.query(
       `SELECT 
@@ -3342,16 +3345,18 @@ admin.post("/services-transaction/:userId", async (req, res) => {
     (select name from services where id = services_transaction.service_id) as name,
     price_uzs,
     price_kzs,
+    rate,
     createAt
-    FROM services_transaction where userid = ?  ORDER BY id DESC LIMIT ?, ?`,
+    FROM services_transaction where userid = ?`,
       [userid, from, limit]
     );
+    console.log(services_transaction);
     if (services_transaction.length) {
       appData.status = true;
       appData.data = services_transaction;
       res.status(200).json(appData);
     } else {
-      appData.error = "Услуги не найдены";
+      appData.error = "Транзакция не найдена";
       res.status(400).json(appData);
     }
   } catch (e) {
@@ -3388,6 +3393,21 @@ admin.get("/curence/:key/:value", async (req, res) => {
       console.error("Error fetching data:", error);
     }
   }
+});
+
+admin.get("/curence/course", async (req, res) => {
+  let appData = { status: false, timestamp: new Date().getTime() };
+    try {
+      let result = await axios.get(
+        "https://cbu.uz/ru/arkhiv-kursov-valyut/json/"
+      );
+      result = result.data.find((res) => res.Ccy == 'KZT');
+      appData.data = result?.Rate;
+      appData.status = true;
+      res.status(200).json(appData);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
 });
 
 module.exports = admin;
