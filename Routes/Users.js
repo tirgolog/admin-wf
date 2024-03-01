@@ -4726,7 +4726,7 @@ users.get("/alpha-payment/:userid", async (req, res) => {
       appData.data = { user: payment[0], total_amount: totalPaymentAmount };
       res.status(200).json(appData);
     } else {
-      appData.error = "Услуги не найдены";
+      appData.error = "Пользователь не заплатил в сервисе Tirgo";
       res.status(400).json(appData);
     }
   } catch (e) {

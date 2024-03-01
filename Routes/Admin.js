@@ -3219,9 +3219,10 @@ admin.post("/addDriverServices", async (req, res) => {
           [services_id]
         );
         if (totalPaymentAmount > services[0].price_uzs) {
+          let balance = totalPaymentAmount - services[0].price_uzs;
           const [editUser] = await connect.query(
-            "UPDATE users_list SET is_service = 1  WHERE id = ?",
-            [user_id]
+            "UPDATE users_list SET is_service = 1, balance=?  WHERE id = ?",
+            [balance, user_id]
           );
           if (editUser.affectedRows > 0) {
             const services_transaction = await connect.query(
@@ -3265,17 +3266,12 @@ admin.get("/alpha-payment/:userid", async (req, res) => {
     const { userid } = req.params;
     connect = await database.connection.getConnection();
     const [payment] = await connect.query(
-      `SELECT *  FROM alpha_payment JOIN users_list ON alpha_payment.userid = users_list.id
-         WHERE alpha_payment.userid = ? `,
+      `SELECT *  FROM users_list WHERE id = ? `,
       [userid]
-    );
-    const totalPaymentAmount = payment.reduce(
-      (accumulator, secure) => accumulator + Number(secure.amount),
-      0
     );
     if (payment.length) {
       appData.status = true;
-      appData.data = { user: payment[0], total_amount: totalPaymentAmount };
+      appData.data = payment[0];
       res.status(200).json(appData);
     } else {
       appData.error = "Услуги не найдены";
@@ -3397,17 +3393,17 @@ admin.get("/curence/:key/:value", async (req, res) => {
 
 admin.get("/curence/course", async (req, res) => {
   let appData = { status: false, timestamp: new Date().getTime() };
-    try {
-      let result = await axios.get(
-        "https://cbu.uz/ru/arkhiv-kursov-valyut/json/"
-      );
-      result = result.data.find((res) => res.Ccy == 'KZT');
-      appData.data = result?.Rate;
-      appData.status = true;
-      res.status(200).json(appData);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    }
+  try {
+    let result = await axios.get(
+      "https://cbu.uz/ru/arkhiv-kursov-valyut/json/"
+    );
+    result = result.data.find((res) => res.Ccy == "KZT");
+    appData.data = result?.Rate;
+    appData.status = true;
+    res.status(200).json(appData);
+  } catch (error) {
+    console.error("Error fetching data:", error);
+  }
 });
 
 module.exports = admin;
