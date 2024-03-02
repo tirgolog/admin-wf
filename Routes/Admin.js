@@ -3205,24 +3205,38 @@ admin.post("/addDriverServices", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
+      
       const [paymentUser] = await connect.query(
         "SELECT * FROM alpha_payment where  userid = ? ",
         [user_id]
       );
+
       const totalPaymentAmount = paymentUser.reduce(
         (accumulator, secure) => accumulator + Number(secure.amount),
         0
       );
+
+      const [paymentTransaction] = await connect.query(
+        "SELECT * FROM services_transaction where  userid = ? ",
+        [user_id]
+      );
+
+      const totalPaymentAmountTransaction = paymentTransaction.reduce(
+        (accumulator, secure) => accumulator + Number(secure.price_kzs),
+        0
+      );
+
+      let balance = totalPaymentAmount - totalPaymentAmountTransaction;
       if (paymentUser.length > 0) {
         const [services] = await connect.query(
           "SELECT * FROM services where id = ? ",
           [services_id]
         );
-        if (totalPaymentAmount > services[0].price_uzs) {
-          let balance = totalPaymentAmount - services[0].price_uzs;
+        
+        if (balance > services[0].price_uzs) {
           const [editUser] = await connect.query(
-            "UPDATE users_list SET is_service = 1, balance=?  WHERE id = ?",
-            [balance, user_id]
+            "UPDATE users_list SET is_service = 1  WHERE id = ?",
+            [user_id]
           );
           if (editUser.affectedRows > 0) {
             const services_transaction = await connect.query(
@@ -3266,15 +3280,37 @@ admin.get("/alpha-payment/:userid", async (req, res) => {
     const { userid } = req.params;
     connect = await database.connection.getConnection();
     const [payment] = await connect.query(
-      `SELECT *  FROM users_list WHERE id = ? `,
+      `SELECT *  FROM alpha_payment JOIN users_list ON alpha_payment.userid = users_list.id
+         WHERE alpha_payment.userid = ? `,
       [userid]
     );
+    const [paymentUser] = await connect.query(
+      "SELECT * FROM alpha_payment where  userid = ? ",
+      [userid]
+    );
+
+    const totalPaymentAmount = paymentUser.reduce(
+      (accumulator, secure) => accumulator + Number(secure.amount),
+      0
+    );
+
+    const [paymentTransaction] = await connect.query(
+      "SELECT * FROM services_transaction where  userid = ? ",
+      [userid]
+    );
+
+    const totalPaymentAmountTransaction = paymentTransaction.reduce(
+      (accumulator, secure) => accumulator + Number(secure.price_kzs),
+      0
+    );
+    console.log(totalPaymentAmount, totalPaymentAmountTransaction);
+    let balance = Number(totalPaymentAmount) - Number(totalPaymentAmountTransaction);
     if (payment.length) {
       appData.status = true;
-      appData.data = payment[0];
+      appData.data = { user: payment[0], total_amount: balance };
       res.status(200).json(appData);
     } else {
-      appData.error = "Услуги не найдены";
+      appData.error = "Пользователь не оплатил услуги Тирго";
       res.status(400).json(appData);
     }
   } catch (e) {
@@ -3331,7 +3367,6 @@ admin.post("/services-transaction/user", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
   const { userid, from, limit } = req.body;
-  console.log(userid);
   try {
     connect = await database.connection.getConnection();
     const [services_transaction] = await connect.query(
