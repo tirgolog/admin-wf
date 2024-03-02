@@ -3342,7 +3342,7 @@ admin.post("/services-transaction", async (req, res) => {
   FROM 
       services_transaction
   INNER JOIN
-      services ON services.id = services_transaction.service_id
+      services ON services.id = services_transaction.id
   ORDER BY 
       services_transaction.id DESC 
   LIMIT ?, ?
@@ -3386,7 +3386,7 @@ admin.post("/services-transaction/user", async (req, res) => {
   FROM 
       services_transaction
   INNER JOIN
-      services ON services.id = services_transaction.service_id
+      services ON services.id = services_transaction.id
   WHERE
       services_transaction.userid = ?
   ORDER BY 
