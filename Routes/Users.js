@@ -4737,7 +4737,7 @@ users.post("/addDriverSubscription", async (req, res) => {
             totalWithdrawalAmount;
           console.log(balance, "balance");
           // paymentUser active balance
-          if (balance >= valueofPayment) {
+          if ((Number) >= Number(valueofPayment)) {
             let nextMonth = new Date(
               new Date().setMonth(
                 new Date().getMonth() + subscription[0].duration

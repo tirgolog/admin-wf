@@ -2311,31 +2311,31 @@ admin.post("/addDriverSubscription", async (req, res) => {
             valueofPayment = 570000;
           }
           const [withdrawals] = await connect.query(
-            `SELECT * from driver_withdrawal where driver_id = ?`,
-            [rows[0]?.id]
+            `SELECT amount from driver_withdrawal where driver_id = ?`,
+            [user_id]
           );
           const [activeBalance] = await connect.query(
-            `SELECT * from secure_transaction where dirverid = ? and status = 2`,
-            [rows[0]?.id]
+            `SELECT amount from secure_transaction where dirverid = ? and status = 2`,
+            [user_id]
+          );
+          const [subscriptionPayment] = await connect.query(
+            `SELECT id, amount from subscription_transaction where userid = ? `,
+            [user_id]
           );
           const [payments] = await connect.query(
             "SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",
-            [rows[0].id]
-          );
-          const [subscriptionPayment] = await connect.query(
-            `SELECT id, amount from subscription_transaction where userid = ?`,
-            [rows[0]?.id]
+            [user_id]
           );
           const totalWithdrawalAmount = withdrawals.reduce(
-            (accumulator, secure) => accumulator + Number(secure.amount),
+            (accumulator, secure) => accumulator + +Number(secure.amount),
             0
           );
           const totalActiveAmount = activeBalance.reduce(
-            (accumulator, secure) => accumulator + Number(secure.amount),
+            (accumulator, secure) => accumulator + +Number(secure.amount),
             0
           );
           const totalPayments = payments.reduce(
-            (accumulator, secure) => accumulator + Number(secure.amount),
+            (accumulator, secure) => accumulator + +Number(secure.amount),
             0
           );
           const totalSubscriptionPayment = subscriptionPayment.reduce(
@@ -2345,12 +2345,12 @@ admin.post("/addDriverSubscription", async (req, res) => {
             0
           );
           let balance =
-            totalActiveAmount +
+              totalActiveAmount +
             (totalPayments - totalSubscriptionPayment) -
-            totalWithdrawalAmount;
-
+            totalWithdrawalAmount
+   
           // paymentUser active balance
-          if (balance >= valueofPayment) {
+          if (Number(balance) >= Number(valueofPayment)) {
             let nextMonth = new Date(
               new Date().setMonth(
                 new Date().getMonth() + subscription[0].duration
@@ -2431,6 +2431,7 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
         "SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",
         [rows[0].id]
       );
+      console.log(payments)
       const totalWithdrawalAmountProcess = withdrawalsProccess.reduce(
         (accumulator, secure) => accumulator + +Number(secure.amount),
         0
@@ -2457,6 +2458,10 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
         },
         0
       );
+      console.log(totalActiveAmount);
+      console.log(totalPayments);
+      console.log(totalSubscriptionPayment);
+      console.log(totalWithdrawalAmount);
       appData.data = rows[0];
       appData.data.balance =
         totalActiveAmount +
