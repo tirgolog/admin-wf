@@ -3334,7 +3334,7 @@ admin.post("/services-transaction", async (req, res) => {
       `SELECT  
     id,
     service_id,
-    (select name from services where id = services_transaction.service_id) as name,
+    (select name from services where services.id = services_transaction.service_id) as name,
     price_uzs,
     price_kzs,
     rate,
@@ -3373,7 +3373,7 @@ admin.post("/services-transaction/user", async (req, res) => {
       `SELECT 
     id,
     service_id,
-    (select name from services where id = services_transaction.service_id) as name,
+    (select name from services where services.id = services_transaction.service_id) as name,
     price_uzs,
     price_kzs,
     rate,
