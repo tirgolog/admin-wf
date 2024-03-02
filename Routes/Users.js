@@ -4889,7 +4889,10 @@ users.post("/addDriverServices", async (req, res) => {
       return res.status(400).json(appData);
     }
     connect = await database.connection.getConnection();
-
+    const [user] = await connect.query(
+      "SELECT * FROM users_list WHERE to_subscription > CURDATE() AND id = ?",
+      [user_id]
+    );
     const [paymentUser] = await connect.query(
       "SELECT * FROM alpha_payment where  userid = ? ",
       [user_id]
@@ -4911,7 +4914,7 @@ users.post("/addDriverServices", async (req, res) => {
     );
 
     let balance = totalPaymentAmount - totalPaymentAmountTransaction;
-    if (paymentUser.length > 0) {
+    if (user.length > 0) {
       const [services] = await connect.query(
         "SELECT * FROM services where id = ? ",
         [services_id]
