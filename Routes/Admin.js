@@ -3333,6 +3333,7 @@ admin.post("/services-transaction", async (req, res) => {
     const [services_transaction] = await connect.query(
       `SELECT  
     id,
+    userid,
     service_id,
     (select name from services where services.id = services_transaction.service_id) as name,
     price_uzs,
@@ -3372,6 +3373,7 @@ admin.post("/services-transaction/user", async (req, res) => {
     const [services_transaction] = await connect.query(
       `SELECT 
     id,
+    userid,
     service_id,
     (select name from services where services.id = services_transaction.service_id) as name,
     price_uzs,
