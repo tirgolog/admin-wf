@@ -2831,10 +2831,7 @@ admin.post("/addUserByAgent", async (req, res) => {
                     "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, agent_id = ?",
                     [user_id, subscription_id, phone, paymentValue, agent_id]
                   );
-                  console.log(
-                    subscription_transaction,
-                    "subscription_transaction"
-                  );
+                  
                   if (subscription_transaction.length > 0) {
                     const [edit] = await connect.query(
                       "UPDATE users_list SET subscription_id = ? , from_subscription = ? , to_subscription=?,  agent_id = ?  WHERE id =?",

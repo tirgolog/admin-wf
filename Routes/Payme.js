@@ -116,11 +116,59 @@ payme.post('/payMeMerchantApi', async function(req, res) {
                             appData.id = id;
                             res.status(200).json(appData);
                             const [insert] = await connect.query('UPDATE users_list SET balance = balance + ? WHERE id = ?', [+checkpay[0].amount,+checkpay[0].userid]);
+                                                     
                             if(insert.affectedRows > 0){
                                 const [token] = await connect.query('SELECT * FROM users_list WHERE id = ?', [+checkpay[0].userid]);
                                 if (token.length){
                                     if(token[0].token !== '' && token[0].token !== null){
                                         push.send(token[0].token, "Пополнение баланса","Ваш баланс успешно пополнен на сумму "+checkpay[0].amount,'','');
+                                    }
+                                    let valueofPayment;
+                                    let duration = 1;
+                                    // if (180000>Number(checkpay[0].amount) >=80000) {
+                                    //     valueofPayment = 80;
+                                    //     duration =1;
+                                    //   } else if (570000>Number(checkpay[0].amount) >=180000) {
+                                    //     duration =3;
+                                    //     valueofPayment = 180;
+                                    //   }
+                                    //   if (Number(checkpay[0].amount) >=570000) {
+                                    //     duration =12;
+                                    //     valueofPayment = 570;
+                                    //   }
+                                    const [subscription] = await connect.query(
+                                        "SELECT * FROM subscription where duration = ?",
+                                        [duration]
+                                      );
+                                      console.log(subscription);
+
+                                      const [users] = await connect.query(
+                                        "SELECT * FROM users_lisr where id = ?",
+                                        [checkpay[0].userid]
+                                      );
+                                 console.log(users);
+                                    if (checkpay[0].amount > valueofPayment) {
+                                        let nextMonth = new Date(
+                                          new Date().setMonth(
+                                            new Date().getMonth() + subscription[0].duration
+                                          )
+                                        );
+                                        const [userUpdate] = await connect.query(
+                                          "UPDATE users_list SET subscription_id = ?, from_subscription = ? , to_subscription=?  WHERE id = ?",
+                                          [subscription[0].id, new Date(), nextMonth, checkpay[0].userid]
+                                        );
+                                        console.log(userUpdate);
+                                        if (userUpdate.affectedRows == 1) {
+                                          const subscription_transaction = await connect.query(
+                                            "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?",
+                                            [checkpay[0].userid, subscription[0].id, users[0].phone, valueofPayment]
+                                          );
+                                          console.log(subscription_transaction);
+                                          if (subscription_transaction.length > 0) {
+                                                  console.log('subscription_transaction', subscription_transaction);
+                                       
+                                          }
+                                        } 
                                     }
                                 }
                                 data = {
