@@ -143,7 +143,7 @@ payme.post('/payMeMerchantApi', async function(req, res) {
                                       console.log(subscription);
 
                                       const [users] = await connect.query(
-                                        "SELECT * FROM users_lisr where id = ?",
+                                        "SELECT * FROM users_list where id = ?",
                                         [checkpay[0].userid]
                                       );
                                  console.log(users);
