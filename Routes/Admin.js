@@ -2544,9 +2544,14 @@ admin.get("/paymentFullBalance/:userId", async (req, res) => {
         [rows[0]?.id]
       );
       const [subscriptionPayment] = await connect.query(
-        `SELECT id ,amount from subscription_transaction where userid = ? and agent_id=0  or admin_id = 0`,
+        `SELECT id, amount
+         FROM subscription_transaction
+         WHERE userid = ? 
+         AND (agent_id IS NULL OR admin_id IS NULL)
+        `,
         [rows[0]?.id]
       );
+      console.log(subscriptionPayment)
       const [payments] = await connect.query(
         "SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",
         [rows[0].id]
