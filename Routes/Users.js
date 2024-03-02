@@ -1298,7 +1298,7 @@ users.get("/checkSession", async function (req, res) {
         [rows[0]?.id]
       );
       const [subscriptionPayment] = await connect.query(
-        `SELECT id, amount from subscription_transaction where userid = ? and agent_id = 0 and admin_id = 0`,
+        `SELECT id, amount from subscription_transaction where userid = ? and agent_id = 0 or admin_id = 0`,
         [rows[0]?.id]
       );
       const [subscription] = await connect.query(
@@ -4700,7 +4700,7 @@ users.post("/addDriverSubscription", async (req, res) => {
             [user_id]
           );
           const [subscriptionPayment] = await connect.query(
-            `SELECT id, amount from subscription_transaction where userid = ? and agent_id = 0 and admin_id = 0`,
+            `SELECT id, amount from subscription_transaction where userid = ? and agent_id = 0 or admin_id = 0`,
             [user_id]
           );
           const totalWithdrawalAmount = withdrawals.reduce(
