@@ -4920,7 +4920,7 @@ users.post("/addDriverServices", async (req, res) => {
         [services_id]
       );
 
-      if (balance > services[0].price_uzs) {
+      if (Number(balance )>= Number(services[0].price_uzs)) {
         const [editUser] = await connect.query(
           "UPDATE users_list SET is_service = 1  WHERE id = ?",
           [user_id]
