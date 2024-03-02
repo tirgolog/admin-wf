@@ -125,29 +125,27 @@ payme.post('/payMeMerchantApi', async function(req, res) {
                                     }
                                     let valueofPayment;
                                     let duration = 1;
-                                    // if (180000>Number(checkpay[0].amount) >=80000) {
-                                    //     valueofPayment = 80;
-                                    //     duration =1;
-                                    //   } else if (570000>Number(checkpay[0].amount) >=180000) {
-                                    //     duration =3;
-                                    //     valueofPayment = 180;
-                                    //   }
-                                    //   if (Number(checkpay[0].amount) >=570000) {
-                                    //     duration =12;
-                                    //     valueofPayment = 570;
-                                    //   }
+                                    if (180000>Number(checkpay[0].amount) >=80000) {
+                                        valueofPayment = 80000;
+                                        duration =1;
+                                      } else if (570000>Number(checkpay[0].amount) >=180000) {
+                                        duration =3;
+                                        valueofPayment = 180000;
+                                      }
+                                      if (Number(checkpay[0].amount) >=570000) {
+                                        duration =12;
+                                        valueofPayment = 570000;
+                                      }
                                     const [subscription] = await connect.query(
                                         "SELECT * FROM subscription where duration = ?",
                                         [duration]
                                       );
                                       console.log(subscription);
-
                                       const [users] = await connect.query(
                                         "SELECT * FROM users_list where id = ?",
                                         [checkpay[0].userid]
                                       );
-                                 console.log(users);
-                                    // if (checkpay[0].amount > valueofPayment) {
+                                    if (checkpay[0].amount > valueofPayment) {
                                         let nextMonth = new Date(
                                           new Date().setMonth(
                                             new Date().getMonth() + subscription[0].duration
@@ -166,9 +164,8 @@ payme.post('/payMeMerchantApi', async function(req, res) {
                                           console.log(subscription_transaction);
                                           if (subscription_transaction.length > 0) {
                                                   console.log('subscription_transaction', subscription_transaction);
-                                       
                                           }
-                                        // } 
+                                        } 
                                     }
                                 }
                                 data = {
