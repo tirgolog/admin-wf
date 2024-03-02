@@ -147,7 +147,7 @@ payme.post('/payMeMerchantApi', async function(req, res) {
                                         [checkpay[0].userid]
                                       );
                                  console.log(users);
-                                    if (checkpay[0].amount > valueofPayment) {
+                                    // if (checkpay[0].amount > valueofPayment) {
                                         let nextMonth = new Date(
                                           new Date().setMonth(
                                             new Date().getMonth() + subscription[0].duration
@@ -168,7 +168,7 @@ payme.post('/payMeMerchantApi', async function(req, res) {
                                                   console.log('subscription_transaction', subscription_transaction);
                                        
                                           }
-                                        } 
+                                        // } 
                                     }
                                 }
                                 data = {
