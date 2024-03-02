@@ -3332,16 +3332,21 @@ admin.post("/services-transaction", async (req, res) => {
     connect = await database.connection.getConnection();
     const [services_transaction] = await connect.query(
       `SELECT  
-    id,
-    service_id,
-    (select name from services where id = services_transaction.service_id) as name,
-    price_uzs,
-    price_kzs,
-    rate,
-    createAt
-    FROM services_transaction 
-    ORDER BY id DESC LIMIT ?, ?
-    `,
+      services_transaction.id,
+      services_transaction.service_id,
+      services.name,
+      services_transaction.price_uzs,
+      services_transaction.price_kzs,
+      services_transaction.rate,
+      services_transaction.createAt
+  FROM 
+      services_transaction
+  INNER JOIN
+      services ON services.id = services_transaction.service_id
+  ORDER BY 
+      services_transaction.id DESC 
+  LIMIT ?, ?
+  `,
       [from, limit]
     );
     if (services_transaction.length) {
@@ -3371,14 +3376,23 @@ admin.post("/services-transaction/user", async (req, res) => {
     connect = await database.connection.getConnection();
     const [services_transaction] = await connect.query(
       `SELECT 
-    id,
-    service_id,
-    (select name from services where id = services_transaction.service_id) as name,
-    price_uzs,
-    price_kzs,
-    rate,
-    createAt
-    FROM services_transaction where userid = ?`,
+      services_transaction.id,
+      services_transaction.service_id,
+      services.name,
+      services_transaction.price_uzs,
+      services_transaction.price_kzs,
+      services_transaction.rate,
+      services_transaction.createAt
+  FROM 
+      services_transaction
+  INNER JOIN
+      services ON services.id = services_transaction.service_id
+  WHERE
+      services_transaction.userid = ?
+  ORDER BY 
+      services_transaction.id DESC 
+  LIMIT ?, ?
+  `,
       [userid, from, limit]
     );
     console.log(services_transaction);
