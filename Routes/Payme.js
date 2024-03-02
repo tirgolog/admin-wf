@@ -36,7 +36,6 @@ payme.post('/payMeMerchantApi', async function(req, res) {
         connect = await database.connection.getConnection();
         console.log(parseIp(req))
         if (addresses.findIndex(e => e.ip === parseIp(req).replace('::ffff:','')) >= 0){
-            console.log('keld')
             if (req.header('authorization') === 'Basic '+btoa(login+':'+password)){
                 if (method === 'CheckTransaction'){
                     const [checkpay] = await connect.query('SELECT * FROM payment WHERE payid = ? LIMIT 1', [params.id]);
