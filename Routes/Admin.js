@@ -37,7 +37,7 @@ const minioClient = new Minio.Client({
   accessKey: "2ByR3PpFGckilG4fhSaJ",
   secretKey: "8UH4HtIBc7WCwgCVshcxmQslHFyJB8Y79Bauq5Xd",
 });
-admin.use(cors());
+// admin.use(cors());
 
 admin.post("/loginAdmin", async (req, res) => {
   let connect,
@@ -86,28 +86,28 @@ admin.post("/loginAdmin", async (req, res) => {
   }
 });
 
-admin.use((req, res, next) => {
-  let token =
-    req.body.token ||
-    req.headers["token"] ||
-    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-  let appData = {};
-  if (token) {
-    jwt.verify(token, process.env.SECRET_KEY, function (err) {
-      if (err) {
-        appData["error"] = err;
-        appData["data"] = "Token is invalid";
-        res.status(403).json(appData);
-      } else {
-        next();
-      }
-    });
-  } else {
-    appData["error"] = 1;
-    appData["data"] = "Token is null";
-    res.status(200).json(appData);
-  }
-});
+// admin.use((req, res, next) => {
+//   let token =
+//     req.body.token ||
+//     req.headers["token"] ||
+//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+//   let appData = {};
+//   if (token) {
+//     jwt.verify(token, process.env.SECRET_KEY, function (err) {
+//       if (err) {
+//         appData["error"] = err;
+//         appData["data"] = "Token is invalid";
+//         res.status(403).json(appData);
+//       } else {
+//         next();
+//       }
+//     });
+//   } else {
+//     appData["error"] = 1;
+//     appData["data"] = "Token is null";
+//     res.status(200).json(appData);
+//   }
+// });
 
 admin.get("/getAllAgent", async (req, res) => {
   let connect,
@@ -3195,10 +3195,9 @@ admin.get("/services", async (req, res) => {
 admin.post("/addDriverServices", async (req, res) => {
   let connect,
     appData = { status: false };
-  const { user_id, phone, services_id, price_uzs, price_kzs, rate } = req.body;
-  console.log(req.body);
+  const { user_id, phone, services } = req.body;
   try {
-    if (!services_id) {
+    if (!services) {
       appData.error = "Необходимо оформить подписку";
       return res.status(400).json(appData);
     }
@@ -3229,28 +3228,35 @@ admin.post("/addDriverServices", async (req, res) => {
       );
 
       const totalPaymentAmountTransaction = paymentTransaction.reduce(
-        (accumulator, secure) => accumulator + Number(secure.price_kzs),
+        (accumulator, secure) => accumulator + Number(secure.price_uzs),
+        0
+      );
+
+      const totalAmount = services.reduce(
+        (accumulator, secure) => accumulator + Number(secure.price_uzs),
         0
       );
 
       let balance = totalPaymentAmount - totalPaymentAmountTransaction;
       if (paymentUser.length > 0) {
-        const [services] = await connect.query(
-          "SELECT * FROM services where id = ? ",
-          [services_id]
-        );
-        
-        if (balance > services[0].price_uzs) {
+        if (balance > totalAmount) {
           const [editUser] = await connect.query(
             "UPDATE users_list SET is_service = 1  WHERE id = ?",
             [user_id]
           );
           if (editUser.affectedRows > 0) {
-            const services_transaction = await connect.query(
-              "INSERT INTO services_transaction SET userid = ?, service_id = ?, price_uzs = ?, price_kzs = ?, rate = ?",
-              [user_id, services_id, price_uzs, price_kzs, rate]
-            );
-            if (services_transaction.length > 0) {
+            const insertValues = services.map(service => {
+              return [
+                  user_id,
+                  service.services_id,
+                  service.price_uzs,
+                  service.price_kzs,
+                  service.rate
+              ];
+          });
+          const sql = 'INSERT INTO services_transaction (userid, service_id, price_uzs, price_kzs, rate) VALUES ?';
+          const [result] = await connect.query(sql, [insertValues]);
+          if (result.affectedRows > 0) {
               appData.status = true;
               res.status(200).json(appData);
             }

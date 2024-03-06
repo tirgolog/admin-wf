@@ -4903,72 +4903,86 @@ users.post("/services-transaction/:userId", async (req, res) => {
 users.post("/addDriverServices", async (req, res) => {
   let connect,
     appData = { status: false };
-  const { user_id, services_id, price_uzs, price_kzs, rate } = req.body;
+  const { user_id, phone, services } = req.body;
   try {
-    if (!services_id) {
+    if (!services) {
       appData.error = "Необходимо оформить подписку";
       return res.status(400).json(appData);
     }
     connect = await database.connection.getConnection();
-    const [user] = await connect.query(
-      "SELECT * FROM users_list WHERE to_subscription > CURDATE() AND id = ?",
-      [user_id]
+    const [rows] = await connect.query(
+      "SELECT * FROM users_contacts WHERE text = ? AND verify = 1",
+      [phone]
     );
-    const [paymentUser] = await connect.query(
-      "SELECT * FROM alpha_payment where  userid = ? ",
-      [user_id]
-    );
-
-    const totalPaymentAmount = paymentUser.reduce(
-      (accumulator, secure) => accumulator + Number(secure.amount),
-      0
-    );
-
-    const [paymentTransaction] = await connect.query(
-      "SELECT * FROM services_transaction where  userid = ? ",
-      [user_id]
-    );
-
-    const totalPaymentAmountTransaction = paymentTransaction.reduce(
-      (accumulator, secure) => accumulator + Number(secure.price_kzs),
-      0
-    );
-
-    let balance = totalPaymentAmount - totalPaymentAmountTransaction;
-    if (user.length > 0) {
-      const [services] = await connect.query(
-        "SELECT * FROM services where id = ? ",
-        [services_id]
+    if (rows.length < 0) {
+      appData.error = " Не найден Пользователь";
+      appData.status = false;
+      res.status(400).json(appData);
+    } else {
+      
+      const [paymentUser] = await connect.query(
+        "SELECT * FROM alpha_payment where  userid = ? ",
+        [user_id]
       );
 
-      if (Number(balance )>= Number(services[0].price_uzs)) {
-        const [editUser] = await connect.query(
-          "UPDATE users_list SET is_service = 1  WHERE id = ?",
-          [user_id]
-        );
-        if (editUser.affectedRows > 0) {
-          const services_transaction = await connect.query(
-            "INSERT INTO services_transaction SET userid = ?, service_id = ?, price_uzs = ?, price_kzs = ?, rate = ?",
-            [user_id, services_id, price_uzs, price_kzs, rate]
+      const totalPaymentAmount = paymentUser.reduce(
+        (accumulator, secure) => accumulator + Number(secure.amount),
+        0
+      );
+
+      const [paymentTransaction] = await connect.query(
+        "SELECT * FROM services_transaction where  userid = ? ",
+        [user_id]
+      );
+
+      const totalPaymentAmountTransaction = paymentTransaction.reduce(
+        (accumulator, secure) => accumulator + Number(secure.price_uzs),
+        0
+      );
+
+      const totalAmount = services.reduce(
+        (accumulator, secure) => accumulator + Number(secure.price_uzs),
+        0
+      );
+
+      let balance = totalPaymentAmount - totalPaymentAmountTransaction;
+      if (paymentUser.length > 0) {
+        if (balance > totalAmount) {
+          const [editUser] = await connect.query(
+            "UPDATE users_list SET is_service = 1  WHERE id = ?",
+            [user_id]
           );
-          if (services_transaction.length > 0) {
-            appData.status = true;
-            res.status(200).json(appData);
+          if (editUser.affectedRows > 0) {
+            const insertValues = services.map(service => {
+              return [
+                  user_id,
+                  service.services_id,
+                  service.price_uzs,
+                  service.price_kzs,
+                  service.rate
+              ];
+          });
+          const sql = 'INSERT INTO services_transaction (userid, service_id, price_uzs, price_kzs, rate) VALUES ?';
+          const [result] = await connect.query(sql, [insertValues]);
+          if (result.affectedRows > 0) {
+              appData.status = true;
+              res.status(200).json(appData);
+            }
+          } else {
+            appData.error = "Пользователь не может обновить";
+            appData.status = false;
+            res.status(400).json(appData);
           }
         } else {
-          appData.error = "Пользователь не может обновить";
+          appData.error = "Недостаточно средств на балансе";
           appData.status = false;
           res.status(400).json(appData);
         }
       } else {
-        appData.error = "Недостаточно средств на балансе";
+        appData.error = "Не найден Пользователь";
         appData.status = false;
         res.status(400).json(appData);
       }
-    } else {
-      appData.error = "Не найден Пользователь";
-      appData.status = false;
-      res.status(400).json(appData);
     }
   } catch (e) {
     appData.error = e.message;
