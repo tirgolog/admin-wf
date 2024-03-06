@@ -4863,43 +4863,6 @@ users.get("/services", async (req, res) => {
   }
 });
 
-users.post("/services-transaction/:userId", async (req, res) => {
-  let connect,
-    appData = { status: false, timestamp: new Date().getTime() };
-  const { from, limit } = req.body;
-  try {
-    const { userid } = req.params;
-    connect = await database.connection.getConnection();
-    const [services_transaction] = await connect.query(
-      `SELECT 
-    id,
-    service_id,
-    (select name from services where id = services_transaction.service_id) as name,
-    price_uzs,
-    price_kzs,
-    createAt
-    FROM services_transaction where userid = ?  ORDER BY id DESC LIMIT ?, ?`,
-      [userid, from, limit]
-    );
-    if (services_transaction.length) {
-      appData.status = true;
-      appData.data = services_transaction;
-      res.status(200).json(appData);
-    } else {
-      appData.error = "Услуги не найдены";
-      res.status(400).json(appData);
-    }
-  } catch (e) {
-    console.log(e);
-    appData.error = e.message;
-    res.status(400).json(appData);
-  } finally {
-    if (connect) {
-      connect.release();
-    }
-  }
-});
-
 users.post("/services-transaction/user", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
