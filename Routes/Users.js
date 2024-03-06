@@ -105,50 +105,56 @@ users.post("/completeClickPay", async function (req, res) {
             );
             let valueofPayment;
             let duration = 1;
-            if (180000>Number(checkpay[0].amount) >=80000) {
-                valueofPayment = 80000;
-                duration =1;
-              } 
-            else if (570000>Number(checkpay[0].amount) >=180000) {
-                duration =3;
-                valueofPayment = 180000;
-              }
-            if (Number(checkpay[0].amount) >=570000) {
-                duration =12;
-                valueofPayment = 570000;
-              }
-            const [subscription] = await connect.query(
-                "SELECT * FROM subscription where duration = ?",
-                [duration]
-              );
-              console.log(subscription);
-              const [users] = await connect.query(
-                "SELECT * FROM users_list where id = ?",
-                [checkpay[0].userid]
-              );
-            if (checkpay[0].amount > valueofPayment) {
-                let nextMonth = new Date(
-                  new Date().setMonth(
-                    new Date().getMonth() + subscription[0].duration
-                  )
-                );
-            const [userUpdate] = await connect.query(
-                  "UPDATE users_list SET subscription_id = ?, from_subscription = ? , to_subscription=?  WHERE id = ?",
-                  [subscription[0].id, new Date(), nextMonth, checkpay[0].userid]
-                );
-                console.log(userUpdate);
-            if (userUpdate.affectedRows == 1) {
-                  const subscription_transaction = await connect.query(
-                    "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?",
-                    [checkpay[0].userid, subscription[0].id, users[0].phone, valueofPayment]
-                  );
-                  console.log(subscription_transaction);
-            if (subscription_transaction.length > 0) {
-                          console.log('subscription_transaction', subscription_transaction);
-                  }
-                } 
+            if (180000 > Number(checkpay[0].amount) >= 80000) {
+              valueofPayment = 80000;
+              duration = 1;
+            } else if (570000 > Number(checkpay[0].amount) >= 180000) {
+              duration = 3;
+              valueofPayment = 180000;
             }
-
+            if (Number(checkpay[0].amount) >= 570000) {
+              duration = 12;
+              valueofPayment = 570000;
+            }
+            const [subscription] = await connect.query(
+              "SELECT * FROM subscription where duration = ?",
+              [duration]
+            );
+            console.log(subscription);
+            const [users] = await connect.query(
+              "SELECT * FROM users_list where id = ?",
+              [checkpay[0].userid]
+            );
+            if (checkpay[0].amount > valueofPayment) {
+              let nextMonth = new Date(
+                new Date().setMonth(
+                  new Date().getMonth() + subscription[0].duration
+                )
+              );
+              const [userUpdate] = await connect.query(
+                "UPDATE users_list SET subscription_id = ?, from_subscription = ? , to_subscription=?  WHERE id = ?",
+                [subscription[0].id, new Date(), nextMonth, checkpay[0].userid]
+              );
+              console.log(userUpdate);
+              if (userUpdate.affectedRows == 1) {
+                const subscription_transaction = await connect.query(
+                  "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?",
+                  [
+                    checkpay[0].userid,
+                    subscription[0].id,
+                    users[0].phone,
+                    valueofPayment,
+                  ]
+                );
+                console.log(subscription_transaction);
+                if (subscription_transaction.length > 0) {
+                  console.log(
+                    "subscription_transaction",
+                    subscription_transaction
+                  );
+                }
+              }
+            }
           }
         }
         data = {
@@ -4760,7 +4766,7 @@ users.post("/addDriverSubscription", async (req, res) => {
             totalWithdrawalAmount;
           console.log(balance, "balance");
           // paymentUser active balance
-          if ((Number) >= Number(valueofPayment)) {
+          if (Number >= Number(valueofPayment)) {
             let nextMonth = new Date(
               new Date().setMonth(
                 new Date().getMonth() + subscription[0].duration
@@ -4924,7 +4930,6 @@ users.post("/addDriverServices", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
-      
       const [paymentUser] = await connect.query(
         "SELECT * FROM alpha_payment where  userid = ? ",
         [user_id]
@@ -4958,18 +4963,19 @@ users.post("/addDriverServices", async (req, res) => {
             [user_id]
           );
           if (editUser.affectedRows > 0) {
-            const insertValues = services.map(service => {
+            const insertValues = services.map((service) => {
               return [
-                  user_id,
-                  service.services_id,
-                  service.price_uzs,
-                  service.price_kzs,
-                  service.rate
+                user_id,
+                service.services_id,
+                service.price_uzs,
+                service.price_kzs,
+                service.rate,
               ];
-          });
-          const sql = 'INSERT INTO services_transaction (userid, service_id, price_uzs, price_kzs, rate) VALUES ?';
-          const [result] = await connect.query(sql, [insertValues]);
-          if (result.affectedRows > 0) {
+            });
+            const sql =
+              "INSERT INTO services_transaction (userid, service_id, price_uzs, price_kzs, rate) VALUES ?";
+            const [result] = await connect.query(sql, [insertValues]);
+            if (result.affectedRows > 0) {
               appData.status = true;
               res.status(200).json(appData);
             }
@@ -4997,6 +5003,97 @@ users.post("/addDriverServices", async (req, res) => {
       connect.release();
     }
   }
+});
+
+users.post("/services-transaction/user/days", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  const { userid, from, limit } = req.body;
+  try {
+    connect = await database.connection.getConnection();
+    const [services_transaction] = await connect.query(
+      `SELECT 
+      id,
+      userid,
+      service_id,
+      (select name from services where services.id = services_transaction.service_id) as name,
+      price_uzs,
+      price_kzs,
+      rate,
+      createAt
+    FROM services_transaction 
+    WHERE userid = ? AND createAt >= DATE_SUB(CURDATE(), INTERVAL 3 DAY)
+    ORDER BY id DESC LIMIT ?, ?`,
+      [userid, from, limit]
+    );
+    console.log(services_transaction);
+    if (services_transaction.length) {
+      appData.status = true;
+      appData.data = services_transaction;
+      res.status(200).json(appData);
+    } else {
+      appData.error = "Транзакция не найдена";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+users.post("/services-transaction/user/balanse", async (req, res) => {
+  let connect,
+  appData = { status: false };
+const { userid, phone } = req.body;
+try {
+  connect = await database.connection.getConnection();
+  const [rows] = await connect.query(
+    "SELECT * FROM users_contacts WHERE text = ? AND verify = 1",
+    [phone]
+  );
+  if (rows.length < 1) {
+    appData.error = " Не найден Пользователь";
+    appData.status = false;
+    res.status(400).json(appData);
+  } else {
+    const [paymentUser] = await connect.query(
+      "SELECT * FROM alpha_payment where  userid = ? ",
+      [userid]
+    );
+
+    const totalPaymentAmount = paymentUser.reduce(
+      (accumulator, secure) => accumulator + Number(secure.amount),
+      0
+    );
+
+    const [paymentTransaction] = await connect.query(
+      "SELECT * FROM services_transaction where  userid = ? ",
+      [userid]
+    );
+
+    const totalPaymentAmountTransaction = paymentTransaction.reduce(
+      (accumulator, secure) => accumulator + Number(secure.price_uzs),
+      0
+    );
+
+    let balance = totalPaymentAmount - totalPaymentAmountTransaction;
+    appData.status = true;
+    appData.data = {balance:balance};
+    res.status(200).json(appData);
+  }
+} catch (e) {
+  appData.error = e.message;
+  res.status(400).json(appData);
+} finally {
+  if (connect) {
+    connect.release();
+  }
+}
 });
 
 module.exports = users;
