@@ -4900,6 +4900,46 @@ users.post("/services-transaction/:userId", async (req, res) => {
   }
 });
 
+users.post("/services-transaction/user", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  const { userid, from, limit } = req.body;
+  try {
+    connect = await database.connection.getConnection();
+    const [services_transaction] = await connect.query(
+      `SELECT 
+    id,
+    userid,
+    service_id,
+    (select name from services where services.id = services_transaction.service_id) as name,
+    price_uzs,
+    price_kzs,
+    rate,
+    createAt
+    FROM services_transaction where userid = ?
+    ORDER BY id DESC LIMIT ?, ?`,
+      [userid, from, limit]
+    );
+    console.log(services_transaction);
+    if (services_transaction.length) {
+      appData.status = true;
+      appData.data = services_transaction;
+      res.status(200).json(appData);
+    } else {
+      appData.error = "Транзакция не найдена";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 users.post("/addDriverServices", async (req, res) => {
   let connect,
     appData = { status: false };
