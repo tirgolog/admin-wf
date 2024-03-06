@@ -4914,7 +4914,7 @@ users.post("/addDriverServices", async (req, res) => {
       "SELECT * FROM users_contacts WHERE text = ? AND verify = 1",
       [phone]
     );
-    if (rows.length < 0) {
+    if (rows.length < 1) {
       appData.error = " Не найден Пользователь";
       appData.status = false;
       res.status(400).json(appData);

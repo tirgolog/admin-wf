@@ -37,7 +37,7 @@ const minioClient = new Minio.Client({
   accessKey: "2ByR3PpFGckilG4fhSaJ",
   secretKey: "8UH4HtIBc7WCwgCVshcxmQslHFyJB8Y79Bauq5Xd",
 });
-admin.use(cors());
+// admin.use(cors());
 
 admin.post("/loginAdmin", async (req, res) => {
   let connect,
@@ -86,28 +86,28 @@ admin.post("/loginAdmin", async (req, res) => {
   }
 });
 
-admin.use((req, res, next) => {
-  let token =
-    req.body.token ||
-    req.headers["token"] ||
-    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-  let appData = {};
-  if (token) {
-    jwt.verify(token, process.env.SECRET_KEY, function (err) {
-      if (err) {
-        appData["error"] = err;
-        appData["data"] = "Token is invalid";
-        res.status(403).json(appData);
-      } else {
-        next();
-      }
-    });
-  } else {
-    appData["error"] = 1;
-    appData["data"] = "Token is null";
-    res.status(200).json(appData);
-  }
-});
+// admin.use((req, res, next) => {
+//   let token =
+//     req.body.token ||
+//     req.headers["token"] ||
+//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+//   let appData = {};
+//   if (token) {
+//     jwt.verify(token, process.env.SECRET_KEY, function (err) {
+//       if (err) {
+//         appData["error"] = err;
+//         appData["data"] = "Token is invalid";
+//         res.status(403).json(appData);
+//       } else {
+//         next();
+//       }
+//     });
+//   } else {
+//     appData["error"] = 1;
+//     appData["data"] = "Token is null";
+//     res.status(200).json(appData);
+//   }
+// });
 
 admin.get("/getAllAgent", async (req, res) => {
   let connect,
@@ -3206,7 +3206,7 @@ admin.post("/addDriverServices", async (req, res) => {
       "SELECT * FROM users_contacts WHERE text = ? AND verify = 1",
       [phone]
     );
-    if (rows.length < 0) {
+    if (rows.length < 1) {
       appData.error = " Не найден Пользователь";
       appData.status = false;
       res.status(400).json(appData);
@@ -3216,7 +3216,7 @@ admin.post("/addDriverServices", async (req, res) => {
         "SELECT * FROM alpha_payment where  userid = ? ",
         [user_id]
       );
-
+    console.log(paymentUser)
       const totalPaymentAmount = paymentUser.reduce(
         (accumulator, secure) => accumulator + Number(secure.amount),
         0
