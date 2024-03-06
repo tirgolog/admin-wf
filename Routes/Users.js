@@ -670,6 +670,8 @@ users.post("/login", async (req, res) => {
   (code = Math.floor(10000 + Math.random() * 89999)),
     (phone = req.body.phone.replace(/[^0-9, ]/g, "").replace(/ /g, ""));
   try {
+    console.log("body", req.body);
+    console.log("phone", phone);
     connect = await database.connection.getConnection();
     if (phone === "998935421324" || phone === "9988888888") {
       code = "00000";
