@@ -37,7 +37,7 @@ const minioClient = new Minio.Client({
   accessKey: "2ByR3PpFGckilG4fhSaJ",
   secretKey: "8UH4HtIBc7WCwgCVshcxmQslHFyJB8Y79Bauq5Xd",
 });
-admin.use(cors());
+// admin.use(cors());
 
 admin.post("/loginAdmin", async (req, res) => {
   let connect,
@@ -86,28 +86,28 @@ admin.post("/loginAdmin", async (req, res) => {
   }
 });
 
-admin.use((req, res, next) => {
-  let token =
-    req.body.token ||
-    req.headers["token"] ||
-    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-  let appData = {};
-  if (token) {
-    jwt.verify(token, process.env.SECRET_KEY, function (err) {
-      if (err) {
-        appData["error"] = err;
-        appData["data"] = "Token is invalid";
-        res.status(403).json(appData);
-      } else {
-        next();
-      }
-    });
-  } else {
-    appData["error"] = 1;
-    appData["data"] = "Token is null";
-    res.status(200).json(appData);
-  }
-});
+// admin.use((req, res, next) => {
+//   let token =
+//     req.body.token ||
+//     req.headers["token"] ||
+//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+//   let appData = {};
+//   if (token) {
+//     jwt.verify(token, process.env.SECRET_KEY, function (err) {
+//       if (err) {
+//         appData["error"] = err;
+//         appData["data"] = "Token is invalid";
+//         res.status(403).json(appData);
+//       } else {
+//         next();
+//       }
+//     });
+//   } else {
+//     appData["error"] = 1;
+//     appData["data"] = "Token is null";
+//     res.status(200).json(appData);
+//   }
+// });
 
 admin.get("/getAllAgent", async (req, res) => {
   let connect,
@@ -3216,7 +3216,6 @@ admin.post("/addDriverServices", async (req, res) => {
         "SELECT * FROM alpha_payment where  userid = ? ",
         [user_id]
       );
-    console.log(paymentUser)
       const totalPaymentAmount = paymentUser.reduce(
         (accumulator, secure) => accumulator + Number(secure.amount),
         0
@@ -3245,16 +3244,28 @@ admin.post("/addDriverServices", async (req, res) => {
             [user_id]
           );
           if (editUser.affectedRows > 0) {
-            const insertValues = services.map(service => {
-              return [
-                  user_id,
-                  service.services_id,
-                  service.price_uzs,
-                  service.price_kzs,
-                  service.rate
-              ];
-          });
-          const sql = 'INSERT INTO services_transaction (userid, service_id, price_uzs, price_kzs, rate) VALUES ?';
+            const insertValues = await Promise.all(services.map(async (service) => {
+              try {
+                  const [result] = await connect.query(
+                      "SELECT * FROM services WHERE id = ?",
+                      [service.services_id]
+                  );
+                  if (result.length === 0) {
+                      throw new Error(`Service with ID ${service.services_id} not found.`);
+                  }
+                  return [
+                      user_id,
+                      service.services_id,
+                      result[0].name,
+                      service.price_uzs,
+                      service.price_kzs,
+                      service.rate
+                  ];
+              } catch (error) {
+                  console.error("Error occurred while fetching service:", error);
+              }
+            }));
+          const sql = 'INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate) VALUES ?';
           const [result] = await connect.query(sql, [insertValues]);
           if (result.affectedRows > 0) {
               appData.status = true;
@@ -3345,16 +3356,23 @@ admin.post("/services-transaction", async (req, res) => {
     connect = await database.connection.getConnection();
     const [services_transaction] = await connect.query(
       `SELECT  
-    id,
-    userid,
-    service_id,
-    (select name from services where services.id = services_transaction.service_id) as name,
-    price_uzs,
-    price_kzs,
-    rate,
-    createAt
-    FROM services_transaction 
-    ORDER BY id DESC LIMIT ?, ?
+      st.id,
+      st.userid,
+      st.service_id,
+      COALESCE(
+          st.service_name,
+          (SELECT name FROM services WHERE id = st.service_id)
+      ) AS name,
+      st.price_uzs,
+      st.price_kzs,
+      st.rate,
+      st.createAt
+  FROM 
+      services_transaction st
+  ORDER BY 
+      st.id DESC 
+  LIMIT 
+      ?, ?
     `,
       [from, limit]
     );
@@ -3388,7 +3406,10 @@ admin.post("/services-transaction/user", async (req, res) => {
     id,
     userid,
     service_id,
-    (select name from services where services.id = services_transaction.service_id) as name,
+    COALESCE(
+      st.service_name,
+      (SELECT name FROM services WHERE id = st.service_id)
+  ) AS name,
     price_uzs,
     price_kzs,
     rate,

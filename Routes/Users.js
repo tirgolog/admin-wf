@@ -4879,19 +4879,21 @@ users.post("/services-transaction/user", async (req, res) => {
     connect = await database.connection.getConnection();
     const [services_transaction] = await connect.query(
       `SELECT 
-    id,
-    userid,
-    service_id,
-    (select name from services where services.id = services_transaction.service_id) as name,
-    price_uzs,
-    price_kzs,
-    rate,
-    createAt
-    FROM services_transaction where userid = ?
-    ORDER BY id DESC LIMIT ?, ?`,
+      id,
+      userid,
+      service_id,
+      COALESCE(
+        st.service_name,
+        (SELECT name FROM services WHERE id = st.service_id)
+     ) AS name,
+      price_uzs,
+      price_kzs,
+      rate,
+      createAt
+      FROM services_transaction where userid = ?
+      ORDER BY id DESC LIMIT ?, ?`,
       [userid, from, limit]
     );
-    console.log(services_transaction);
     if (services_transaction.length) {
       appData.status = true;
       appData.data = services_transaction;
@@ -4963,15 +4965,27 @@ users.post("/addDriverServices", async (req, res) => {
             [user_id]
           );
           if (editUser.affectedRows > 0) {
-            const insertValues = services.map((service) => {
-              return [
-                user_id,
-                service.services_id,
-                service.price_uzs,
-                service.price_kzs,
-                service.rate,
-              ];
-            });
+            const insertValues = await Promise.all(services.map(async (service) => {
+              try {
+                  const [result] = await connect.query(
+                      "SELECT * FROM services WHERE id = ?",
+                      [service.services_id]
+                  );
+                  if (result.length === 0) {
+                      throw new Error(`Service with ID ${service.services_id} not found.`);
+                  }
+                  return [
+                      user_id,
+                      service.services_id,
+                      result[0].name,
+                      service.price_uzs,
+                      service.price_kzs,
+                      service.rate
+                  ];
+              } catch (error) {
+                  console.error("Error occurred while fetching service:", error);
+              }
+            }));
             const sql =
               "INSERT INTO services_transaction (userid, service_id, price_uzs, price_kzs, rate) VALUES ?";
             const [result] = await connect.query(sql, [insertValues]);
