@@ -3093,6 +3093,7 @@ admin.put("/services/:id", async (req, res) => {
     console.log(rows);
     if (rows.affectedRows > 0) {
       appData.status = true;
+      socket.updateAllMessages("update-services", "1");
       return res.status(200).json(appData);
     } else {
       appData.error = "Ни одна запись не была обновлена";
@@ -3107,7 +3108,7 @@ admin.put("/services/:id", async (req, res) => {
     }
   }
 });
-
+ 
 admin.delete("/services/:id", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
@@ -3258,6 +3259,7 @@ admin.post("/addDriverServices", async (req, res) => {
           const [result] = await connect.query(sql, [insertValues]);
           if (result.affectedRows > 0) {
               appData.status = true;
+              socket.updateAllMessages("update-alpha-balance", "1");
               res.status(200).json(appData);
             }
           } else {
