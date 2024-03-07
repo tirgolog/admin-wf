@@ -370,6 +370,7 @@ payme.post('/payMeMerchantAlpha', async function(req, res) {
                             const [insert] = await connect.query('UPDATE users_list SET balance = balance + ? WHERE id = ?', [+checkpay[0].amount,+checkpay[0].userid]);
                             if(insert.affectedRows > 0){
                                 const [token] = await connect.query('SELECT * FROM users_list WHERE id = ?', [+checkpay[0].userid]);
+                                socket.updateAllMessages("update-alpha-balance", "1");
                                 if (token.length){
                                     if(token[0].token !== '' && token[0].token !== null){
                                         push.send(token[0].token, "Пополнение баланса","Ваш баланс успешно пополнен на сумму "+checkpay[0].amount,'','');

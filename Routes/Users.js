@@ -233,6 +233,7 @@ users.post("/alphaCompleteClickPay", async function (req, res) {
         "UPDATE users_list SET balance = balance + ? WHERE id = ?",
         [rows[0].amount, +req.body.merchant_trans_id]
       );
+      socket.updateAllMessages("update-alpha-balance", "1");
       if (insert.affectedRows > 0) {
         const [token] = await connect.query(
           "SELECT * FROM users_list WHERE id = ?",
