@@ -2541,15 +2541,19 @@ admin.get("/paymentFullBalance/:userId", async (req, res) => {
         `SELECT amount from secure_transaction where dirverid = ? and status = 2`,
         [rows[0]?.id]
       );
+      // `SELECT id, amount
+      // FROM subscription_transaction
+      // WHERE userid = ? 
+      //AND COALESCE(agent_id, admin_id) IS NULL
+
       const [subscriptionPayment] = await connect.query(
-        `SELECT id, amount
-         FROM subscription_transaction
-         WHERE userid = ? 
-         AND (agent_id IS NULL OR admin_id IS NULL)
+        `SELECT id, amount, agent_id, admin_id
+        FROM subscription_transaction
+        WHERE userid = ? AND COALESCE(agent_id, admin_id) IS NULL;
         `,
         [rows[0]?.id]
       );
-      console.log(subscriptionPayment);
+      console.log(subscriptionPayment, "subscriptionPayment");
       const [payments] = await connect.query(
         "SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",
         [rows[0].id]
@@ -2580,11 +2584,16 @@ admin.get("/paymentFullBalance/:userId", async (req, res) => {
         },
         0
       );
+      console.log(totalActiveAmount);
+      console.log(totalPayments);
+      console.log(totalSubscriptionPayment);
+      console.log(totalWithdrawalAmount);
       appData.data = rows[0];
       appData.data.balance =
         totalActiveAmount +
         (totalPayments - totalSubscriptionPayment) -
         totalWithdrawalAmount;
+        console.log(appData.data);
       appData.data.balance_in_proccess = totalWithdrawalAmountProcess;
       appData.data.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
       appData.status = true;

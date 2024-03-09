@@ -1308,9 +1308,8 @@ users.get("/checkSession", async function (req, res) {
       );
       const [subscriptionPayment] = await connect.query(
         `SELECT id, amount
-    FROM subscription_transaction
-    WHERE userid = ? 
-    AND (agent_id IS NULL OR admin_id IS NULL)
+         FROM subscription_transaction
+         WHERE userid = ?   AND COALESCE(agent_id, admin_id) IS NULL
         `,
         [rows[0]?.id]
       );
@@ -2186,7 +2185,7 @@ users.post("/finish-merchant-cargo", async (req, res) => {
         `SELECT id, amount
     FROM subscription_transaction
     WHERE userid = ? 
-    AND (agent_id IS NULL OR admin_id IS NULL)`,
+   AND COALESCE(agent_id, admin_id) IS NULL`,
         [orders_accepted[0]?.user_id]
       );
       const [payments] = await connect.query(
@@ -4269,7 +4268,7 @@ users.post("/driver-balance/withdraw", async (req, res) => {
         `SELECT id, amount
     FROM subscription_transaction
     WHERE userid = ? 
-    AND (agent_id IS NULL OR admin_id IS NULL)`,
+   AND COALESCE(agent_id, admin_id) IS NULL`,
         [user.id]
       );
       const [payments] = await connect.query(
@@ -4516,9 +4515,8 @@ users.patch("/verify-withdrawal/verify/:id", async (req, res) => {
       );
       const [subscriptionPayment] = await connect.query(
         `SELECT id, amount
-    FROM subscription_transaction
-    WHERE userid = ? 
-    AND (agent_id IS NULL OR admin_id IS NULL)`,
+         FROM subscription_transaction
+         WHERE userid = ?  AND COALESCE(agent_id, admin_id) IS NULL`,
         [withdrawal[0].driver_id]
       );
       const [payments] = await connect.query(
