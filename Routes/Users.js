@@ -4958,7 +4958,7 @@ users.post("/addDriverServices", async (req, res) => {
 
       let balance = totalPaymentAmount - totalPaymentAmountTransaction;
       if (paymentUser.length > 0) {
-        if (balance > totalAmount) {
+        if (balance >= totalAmount) {
           const [editUser] = await connect.query(
             "UPDATE users_list SET is_service = 1  WHERE id = ?",
             [user_id]
