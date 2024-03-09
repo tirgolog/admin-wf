@@ -37,7 +37,7 @@ const minioClient = new Minio.Client({
   accessKey: "2ByR3PpFGckilG4fhSaJ",
   secretKey: "8UH4HtIBc7WCwgCVshcxmQslHFyJB8Y79Bauq5Xd",
 });
-// admin.use(cors());
+admin.use(cors());
 
 admin.post("/loginAdmin", async (req, res) => {
   let connect,
@@ -86,28 +86,28 @@ admin.post("/loginAdmin", async (req, res) => {
   }
 });
 
-// admin.use((req, res, next) => {
-//   let token =
-//     req.body.token ||
-//     req.headers["token"] ||
-//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-//   let appData = {};
-//   if (token) {
-//     jwt.verify(token, process.env.SECRET_KEY, function (err) {
-//       if (err) {
-//         appData["error"] = err;
-//         appData["data"] = "Token is invalid";
-//         res.status(403).json(appData);
-//       } else {
-//         next();
-//       }
-//     });
-//   } else {
-//     appData["error"] = 1;
-//     appData["data"] = "Token is null";
-//     res.status(200).json(appData);
-//   }
-// });
+admin.use((req, res, next) => {
+  let token =
+    req.body.token ||
+    req.headers["token"] ||
+    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+  let appData = {};
+  if (token) {
+    jwt.verify(token, process.env.SECRET_KEY, function (err) {
+      if (err) {
+        appData["error"] = err;
+        appData["data"] = "Token is invalid";
+        res.status(403).json(appData);
+      } else {
+        next();
+      }
+    });
+  } else {
+    appData["error"] = 1;
+    appData["data"] = "Token is null";
+    res.status(200).json(appData);
+  }
+});
 
 admin.get("/getAllAgent", async (req, res) => {
   let connect,
@@ -2796,11 +2796,6 @@ admin.post("/addUserByAgent", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
-      const [agent] = await connect.query(
-        "SELECT * FROM users_list where  user_type=4 AND id=? ",
-        [agent_id]
-      );
-      if (agent.length > 0) {
         const [user] = await connect.query(
           "SELECT * FROM users_list WHERE to_subscription > CURDATE() AND id = ?",
           [user_id]
@@ -2844,12 +2839,11 @@ admin.post("/addUserByAgent", async (req, res) => {
                   
                   if (subscription_transaction.length > 0) {
                     const [edit] = await connect.query(
-                      "UPDATE users_list SET subscription_id = ? , from_subscription = ? , to_subscription=?,  agent_id = ?  WHERE id =?",
+                      "UPDATE users_list SET subscription_id = ? , from_subscription = ? , to_subscription=?  WHERE id =?",
                       [
                         subscription_id,
                         new Date(),
                         nextthreeMonth,
-                        agent_id,
                         user_id,
                       ]
                     );
@@ -2892,12 +2886,11 @@ admin.post("/addUserByAgent", async (req, res) => {
                   );
                   if (subscription_transaction.length > 0) {
                     const [edit] = await connect.query(
-                      "UPDATE users_list SET subscription_id = ? , from_subscription = ? , to_subscription=?, agent_id = ? WHERE id =?",
+                      "UPDATE users_list SET subscription_id = ? , from_subscription = ? , to_subscription=?  WHERE id =?",
                       [
                         subscription_id,
                         new Date(),
                         nextthreeMonth,
-                        agent_id,
                         user_id,
                       ]
                     );
@@ -2940,12 +2933,11 @@ admin.post("/addUserByAgent", async (req, res) => {
                   );
                   if (subscription_transaction.length > 0) {
                     const [edit] = await connect.query(
-                      "UPDATE users_list SET subscription_id = ? , from_subscription = ? , to_subscription=?, agent_id = ? WHERE id =?",
+                      "UPDATE users_list SET subscription_id = ? , from_subscription = ? , to_subscription=? WHERE id =?",
                       [
                         subscription_id,
                         new Date(),
                         nextthreeMonth,
-                        agent_id,
                         user_id,
                       ]
                     );
@@ -2970,11 +2962,6 @@ admin.post("/addUserByAgent", async (req, res) => {
             }
           }
         }
-      } else {
-        appData.error = "Не найден Агент";
-        appData.status = false;
-        res.status(400).json(appData);
-      }
     }
     // res.status(200).json(appData);
   } catch (e) {
