@@ -4889,7 +4889,7 @@ users.post("/services-transaction/user", async (req, res) => {
       price_kzs,
       rate,
       createAt
-      FROM services_transaction where userid = ?
+      FROM services_transaction st where userid = ?
       ORDER BY id DESC LIMIT ?, ?`,
       [userid, from, limit]
     );
