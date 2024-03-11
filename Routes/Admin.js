@@ -3210,7 +3210,6 @@ admin.post("/addDriverServices", async (req, res) => {
       );
 
       let balance = totalPaymentAmount - totalPaymentAmountTransaction;
-      if (paymentUser.length > 0) {
         if (balance >= totalAmount) {
           const [editUser] = await connect.query(
             "UPDATE users_list SET is_service = 1  WHERE id = ?",
@@ -3263,11 +3262,6 @@ admin.post("/addDriverServices", async (req, res) => {
           appData.status = false;
           res.status(400).json(appData);
         }
-      } else {
-        appData.error = "Не найден Пользователь";
-        appData.status = false;
-        res.status(400).json(appData);
-      }
     }
   } catch (e) {
     appData.error = e.message;

@@ -64,7 +64,7 @@ let API_USER_ID = "8b633b534e645924569a7fb772ee1546";
 let API_SECRET = "e16dac0175e1f9a1d2641f435ab915bc";
 let TOKEN_STORAGE = "/tmp/";
 
-users.use(cors());
+// users.use(cors());
 users.post("/completeClickPay", async function (req, res) {
   let connect,
     merchant_prepare_id = "",
@@ -1044,32 +1044,32 @@ users.post("/codeverifyClient", async (req, res) => {
   }
 });
 
-users.use((req, res, next) => {
-  let token =
-    req.body.token ||
-    req.headers["token"] ||
-    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-  let appData = {};
+// users.use((req, res, next) => {
+//   let token =
+//     req.body.token ||
+//     req.headers["token"] ||
+//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+//   let appData = {};
 
-  if (token) {
-    jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
-      if (err) {
-        console.error("JWT Verification Error:", err);
-        appData["error"] = err;
-        appData["data"] = "Token is invalid";
-        res.status(401).json(appData);
-      } else {
-        // Attach user information from the decoded token to the request
-        req.user = decoded;
-        next();
-      }
-    });
-  } else {
-    appData["error"] = 1;
-    appData["data"] = "Token is null";
-    res.status(401).json(appData);
-  }
-});
+//   if (token) {
+//     jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
+//       if (err) {
+//         console.error("JWT Verification Error:", err);
+//         appData["error"] = err;
+//         appData["data"] = "Token is invalid";
+//         res.status(401).json(appData);
+//       } else {
+//         // Attach user information from the decoded token to the request
+//         req.user = decoded;
+//         next();
+//       }
+//     });
+//   } else {
+//     appData["error"] = 1;
+//     appData["data"] = "Token is null";
+//     res.status(401).json(appData);
+//   }
+// });
 
 users.post("/saveDeviceToken", async (req, res) => {
   console.log("/saveDeviceToken");
@@ -4926,7 +4926,8 @@ users.post("/addDriverServices", async (req, res) => {
       "SELECT * FROM users_contacts WHERE text = ? AND verify = 1",
       [phone]
     );
-    if (rows.length < 1) {
+    console.log(rows.length, "rows");
+    if (rows.length <1) {
       appData.error = " Не найден Пользователь";
       appData.status = false;
       res.status(400).json(appData);
@@ -4957,7 +4958,6 @@ users.post("/addDriverServices", async (req, res) => {
       );
 
       let balance = totalPaymentAmount - totalPaymentAmountTransaction;
-      if (paymentUser.length > 0) {
         if (balance >= totalAmount) {
           const [editUser] = await connect.query(
             "UPDATE users_list SET is_service = 1  WHERE id = ?",
@@ -5001,11 +5001,6 @@ users.post("/addDriverServices", async (req, res) => {
           appData.status = false;
           res.status(400).json(appData);
         }
-      } else {
-        appData.error = "Не найден Пользователь";
-        appData.status = false;
-        res.status(400).json(appData);
-      }
     }
   } catch (e) {
     appData.error = e.message;
