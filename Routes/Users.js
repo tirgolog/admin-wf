@@ -3731,8 +3731,7 @@ users.get("/getMyOrdersDriver", async (req, res) => {
       "SELECT * FROM users_transport WHERE user_id = ? AND active = 1",
       [userInfo.id]
     );
-    console.log(merchantData)
-    console.log(transports, 'transports');
+    console.log(merchantData, 'merchantData')
     for (let transport of transports) {
       transportstypes = transportstypes + transport.type + ",";
     }
@@ -3742,7 +3741,6 @@ users.get("/getMyOrdersDriver", async (req, res) => {
       "SELECT o.*,ul.name as usernameorder,ul.phone as userphoneorder FROM orders o LEFT JOIN users_list ul ON o.user_id = ul.id WHERE o.status <> 2 ORDER BY o.id DESC",
       [transportstypes, transportstypes]
     );
-    console.log(rows,'rows');
     if (rows.length) {
       appData.data = await Promise.all(
         [...merchantData, ...rows].map(async (item) => {
