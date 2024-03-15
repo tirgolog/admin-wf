@@ -3574,7 +3574,7 @@ users.get("/getMyOrdersClient", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "SELECT * FROM orders WHERE user_id = ? AND status <> 3 ORDER BY id DESC",
+      "SELECT * FROM orders WHERE user_id = ? AND status <> 2 ORDER BY id DESC",
       [userInfo.id]
     );
     if (rows.length) {
@@ -3737,7 +3737,7 @@ users.get("/getMyOrdersDriver", async (req, res) => {
     transportstypes = transportstypes + "22,";
     transportstypes = transportstypes.substring(0, transportstypes.length - 1);
     let [rows] = await connect.query(
-      "SELECT o.*,ul.name as usernameorder,ul.phone as userphoneorder FROM orders o LEFT JOIN users_list ul ON o.user_id = ul.id WHERE o.status <> 3 ORDER BY o.id DESC",
+      "SELECT o.*,ul.name as usernameorder,ul.phone as userphoneorder FROM orders o LEFT JOIN users_list ul ON o.user_id = ul.id WHERE o.status <> 2 ORDER BY o.id DESC",
       [transportstypes, transportstypes]
     );
     if (rows.length) {
@@ -4888,8 +4888,10 @@ users.post("/services-transaction/user", async (req, res) => {
       price_uzs,
       price_kzs,
       rate,
+      status,
       createAt
-      FROM services_transaction st where userid = ?
+      FROM services_transaction st
+      where userid = ? AND status <> 2
       ORDER BY id DESC LIMIT ?, ?`,
       [userid, from, limit]
     );
@@ -4943,7 +4945,7 @@ users.post("/addDriverServices", async (req, res) => {
       );
 
       const [paymentTransaction] = await connect.query(
-        "SELECT * FROM services_transaction where  userid = ? ",
+        "SELECT * FROM services_transaction where  userid = ? AND status <> 2 ",
         [user_id]
       );
 
@@ -4979,13 +4981,14 @@ users.post("/addDriverServices", async (req, res) => {
                       result[0].name,
                       service.price_uzs,
                       service.price_kzs,
-                      service.rate
+                      service.rate,
+                      0
                   ];
               } catch (error) {
                   console.error("Error occurred while fetching service:", error);
               }
             }));
-            const sql = 'INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate) VALUES ?';
+            const sql = 'INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, 0) VALUES ?';
             const [result] = await connect.query(sql, [insertValues]);
             if (result.affectedRows > 0) {
               appData.status = true;
@@ -5027,9 +5030,11 @@ users.post("/services-transaction/user/days", async (req, res) => {
       price_uzs,
       price_kzs,
       rate,
+      status,
       createAt
     FROM services_transaction 
     WHERE userid = ? AND createAt >= DATE_SUB(CURDATE(), INTERVAL 3 DAY)
+    AND status <> 2
     ORDER BY id DESC LIMIT ?, ?`,
       [userid, from, limit]
     );
@@ -5079,7 +5084,7 @@ try {
     );
 
     const [paymentTransaction] = await connect.query(
-      "SELECT * FROM services_transaction where  userid = ? ",
+      "SELECT * FROM services_transaction where  userid = ? AND status <> 2",
       [userid]
     );
 

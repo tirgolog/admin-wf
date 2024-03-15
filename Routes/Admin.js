@@ -2543,7 +2543,7 @@ admin.get("/paymentFullBalance/:userId", async (req, res) => {
       );
       // `SELECT id, amount
       // FROM subscription_transaction
-      // WHERE userid = ? 
+      // WHERE userid = ?
       //AND COALESCE(agent_id, admin_id) IS NULL
 
       const [subscriptionPayment] = await connect.query(
@@ -2593,7 +2593,7 @@ admin.get("/paymentFullBalance/:userId", async (req, res) => {
         totalActiveAmount +
         (totalPayments - totalSubscriptionPayment) -
         totalWithdrawalAmount;
-        console.log(appData.data);
+      console.log(appData.data);
       appData.data.balance_in_proccess = totalWithdrawalAmountProcess;
       appData.data.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
       appData.status = true;
@@ -3195,7 +3195,7 @@ admin.post("/addDriverServices", async (req, res) => {
       );
 
       const [paymentTransaction] = await connect.query(
-        "SELECT * FROM services_transaction where  userid = ? ",
+        "SELECT * FROM services_transaction where  userid = ? AND status <> 2 ",
         [user_id]
       );
 
@@ -3210,58 +3210,56 @@ admin.post("/addDriverServices", async (req, res) => {
       );
 
       let balance = totalPaymentAmount - totalPaymentAmountTransaction;
-        if (balance >= totalAmount) {
-          const [editUser] = await connect.query(
-            "UPDATE users_list SET is_service = 1  WHERE id = ?",
-            [user_id]
-          );
-          if (editUser.affectedRows > 0) {
-            const insertValues = await Promise.all(
-              services.map(async (service) => {
-                try {
-                  const [result] = await connect.query(
-                    "SELECT * FROM services WHERE id = ?",
-                    [service.services_id]
-                  );
-                  if (result.length === 0) {
-                    throw new Error(
-                      `Service with ID ${service.services_id} not found.`
-                    );
-                  }
-                  return [
-                    user_id,
-                    service.services_id,
-                    result[0].name,
-                    service.price_uzs,
-                    service.price_kzs,
-                    service.rate,
-                  ];
-                } catch (error) {
-                  console.error(
-                    "Error occurred while fetching service:",
-                    error
+      if (balance >= totalAmount) {
+        const [editUser] = await connect.query(
+          "UPDATE users_list SET is_service = 1  WHERE id = ?",
+          [user_id]
+        );
+        if (editUser.affectedRows > 0) {
+          const insertValues = await Promise.all(
+            services.map(async (service) => {
+              try {
+                const [result] = await connect.query(
+                  "SELECT * FROM services WHERE id = ?",
+                  [service.service_id]
+                );
+                if (result.length === 0) {
+                  throw new Error(
+                    `Service with ID ${service.service_id} not found.`
                   );
                 }
-              })
-            );
-            const sql =
-              "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate) VALUES ?";
-            const [result] = await connect.query(sql, [insertValues]);
-            if (result.affectedRows > 0) {
-              appData.status = true;
-              socket.updateAllMessages("update-alpha-balance", "1");
-              res.status(200).json(appData);
-            }
-          } else {
-            appData.error = "Пользователь не может обновить";
-            appData.status = false;
-            res.status(400).json(appData);
+                return [
+                  user_id,
+                  service.service_id,
+                  result[0].name,
+                  service.price_uzs,
+                  service.price_kzs,
+                  service.rate,
+                  0
+                ];
+              } catch (error) {
+                console.error("Error occurred while fetching service:", error);
+              }
+            })
+          );
+          const sql =
+            "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status) VALUES ?";
+          const [result] = await connect.query(sql, [insertValues]);
+          if (result.affectedRows > 0) {
+            appData.status = true;
+            socket.updateAllMessages("update-alpha-balance", "1");
+            res.status(200).json(appData);
           }
         } else {
-          appData.error = "Недостаточно средств на балансе";
+          appData.error = "Пользователь не может обновить";
           appData.status = false;
           res.status(400).json(appData);
         }
+      } else {
+        appData.error = "Недостаточно средств на балансе";
+        appData.status = false;
+        res.status(400).json(appData);
+      }
     }
   } catch (e) {
     appData.error = e.message;
@@ -3295,7 +3293,7 @@ admin.get("/alpha-payment/:userid", async (req, res) => {
     );
 
     const [paymentTransaction] = await connect.query(
-      "SELECT * FROM services_transaction where  userid = ? ",
+      "SELECT * FROM services_transaction where  userid = ? AND status <> 2",
       [userid]
     );
 
@@ -3303,7 +3301,6 @@ admin.get("/alpha-payment/:userid", async (req, res) => {
       (accumulator, secure) => accumulator + Number(secure.price_kzs),
       0
     );
-    console.log(totalPaymentAmount, totalPaymentAmountTransaction);
     let balance =
       Number(totalPaymentAmount) - Number(totalPaymentAmountTransaction);
     if (payment.length) {
@@ -3343,6 +3340,7 @@ admin.post("/services-transaction", async (req, res) => {
       st.price_uzs,
       st.price_kzs,
       st.rate,
+      status,
       st.createAt
   FROM 
       services_transaction st
@@ -3390,8 +3388,10 @@ admin.post("/services-transaction/user", async (req, res) => {
     price_uzs,
     price_kzs,
     rate,
+    status,
     createAt
     FROM services_transaction st where userid = ?
+    AND status <> 2
     ORDER BY id DESC LIMIT ?, ?`,
       [userid, from, limit]
     );
@@ -3452,6 +3452,88 @@ admin.get("/curence/course", async (req, res) => {
     res.status(200).json(appData);
   } catch (error) {
     console.error("Error fetching data:", error);
+  }
+});
+
+admin.get("/services-transaction/count", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  try {
+    connect = await database.connection.getConnection();
+    const [services_transaction] = await connect.query(
+      `SELECT count(*) as count FROM  services_transaction  where status = 0`
+    );
+    if (services_transaction.length) {
+      appData.status = true;
+      appData.data = services_transaction[0];
+      res.status(200).json(appData);
+    } else {
+      appData.error = "Транзакция не найдена";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.post("/services-transaction/status", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  const { id } = req.body;
+  try {
+    connect = await database.connection.getConnection();
+    const [updateResult] = await connect.query(
+      "UPDATE services_transaction SET status = 2 WHERE id = ?",
+      [id]
+    );
+    if (updateResult.affectedRows > 0) {
+      appData.status = true;
+      res.status(200).json(appData);
+    } else {
+      appData.error = "История транзакций не изменилась";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+admin.post("/services-transaction/status/by", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  const { id, status } = req.body;
+  try {
+    connect = await database.connection.getConnection();
+    const [updateResult] = await connect.query(
+      "UPDATE services_transaction SET status = ? WHERE id = ?",
+      [status, id]
+    );
+    if (updateResult.affectedRows > 0) {
+      appData.status = true;
+      res.status(200).json(appData);
+    } else {
+      appData.error = "История транзакций не изменилась";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
   }
 });
 
