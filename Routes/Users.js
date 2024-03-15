@@ -3751,6 +3751,7 @@ users.get("/getMyOrdersDriver", async (req, res) => {
             "SELECT ul.*,oa.price as priceorder,oa.status_order FROM orders_accepted oa LEFT JOIN users_list ul ON ul.id = oa.user_id WHERE oa.order_id = ?",
             [item.isMerchant ? +item.id.split("M")[1] : item.id]
           );
+          console.log(orders_accepted);
           newItem.orders_accepted = await Promise.all(
             orders_accepted.map(async (item2) => {
               let newItemUsers = item2;
