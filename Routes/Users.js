@@ -3745,6 +3745,7 @@ users.get("/getMyOrdersDriver", async (req, res) => {
         [...merchantData, ...rows].map(async (item) => {
           let newItem = item;
           if (!item.isMerchant) {
+            console.log(item.transport_types);
             newItem.transport_types =item.transport_types?JSON.parse(item.transport_types):[];
           }
           const [orders_accepted] = await connect.query(
