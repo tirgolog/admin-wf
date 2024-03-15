@@ -3731,7 +3731,6 @@ users.get("/getMyOrdersDriver", async (req, res) => {
       "SELECT * FROM users_transport WHERE user_id = ? AND active = 1",
       [userInfo.id]
     );
-    console.log(merchantData, 'merchantData')
     for (let transport of transports) {
       transportstypes = transportstypes + transport.type + ",";
     }
@@ -3746,6 +3745,7 @@ users.get("/getMyOrdersDriver", async (req, res) => {
         [...merchantData, ...rows].map(async (item) => {
           let newItem = item;
           if (!item.isMerchant) {
+            console.log(item.transport_types, 'item.isMerchant')
             newItem.transport_types = JSON.parse(item.transport_types);
           }
           const [orders_accepted] = await connect.query(
