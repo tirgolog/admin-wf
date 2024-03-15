@@ -3740,6 +3740,7 @@ users.get("/getMyOrdersDriver", async (req, res) => {
       "SELECT o.*,ul.name as usernameorder,ul.phone as userphoneorder FROM orders o LEFT JOIN users_list ul ON o.user_id = ul.id WHERE o.status <> 3 ORDER BY o.id DESC",
       [transportstypes, transportstypes]
     );
+    console.log(rows[0], 'rows');
     if (rows.length) {
       appData.data = await Promise.all(
         [...merchantData, ...rows].map(async (item) => {
