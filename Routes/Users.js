@@ -4943,7 +4943,7 @@ users.post("/addDriverServices", async (req, res) => {
       );
 
       const [paymentTransaction] = await connect.query(
-        "SELECT * FROM services_transaction where  userid = ? ",
+        "SELECT * FROM services_transaction where  userid = ? AND status <> 2",
         [user_id]
       );
 
@@ -5079,7 +5079,7 @@ try {
     );
 
     const [paymentTransaction] = await connect.query(
-      "SELECT * FROM services_transaction where  userid = ? ",
+      "SELECT * FROM services_transaction where  userid = ? AND status <> 2 ",
       [userid]
     );
 
