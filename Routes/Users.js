@@ -3743,7 +3743,7 @@ users.get("/getMyOrdersDriver", async (req, res) => {
     console.log(rows);
     if (rows.length) {
       appData.data = await Promise.all(
-        [...merchantData, ...rows].map(async (item) => {
+        [...rows].map(async (item) => {
           let newItem = item;
           if (!item.isMerchant) {
             console.log(item, 'items');
