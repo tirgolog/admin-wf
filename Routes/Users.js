@@ -3740,19 +3740,17 @@ users.get("/getMyOrdersDriver", async (req, res) => {
       "SELECT o.*,ul.name as usernameorder,ul.phone as userphoneorder FROM orders o LEFT JOIN users_list ul ON o.user_id = ul.id WHERE o.status <> 2 ORDER BY o.id DESC",
       [transportstypes, transportstypes]
     );
-    console.log(rows);
     if (rows.length) {
       appData.data = await Promise.all(
-        [...rows].map(async (item) => {
+        [...merchantData, ...rows].map(async (item) => {
           let newItem = item;
           if (!item.isMerchant) {
-            newItem.transport_types = item.transport_types?JSON.parse(item.transport_types):'';
+            newItem.transport_types = item.transport_types!=null? JSON.parse(item.transport_types):[];
           }
           const [orders_accepted] = await connect.query(
             "SELECT ul.*,oa.price as priceorder,oa.status_order FROM orders_accepted oa LEFT JOIN users_list ul ON ul.id = oa.user_id WHERE oa.order_id = ?",
             [item.isMerchant ? +item.id.split("M")[1] : item.id]
           );
-          console.log(orders_accepted, 'accepted');
           newItem.orders_accepted = await Promise.all(
             orders_accepted.map(async (item2) => {
               let newItemUsers = item2;
