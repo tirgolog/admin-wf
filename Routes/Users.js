@@ -3731,6 +3731,7 @@ users.get("/getMyOrdersDriver", async (req, res) => {
       "SELECT * FROM users_transport WHERE user_id = ? AND active = 1",
       [userInfo.id]
     );
+    console.log(merchantData)
     console.log(transports, 'transports');
     for (let transport of transports) {
       transportstypes = transportstypes + transport.type + ",";
