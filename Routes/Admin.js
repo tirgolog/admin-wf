@@ -44,7 +44,6 @@ admin.post("/loginAdmin", async (req, res) => {
     appData = { status: false },
     login = req.body.name,
     password = req.body.password;
-  console.log(req.body);
   try {
     password = crypto.createHash("md5").update(password).digest("hex");
     connect = await database.connection.getConnection();
@@ -52,14 +51,12 @@ admin.post("/loginAdmin", async (req, res) => {
       "SELECT * FROM users_list WHERE username = ? AND password = ? AND (user_type = 3 OR user_type = 4) AND ban <> 1",
       [login, password]
     );
-    console.log(rows, "for users");
     if (rows.length) {
       appData.status = true;
       await connect.query(
         "UPDATE users_list SET date_last_login = ? WHERE id = ?",
         [new Date(), rows[0].id]
       );
-      console.log(rows[0].user_type);
       //appData.token = jwt.sign({id: rows[0].id, type_business: rows[0].type_business, type_user: rows[0].type_user,}, process.env.SECRET_KEY);
       appData.token = jwt.sign(
         {
@@ -140,8 +137,6 @@ admin.put("/changeAgentBalance", async (req, res) => {
 
   try {
     connect = await database.connection.getConnection();
-    console.log(agent_id, agent_balance, userInfo.id);
-
     const insertResult = await connect.query(
       "INSERT INTO agent_transaction SET admin_id = ?, agent_id = ?, amount = ?, created_at = ?, type = 'Пополнение'",
       [userInfo.id, agent_id, agent_balance, new Date()]
@@ -200,7 +195,6 @@ admin.get("/getAgentBalanse/:agent_id", async (req, res) => {
   let connect,
     appData = { status: false },
     agent_id = req.params.agent_id;
-  console.log(agent_id);
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
@@ -580,7 +574,6 @@ admin.post("/acceptOrderDriver", async (req, res) => {
 });
 
 admin.post("/createOrder", async (req, res) => {
-  console.log(req.body);
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
     data = req.body.data;
@@ -939,7 +932,6 @@ admin.post("/addUser", async (req, res) => {
 });
 
 admin.post("/createClient", async (req, res) => {
-  console.log(req.body);
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
     name = req.body.name,
@@ -1267,7 +1259,6 @@ admin.post("/getTransactionsType", async (req, res) => {
   }
 });
 admin.post("/addTransportToUser", async (req, res) => {
-  console.log("addTransportToUser");
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
     name = req.body.data.name,
@@ -1782,7 +1773,6 @@ admin.post("/sendMessageSupport", async (req, res) => {
     data = {},
     appData = { status: false, timestamp: new Date().getTime() };
   try {
-    console.log(req.body);
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
       "INSERT INTO chat_support SET text = ?, user_id = ?,type = ?,user_admin_id = ?",
@@ -1914,7 +1904,6 @@ admin.post("/addPayment", async (req, res) => {
   }
 });
 admin.post("/bannedAdmin", async (req, res) => {
-  console.log(req.body);
   let connect,
     id = req.body.userid,
     banned = req.body.banned,
@@ -2009,7 +1998,6 @@ admin.post("/uploadImage", upload.single("file"), async (req, res) => {
             filename: req.file.originalname,
           };
           appData.status = true;
-          console.log(appData);
           res.status(200).json(appData);
         });
     } else if (typeImage === "car-docks") {
@@ -2022,7 +2010,6 @@ admin.post("/uploadImage", upload.single("file"), async (req, res) => {
             filename: req.file.originalname,
           };
           appData.status = true;
-          console.log(appData);
           res.status(200).json(appData);
         });
     } else if (typeImage === "passport") {
@@ -2040,7 +2027,6 @@ admin.post("/uploadImage", upload.single("file"), async (req, res) => {
             filename: req.file.originalname,
           };
           appData.status = true;
-          console.log(appData);
           res.status(200).json(appData);
         });
     } else if (typeImage === "driver-license") {
@@ -2057,7 +2043,6 @@ admin.post("/uploadImage", upload.single("file"), async (req, res) => {
             filename: req.file.originalname,
           };
           appData.status = true;
-          console.log(appData);
           res.status(200).json(appData);
         });
     } else if (typeImage === "verification") {
@@ -2074,7 +2059,6 @@ admin.post("/uploadImage", upload.single("file"), async (req, res) => {
             filename: req.file.originalname,
           };
           appData.status = true;
-          console.log(appData);
           res.status(200).json(appData);
         });
     }
@@ -2429,7 +2413,6 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
         "SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",
         [rows[0].id]
       );
-      console.log(payments);
       const totalWithdrawalAmountProcess = withdrawalsProccess.reduce(
         (accumulator, secure) => accumulator + +Number(secure.amount),
         0
@@ -2456,10 +2439,6 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
         },
         0
       );
-      console.log(totalActiveAmount);
-      console.log(totalPayments);
-      console.log(totalSubscriptionPayment);
-      console.log(totalWithdrawalAmount);
       appData.data = rows[0];
       appData.data.balance =
         totalActiveAmount +
@@ -2467,7 +2446,6 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
         totalWithdrawalAmount;
       appData.data.balance_in_proccess = totalWithdrawalAmountProcess;
       appData.data.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
-      console.log(appData.data);
       appData.status = true;
       res.status(200).json(appData);
     } else {
@@ -2553,7 +2531,6 @@ admin.get("/paymentFullBalance/:userId", async (req, res) => {
         `,
         [rows[0]?.id]
       );
-      console.log(subscriptionPayment, "subscriptionPayment");
       const [payments] = await connect.query(
         "SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",
         [rows[0].id]
@@ -2584,16 +2561,11 @@ admin.get("/paymentFullBalance/:userId", async (req, res) => {
         },
         0
       );
-      console.log(totalActiveAmount);
-      console.log(totalPayments);
-      console.log(totalSubscriptionPayment);
-      console.log(totalWithdrawalAmount);
       appData.data = rows[0];
       appData.data.balance =
         totalActiveAmount +
         (totalPayments - totalSubscriptionPayment) -
         totalWithdrawalAmount;
-      console.log(appData.data);
       appData.data.balance_in_proccess = totalWithdrawalAmountProcess;
       appData.data.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
       appData.status = true;
@@ -2674,8 +2646,6 @@ admin.get("/searchdriverAgentAdmin/:driverId", async (req, res) => {
   let connect,
     appData = { status: false };
   const { driverId, agentId } = req.params;
-  console.log(driverId, agentId);
-  console.log(typeof agentId, agentId);
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
@@ -2705,12 +2675,9 @@ admin.get("/searchdriverAgent/:driverId/:agentId", async (req, res) => {
   let connect,
     appData = { status: false };
   const { driverId, agentId } = req.params;
-  console.log(driverId, agentId);
-  console.log(typeof agentId, agentId);
   try {
     connect = await database.connection.getConnection();
     if (Number(agentId) !== 0) {
-      console.log(agentId, "sdsad");
       const [rows] = await connect.query(
         "SELECT phone, name  FROM users_list WHERE user_type = 1 AND id = ? AND agent_id =?",
         [driverId, agentId]
@@ -2999,7 +2966,6 @@ admin.post("/subscription-history", async (req, res) => {
   `,
       [agent_id, agent_id]
     );
-    console.log(rows);
     if (rows.length > 0) {
       appData.data = rows;
       appData.status = true;
@@ -3063,7 +3029,6 @@ admin.put("/services/:id", async (req, res) => {
       `UPDATE services SET name = ? , price_uzs = ?, price_kzs = ?, rate = ? WHERE id = ?`,
       [name, price_uzs, price_kzs, rate, id]
     );
-    console.log(rows);
     if (rows.affectedRows > 0) {
       appData.status = true;
       socket.updateAllMessages("update-services", "1");
@@ -3395,7 +3360,6 @@ admin.post("/services-transaction/user", async (req, res) => {
     ORDER BY id DESC LIMIT ?, ?`,
       [userid, from, limit]
     );
-    console.log(services_transaction);
     if (services_transaction.length) {
       appData.status = true;
       appData.data = services_transaction;
