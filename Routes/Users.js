@@ -64,7 +64,7 @@ let API_USER_ID = "8b633b534e645924569a7fb772ee1546";
 let API_SECRET = "e16dac0175e1f9a1d2641f435ab915bc";
 let TOKEN_STORAGE = "/tmp/";
 
-users.use(cors());
+// users.use(cors());
 users.post("/completeClickPay", async function (req, res) {
   let connect,
     merchant_prepare_id = "",
@@ -120,7 +120,6 @@ users.post("/completeClickPay", async function (req, res) {
               "SELECT * FROM subscription where duration = ?",
               [duration]
             );
-            console.log(subscription);
             const [users] = await connect.query(
               "SELECT * FROM users_list where id = ?",
               [checkpay[0].userid]
@@ -135,7 +134,6 @@ users.post("/completeClickPay", async function (req, res) {
                 "UPDATE users_list SET subscription_id = ?, from_subscription = ? , to_subscription=?  WHERE id = ?",
                 [subscription[0].id, new Date(), nextMonth, checkpay[0].userid]
               );
-              console.log(userUpdate);
               if (userUpdate.affectedRows == 1) {
                 const subscription_transaction = await connect.query(
                   "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?",
@@ -146,7 +144,6 @@ users.post("/completeClickPay", async function (req, res) {
                     valueofPayment,
                   ]
                 );
-                console.log(subscription_transaction);
                 if (subscription_transaction.length > 0) {
                   console.log(
                     "subscription_transaction",
@@ -1044,32 +1041,32 @@ users.post("/codeverifyClient", async (req, res) => {
   }
 });
 
-users.use((req, res, next) => {
-  let token =
-    req.body.token ||
-    req.headers["token"] ||
-    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-  let appData = {};
+// users.use((req, res, next) => {
+//   let token =
+//     req.body.token ||
+//     req.headers["token"] ||
+//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+//   let appData = {};
 
-  if (token) {
-    jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
-      if (err) {
-        console.error("JWT Verification Error:", err);
-        appData["error"] = err;
-        appData["data"] = "Token is invalid";
-        res.status(401).json(appData);
-      } else {
-        // Attach user information from the decoded token to the request
-        req.user = decoded;
-        next();
-      }
-    });
-  } else {
-    appData["error"] = 1;
-    appData["data"] = "Token is null";
-    res.status(401).json(appData);
-  }
-});
+//   if (token) {
+//     jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
+//       if (err) {
+//         console.error("JWT Verification Error:", err);
+//         appData["error"] = err;
+//         appData["data"] = "Token is invalid";
+//         res.status(401).json(appData);
+//       } else {
+//         // Attach user information from the decoded token to the request
+//         req.user = decoded;
+//         next();
+//       }
+//     });
+//   } else {
+//     appData["error"] = 1;
+//     appData["data"] = "Token is null";
+//     res.status(401).json(appData);
+//   }
+// });
 
 users.post("/saveDeviceToken", async (req, res) => {
   console.log("/saveDeviceToken");
@@ -4159,7 +4156,6 @@ users.post("/uploadImage", upload.single("file"), async (req, res) => {
             filename: req.file.originalname,
           };
           appData.status = true;
-          console.log(appData);
           res.status(200).json(appData);
         });
     } else if (typeImage === "car-docks") {
@@ -4172,7 +4168,6 @@ users.post("/uploadImage", upload.single("file"), async (req, res) => {
             filename: req.file.originalname,
           };
           appData.status = true;
-          console.log(appData);
           res.status(200).json(appData);
         });
     } else if (typeImage === "passport") {
@@ -4190,7 +4185,6 @@ users.post("/uploadImage", upload.single("file"), async (req, res) => {
             filename: req.file.originalname,
           };
           appData.status = true;
-          console.log(appData);
           res.status(200).json(appData);
         });
     } else if (typeImage === "driver-license") {
@@ -4207,7 +4201,6 @@ users.post("/uploadImage", upload.single("file"), async (req, res) => {
             filename: req.file.originalname,
           };
           appData.status = true;
-          console.log(appData);
           res.status(200).json(appData);
         });
     } else if (typeImage === "verification") {
@@ -4224,7 +4217,6 @@ users.post("/uploadImage", upload.single("file"), async (req, res) => {
             filename: req.file.originalname,
           };
           appData.status = true;
-          console.log(appData);
           res.status(200).json(appData);
         });
     }
@@ -4246,7 +4238,6 @@ users.post("/driver-balance/withdraw", async (req, res) => {
     userId = req.body.userId,
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   try {
-    console.log(userId);
     connect = await database.connection.getConnection();
     const [row] = await connect.query(
       `SELECT *
@@ -4737,36 +4728,28 @@ users.post("/addDriverSubscription", async (req, res) => {
             0
           );
 
-          console.log(totalWithdrawalAmount, "totalWithdrawalAmount");
           const totalActiveAmount = activeBalance.reduce(
             (accumulator, secure) => accumulator + Number(secure.amount),
             0
           );
-          console.log(totalActiveAmount, "activeBalance");
           const totalPayments = payments.reduce(
             (accumulator, secure) => accumulator + Number(secure.amount),
             0
           );
-          console.log(totalPayments, "totalPayments");
 
           const totalSubscriptionPayment = subscriptionPayment.reduce(
             (accumulator, subPay) => {
-              console.log(subPay.amount, "amount");
-              console.log(accumulator, "accumulator");
               return accumulator + Number(subPay.amount);
             },
             0
           );
 
-          console.log(totalSubscriptionPayment, "totalPayments");
 
           let balance =
             totalActiveAmount +
             (totalPayments - totalSubscriptionPayment) -
             totalWithdrawalAmount;
-          console.log(balance, "balance");
-          // paymentUser active balance
-          if (Number >= Number(valueofPayment)) {
+          if (Number(balance) >= Number(valueofPayment)) {
             let nextMonth = new Date(
               new Date().setMonth(
                 new Date().getMonth() + subscription[0].duration
@@ -4929,7 +4912,6 @@ users.post("/addDriverServices", async (req, res) => {
       "SELECT * FROM users_contacts WHERE text = ? AND verify = 1",
       [phone]
     );
-    console.log(rows.length, "rows");
     if (rows.length <1) {
       appData.error = " Не найден Пользователь";
       appData.status = false;
@@ -4989,7 +4971,7 @@ users.post("/addDriverServices", async (req, res) => {
                   console.error("Error occurred while fetching service:", error);
               }
             }));
-            const sql = 'INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, 0) VALUES ?';
+            const sql = 'INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status) VALUES ?';
             const [result] = await connect.query(sql, [insertValues]);
             if (result.affectedRows > 0) {
               appData.status = true;
@@ -5039,7 +5021,6 @@ users.post("/services-transaction/user/days", async (req, res) => {
     ORDER BY id DESC LIMIT ?, ?`,
       [userid, from, limit]
     );
-    console.log(services_transaction);
     if (services_transaction.length) {
       appData.status = true;
       appData.data = services_transaction;

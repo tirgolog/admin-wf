@@ -96,7 +96,7 @@ http.on('request', (req, res) => {
 });
 
 app.get('/download/:filename', (req, res) => {
-    console.log('/downloadImage')
+    // console.log('/downloadImage')
     const filename = req.params.filename;
     const filePath = path.join(__dirname, 'uploads', filename);
   
