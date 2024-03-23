@@ -1,5 +1,6 @@
 const Minio = require("minio");
 const Push = require('./Modules/Push');
+require('./Routes/bot');
 const
     app = require('express')(),
     fs = require('fs'),
@@ -43,19 +44,19 @@ process.env.SERVER_URL = "https://tirgo.io/";
 
 //AWS
 const minioClient = new Minio.Client({
-  endPoint: "13.232.83.179",
-  port: 9000,
-  useSSL: false,
-  accessKey: "2ByR3PpFGckilG4fhSaJ",
-  secretKey: "8UH4HtIBc7WCwgCVshcxmQslHFyJB8Y79Bauq5Xd",
+    endPoint: "13.232.83.179",
+    port: 9000,
+    useSSL: false,
+    accessKey: "2ByR3PpFGckilG4fhSaJ",
+    secretKey: "8UH4HtIBc7WCwgCVshcxmQslHFyJB8Y79Bauq5Xd",
 });
 
 minioClient.bucketExists("tirgo", function (error) {
-  if (error) {
-    return console.log(error);
-  }
+    if (error) {
+        return console.log(error);
+    }
 });
-app.get('/', function(req, res){
+app.get('/', function (req, res) {
     res.send('<h1>tirgo glad you!!!</h1>');
 });
 // Enable CORS for Socket.io
@@ -68,7 +69,7 @@ io.use((socket, next) => {
 try {
     socket.init(io);
 }
-catch(err) {
+catch (err) {
     console.log('Socket io error: ', err)
 }
 // Push.send(`cp-LEtYvbeg:APA91bHOC5yK8UWNtbmvPJzoE9tTiEuzDd37AQeRwZdxgEN9lw8f4SpTuz6arfuFXQiidEYeeVWLM8quQTWoCJ8TWyVhJNDGteLE4SmfjP70XKnb1CcxFLlwm6S27qeKilXW-pi82gqh`, 'Пополнение баланса','Ваш баланс пополнен на ' + '100' ,'','');
@@ -87,7 +88,7 @@ app.use((req, res, next) => {
     res.header('Access-Control-Allow-Headers', 'Content-Type');
     next();
 });
-app.use(bodyParser.json({limit: '150mb'}));
+app.use(bodyParser.json({ limit: '150mb' }));
 app.use(bodyParser.urlencoded({
     extended: true
 }));
@@ -99,14 +100,14 @@ app.get('/download/:filename', (req, res) => {
     // console.log('/downloadImage')
     const filename = req.params.filename;
     const filePath = path.join(__dirname, 'uploads', filename);
-  
+
     res.download(filePath, (err) => {
-      if (err) {
-        console.error(err);
-        res.status(404).send('File not found');
-      }
+        if (err) {
+            console.error(err);
+            res.status(404).send('File not found');
+        }
     });
-  });
+});
 app.use('/users', Users);
 app.use('/api', Payme);
 app.use('/admin', Admin);
@@ -115,9 +116,9 @@ app.use('/merchant', Merchant);
 require('./Routes/rabbit.js')
 
 
-http.on('listening',function(){
+http.on('listening', function () {
     console.log('ok, server is running');
 });
-http.listen(port, function(){
+http.listen(port, function () {
     console.log('tirgo server listening on port ' + port);
 });

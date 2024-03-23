@@ -636,11 +636,11 @@ async function getCityFromLatLng(lat, lng) {
 users.post("/findCity", async (req, res) => {
   console.log(req.body);
   let query = {
-      query: req.body.query,
-      count: 10,
-      restrict_value: true,
-      locations: [{ country: "*" }],
-    },
+    query: req.body.query,
+    count: 10,
+    restrict_value: true,
+    locations: [{ country: "*" }],
+  },
     appData = { status: false },
     options = {
       method: "POST",
@@ -670,6 +670,7 @@ users.post("/login", async (req, res) => {
   let connect,
     appData = { status: false },
     country_code = req.body.country_code,
+    isTelegram = req.body.isTelegram,
     send_sms_res = "";
   (code = Math.floor(10000 + Math.random() * 89999)),
     (phone = req.body.phone.replace(/[^0-9, ]/g, "").replace(/ /g, ""));
@@ -730,8 +731,8 @@ users.post("/login", async (req, res) => {
     if (rows.length > 0) {
       if (send_sms_res === "waiting") {
         await connect.query(
-          "UPDATE users_contacts SET verify_code = ? WHERE text = ? AND user_type = 1",
-          [code, phone]
+          "UPDATE users_contacts SET verify_code = ?, is_tg = ? WHERE text = ? AND user_type = 1",
+          [code, isTelegram, phone]
         );
         appData.status = true;
       } else {
@@ -745,18 +746,18 @@ users.post("/login", async (req, res) => {
         );
         if (notVerified.length > 0) {
           await connect.query(
-            "UPDATE users_contacts SET verify_code = ? WHERE text = ? AND user_type = 1",
-            [code, phone]
+            "UPDATE users_contacts SET verify_code = ?, is_tg = ? WHERE text = ? AND user_type = 1",
+            [code, isTelegram, phone]
           );
           appData.status = true;
         } else {
           const [insert] = await connect.query(
-            "INSERT INTO users_list SET verify_code=?,phone=?,user_type = 1",
-            [code, phone]
+            "INSERT INTO users_list SET is_tg = ?,verify_code=?,phone=?,user_type = 1",
+            [isTelegram, code, phone]
           );
           await connect.query(
-            "INSERT INTO users_contacts SET verify_code=?,text=?,user_type = 1,user_id = ?",
-            [code, phone, insert.insertId]
+            "INSERT INTO users_contacts SET is_tg = ?, verify_code=?,text=?,user_type = 1,user_id = ?",
+            [isTelegram, code, phone, insert.insertId]
           );
           appData.status = true;
         }
@@ -853,6 +854,7 @@ users.post("/loginClient", async (req, res) => {
   let connect,
     appData = { status: false },
     country_code = req.body.country_code,
+    isTelegram = req.body.isTelegram,
     send_sms_res = "",
     code = Math.floor(10000 + Math.random() * 89999),
     phone = req.body.phone.replace(/[^0-9, ]/g, "").replace(/ /g, "");
@@ -910,8 +912,8 @@ users.post("/loginClient", async (req, res) => {
     if (rows.length > 0) {
       if (send_sms_res === "waiting") {
         await connect.query(
-          "UPDATE users_contacts SET verify_code = ? WHERE text = ? AND user_type = 2",
-          [code, phone]
+          "UPDATE users_contacts SET verify_code = ?, is_tg = ? WHERE text = ? AND user_type = 2",
+          [code, isTelegram, phone]
         );
         appData.status = true;
       } else {
@@ -924,8 +926,8 @@ users.post("/loginClient", async (req, res) => {
           [code, phone]
         );
         await connect.query(
-          "INSERT INTO users_contacts SET verify_code=?,text=?,user_type = 2,user_id = ?",
-          [code, phone, insert.insertId]
+          "INSERT INTO users_contacts SET is_tg = ?, verify_code=?,text=?,user_type = 2,user_id = ?",
+          [isTelegram, code, phone, insert.insertId]
         );
         appData.status = true;
       } else {
@@ -1383,16 +1385,16 @@ users.get("/checkSession", async function (req, res) {
       // console.log(appData.user, "users");
       appData.user.avatar = fs.existsSync(
         process.env.FILES_PATCH +
-          "tirgo/drivers/" +
-          userInfo.id +
-          "/" +
-          rows[0].avatar
+        "tirgo/drivers/" +
+        userInfo.id +
+        "/" +
+        rows[0].avatar
       )
         ? process.env.SERVER_URL +
-          "tirgo/drivers/" +
-          userInfo.id +
-          "/" +
-          rows[0].avatar
+        "tirgo/drivers/" +
+        userInfo.id +
+        "/" +
+        rows[0].avatar
         : null;
       const [files] = await connect.query(
         "SELECT *,name as filename FROM users_list_files WHERE user_id = ? AND active = 1",
@@ -1403,16 +1405,16 @@ users.get("/checkSession", async function (req, res) {
           let newItem = item;
           newItem.preview = fs.existsSync(
             process.env.FILES_PATCH +
-              "tirgo/drivers/" +
-              userInfo.id +
-              "/" +
-              item.filename
+            "tirgo/drivers/" +
+            userInfo.id +
+            "/" +
+            item.filename
           )
             ? process.env.SERVER_URL +
-              "tirgo/drivers/" +
-              userInfo.id +
-              "/" +
-              item.filename
+            "tirgo/drivers/" +
+            userInfo.id +
+            "/" +
+            item.filename
             : null;
           return newItem;
         })
@@ -1424,9 +1426,9 @@ users.get("/checkSession", async function (req, res) {
         [
           userInfo.id,
           "Произведен вход " +
-            req.headers["user-agent"].split("(")[1].replace(")", "") +
-            ",IP: " +
-            parseIp(req).replace("::ffff:", ""),
+          req.headers["user-agent"].split("(")[1].replace(")", "") +
+          ",IP: " +
+          parseIp(req).replace("::ffff:", ""),
         ]
       );
       socket.updateActivity("update-activity", "1");
@@ -1459,16 +1461,16 @@ users.get("/checkSessionClient", async function (req, res) {
       appData.user.config = config;
       appData.user.avatar = fs.existsSync(
         process.env.FILES_PATCH +
-          "tirgo/clients/" +
-          userInfo.id +
-          "/" +
-          rows[0].avatar
+        "tirgo/clients/" +
+        userInfo.id +
+        "/" +
+        rows[0].avatar
       )
         ? process.env.SERVER_URL +
-          "tirgo/clients/" +
-          userInfo.id +
-          "/" +
-          rows[0].avatar
+        "tirgo/clients/" +
+        userInfo.id +
+        "/" +
+        rows[0].avatar
         : null;
       const [files] = await connect.query(
         "SELECT * FROM users_list_files WHERE user_id = ?",
@@ -1479,16 +1481,16 @@ users.get("/checkSessionClient", async function (req, res) {
           let newItem = item;
           newItem.image = fs.existsSync(
             process.env.FILES_PATCH +
-              "tirgo/drivers/" +
-              userInfo.id +
-              "/" +
-              item.name
+            "tirgo/drivers/" +
+            userInfo.id +
+            "/" +
+            item.name
           )
             ? process.env.SERVER_URL +
-              "tirgo/drivers/" +
-              userInfo.id +
-              "/" +
-              item.name
+            "tirgo/drivers/" +
+            userInfo.id +
+            "/" +
+            item.name
             : null;
           return newItem;
         })
@@ -1500,9 +1502,9 @@ users.get("/checkSessionClient", async function (req, res) {
         [
           userInfo.id,
           "Произведен вход " +
-            req.headers["user-agent"].split("(")[1].replace(")", "") +
-            ",IP: " +
-            parseIp(req).replace("::ffff:", ""),
+          req.headers["user-agent"].split("(")[1].replace(")", "") +
+          ",IP: " +
+          parseIp(req).replace("::ffff:", ""),
         ]
       );
       socket.updateActivity("update-activity", "1");
@@ -2787,13 +2789,13 @@ users.post("/acceptOrderDriver", async (req, res) => {
             user[0].token,
             "Информация о водителе",
             "Информация об имени водителя " +
-              driver[0].name +
-              "Телифон " +
-              driver[0].phone +
-              "Рейтинг " +
-              driver[0].phone +
-              "Цена " +
-              price,
+            driver[0].name +
+            "Телифон " +
+            driver[0].phone +
+            "Рейтинг " +
+            driver[0].phone +
+            "Цена " +
+            price,
             "",
             ""
           );
@@ -2929,11 +2931,11 @@ users.post("/cancelOrderDriver", async (req, res) => {
           user[0].token,
           "Информация о водителе",
           "Информация об имени водителя " +
-            driver[0].name +
-            "Телифон " +
-            driver[0].phone +
-            "Рейтинг " +
-            driver[0].phone,
+          driver[0].name +
+          "Телифон " +
+          driver[0].phone +
+          "Рейтинг " +
+          driver[0].phone,
           "",
           ""
         );
@@ -3011,11 +3013,11 @@ users.post("/acceptDriverClient", async (req, res) => {
           user[0].token,
           "Информация о клиенте",
           "Имя информационного клиента " +
-            user[0].name +
-            "Телифон " +
-            user[0].phone +
-            "Рейтинг " +
-            user[0].phone,
+          user[0].name +
+          "Телифон " +
+          user[0].phone +
+          "Рейтинг " +
+          user[0].phone,
           "",
           ""
         );
@@ -3086,11 +3088,11 @@ users.post("/cancelDriverClient", async (req, res) => {
           user[0].token,
           "Информация о клиенте",
           "Имя информационного клиента " +
-            user[0].name +
-            "Телифон " +
-            user[0].phone +
-            "Рейтинг " +
-            user[0].phone,
+          user[0].name +
+          "Телифон " +
+          user[0].phone +
+          "Рейтинг " +
+          user[0].phone,
           "",
           ""
         );
@@ -3318,16 +3320,16 @@ users.get("/getMyTrack", async (req, res) => {
               let docks = item2;
               docks.preview = fs.existsSync(
                 process.env.FILES_PATCH +
-                  "tirgo/drivers/" +
-                  userInfo.id +
-                  "/" +
-                  item2.filename
+                "tirgo/drivers/" +
+                userInfo.id +
+                "/" +
+                item2.filename
               )
                 ? process.env.SERVER_URL +
-                  "tirgo/drivers/" +
-                  userInfo.id +
-                  "/" +
-                  item2.filename
+                "tirgo/drivers/" +
+                userInfo.id +
+                "/" +
+                item2.filename
                 : null;
               return docks;
             })
@@ -3597,16 +3599,16 @@ users.get("/getMyOrdersClient", async (req, res) => {
               newItemUsers.contacts = contacts;
               newItemUsers.avatar = fs.existsSync(
                 process.env.FILES_PATCH +
-                  "tirgo/drivers/" +
-                  item2.id +
-                  "/" +
-                  item2.avatar
+                "tirgo/drivers/" +
+                item2.id +
+                "/" +
+                item2.avatar
               )
                 ? process.env.SERVER_URL +
-                  "tirgo/drivers/" +
-                  item2.id +
-                  "/" +
-                  item2.avatar
+                "tirgo/drivers/" +
+                item2.id +
+                "/" +
+                item2.avatar
                 : null;
               newItemUsers.trucks = await Promise.all(
                 trucks.map(async (truck) => {
@@ -3620,16 +3622,16 @@ users.get("/getMyOrdersClient", async (req, res) => {
                       let docks = filetruck;
                       docks.preview = fs.existsSync(
                         process.env.FILES_PATCH +
-                          "tirgo/drivers/" +
-                          item2.id +
-                          "/" +
-                          filetruck.name
+                        "tirgo/drivers/" +
+                        item2.id +
+                        "/" +
+                        filetruck.name
                       )
                         ? process.env.SERVER_URL +
-                          "tirgo/drivers/" +
-                          item2.id +
-                          "/" +
-                          filetruck.name
+                        "tirgo/drivers/" +
+                        item2.id +
+                        "/" +
+                        filetruck.name
                         : null;
                       return docks;
                     })
@@ -4912,7 +4914,7 @@ users.post("/addDriverServices", async (req, res) => {
       "SELECT * FROM users_contacts WHERE text = ? AND verify = 1",
       [phone]
     );
-    if (rows.length <1) {
+    if (rows.length < 1) {
       appData.error = " Не найден Пользователь";
       appData.status = false;
       res.status(400).json(appData);
@@ -4943,50 +4945,50 @@ users.post("/addDriverServices", async (req, res) => {
       );
 
       let balance = totalPaymentAmount - totalPaymentAmountTransaction;
-        if (balance >= totalAmount) {
-          const [editUser] = await connect.query(
-            "UPDATE users_list SET is_service = 1  WHERE id = ?",
-            [user_id]
-          );
-          if (editUser.affectedRows > 0) {
-            const insertValues = await Promise.all(services.map(async (service) => {
-              try {
-                  const [result] = await connect.query(
-                      "SELECT * FROM services WHERE id = ?",
-                      [service.services_id]
-                  );
-                  if (result.length === 0) {
-                      throw new Error(`Service with ID ${service.services_id} not found.`);
-                  }
-                  return [
-                      user_id,
-                      service.services_id,
-                      result[0].name,
-                      service.price_uzs,
-                      service.price_kzs,
-                      service.rate,
-                      0
-                  ];
-              } catch (error) {
-                  console.error("Error occurred while fetching service:", error);
+      if (balance >= totalAmount) {
+        const [editUser] = await connect.query(
+          "UPDATE users_list SET is_service = 1  WHERE id = ?",
+          [user_id]
+        );
+        if (editUser.affectedRows > 0) {
+          const insertValues = await Promise.all(services.map(async (service) => {
+            try {
+              const [result] = await connect.query(
+                "SELECT * FROM services WHERE id = ?",
+                [service.services_id]
+              );
+              if (result.length === 0) {
+                throw new Error(`Service with ID ${service.services_id} not found.`);
               }
-            }));
-            const sql = 'INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status) VALUES ?';
-            const [result] = await connect.query(sql, [insertValues]);
-            if (result.affectedRows > 0) {
-              appData.status = true;
-              res.status(200).json(appData);
+              return [
+                user_id,
+                service.services_id,
+                result[0].name,
+                service.price_uzs,
+                service.price_kzs,
+                service.rate,
+                0
+              ];
+            } catch (error) {
+              console.error("Error occurred while fetching service:", error);
             }
-          } else {
-            appData.error = "Пользователь не может обновить";
-            appData.status = false;
-            res.status(400).json(appData);
+          }));
+          const sql = 'INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status) VALUES ?';
+          const [result] = await connect.query(sql, [insertValues]);
+          if (result.affectedRows > 0) {
+            appData.status = true;
+            res.status(200).json(appData);
           }
         } else {
-          appData.error = "Недостаточно средств на балансе";
+          appData.error = "Пользователь не может обновить";
           appData.status = false;
           res.status(400).json(appData);
         }
+      } else {
+        appData.error = "Недостаточно средств на балансе";
+        appData.status = false;
+        res.status(400).json(appData);
+      }
     }
   } catch (e) {
     appData.error = e.message;
@@ -5042,53 +5044,53 @@ users.post("/services-transaction/user/days", async (req, res) => {
 
 users.post("/services-transaction/user/balanse", async (req, res) => {
   let connect,
-  appData = { status: false };
-const { userid, phone } = req.body;
-try {
-  connect = await database.connection.getConnection();
-  const [rows] = await connect.query(
-    "SELECT * FROM users_contacts WHERE text = ? AND verify = 1",
-    [phone]
-  );
-  if (rows.length < 1) {
-    appData.error = " Не найден Пользователь";
-    appData.status = false;
+    appData = { status: false };
+  const { userid, phone } = req.body;
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      "SELECT * FROM users_contacts WHERE text = ? AND verify = 1",
+      [phone]
+    );
+    if (rows.length < 1) {
+      appData.error = " Не найден Пользователь";
+      appData.status = false;
+      res.status(400).json(appData);
+    } else {
+      const [paymentUser] = await connect.query(
+        "SELECT * FROM alpha_payment where  userid = ? ",
+        [userid]
+      );
+
+      const totalPaymentAmount = paymentUser.reduce(
+        (accumulator, secure) => accumulator + Number(secure.amount),
+        0
+      );
+
+
+      const [paymentTransaction] = await connect.query(
+        "SELECT * FROM services_transaction where  userid = ? ",
+        [userid]
+      );
+
+      const totalPaymentAmountTransaction = paymentTransaction.reduce(
+        (accumulator, secure) => accumulator + Number(secure.price_uzs),
+        0
+      );
+
+      let balance = totalPaymentAmount - totalPaymentAmountTransaction;
+      appData.status = true;
+      appData.data = { balance: balance };
+      res.status(200).json(appData);
+    }
+  } catch (e) {
+    appData.error = e.message;
     res.status(400).json(appData);
-  } else {
-    const [paymentUser] = await connect.query(
-      "SELECT * FROM alpha_payment where  userid = ? ",
-      [userid]
-    );
-
-    const totalPaymentAmount = paymentUser.reduce(
-      (accumulator, secure) => accumulator + Number(secure.amount),
-      0
-    );
-
-    
-    const [paymentTransaction] = await connect.query(
-      "SELECT * FROM services_transaction where  userid = ? ",
-      [userid]
-    );
-
-    const totalPaymentAmountTransaction = paymentTransaction.reduce(
-      (accumulator, secure) => accumulator + Number(secure.price_uzs),
-      0
-    );
-
-    let balance = totalPaymentAmount - totalPaymentAmountTransaction;
-    appData.status = true;
-    appData.data = {balance:balance};
-    res.status(200).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
   }
-} catch (e) {
-  appData.error = e.message;
-  res.status(400).json(appData);
-} finally {
-  if (connect) {
-    connect.release();
-  }
-}
 });
 
 module.exports = users;
