@@ -21,6 +21,7 @@ bot.onText(/\/start/, (msg, match) => {
 bot.on("contact", async (msg) => {
   let phoneNumber = msg.contact.phone_number.toString().replace('+', '');
   const chatId = msg.chat.id;
+  let connect = await database.connection.getConnection();
 
   await connect.query(
     "UPDATE users_contacts SET verify = 1,  tg_chat_id = ? WHERE text = ?",
