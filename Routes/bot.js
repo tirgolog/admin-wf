@@ -21,22 +21,69 @@ bot.onText(/\/start/, (msg, match) => {
 bot.on("contact", async (msg) => {
   let phoneNumber = msg.contact.phone_number.toString().replace('+', '');
   const chatId = msg.chat.id;
-  let connect = await database.connection.getConnection();
 
-  const [rows] = await connect.query(
-    "SELECT * FROM users_contacts WHERE text = ? AND user_type = 2 LIMIT 1",
-    [phoneNumber]
-  );
   await connect.query(
     "UPDATE users_contacts SET verify = 1,  tg_chat_id = ? WHERE text = ?",
     [chatId, phoneNumber]
   );
-  if (rows[0].is_tg) {
-    bot.sendMessage(chatId, 'Код для логин: ' + rows[0].verify_code);
-  } else {
-    console.log('Login is not by tg')
+
+  // Prompt user to select client or driver
+  let replyOptions = {
+    reply_markup: {
+      resize_keyboard: true,
+      one_time_keyboard: true,
+      force_reply: true,
+      keyboard: [
+        [{ text: "Client" }, { text: "Driver" }]
+      ],
+    },
+  };
+  bot.sendMessage(chatId, "Please select your role:", replyOptions);
+});
+
+bot.on("message", async (msg) => {
+  const chatId = msg.chat.id;
+  const text = msg.text;
+  let connect = await database.connection.getConnection();
+  // Check if the message is a response to the role selection prompt
+  if (text === "Client" || text === "Driver") {
+    // Now you have the user's selected role, you can handle it here
+    console.log("User selected role:", text);
+
+    if (text === "Driver") {
+      const [rows] = await connect.query(
+        "SELECT * FROM users_contacts WHERE user_type = 1 AND tg_chat_id = ? LIMIT 1",
+        [chatId]
+      );
+      if (rows.length > 0) {
+        if (rows[0].is_tg) {
+          bot.sendMessage(chatId, 'Код для логина: ' + rows[0].verify_code);
+        } else {
+          console.log('Login is not by Telegram');
+        }
+      } else {
+        console.log("User not found");
+      }
+    }
+    if (text === "Client") {
+      const [rows] = await connect.query(
+        "SELECT * FROM users_contacts WHERE tg_chat_id = ? AND user_type = 2 LIMIT 1",
+        [chatId]
+      );
+      if (rows.length > 0) {
+        if (rows[0].is_tg) {
+          bot.sendMessage(chatId, 'Код для логина: ' + rows[0].verify_code);
+        } else {
+          console.log('Login is not by Telegram');
+        }
+      } else {
+        console.log("User not found");
+      }
+    }
+
   }
 });
+
 
 
 module.exports = {};
