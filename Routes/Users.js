@@ -752,8 +752,8 @@ users.post("/login", async (req, res) => {
           appData.status = true;
         } else {
           const [insert] = await connect.query(
-            "INSERT INTO users_list SET is_tg = ?,verify_code=?,phone=?,user_type = 1",
-            [isTelegram, code, phone]
+            "INSERT INTO users_list SET verify_code=?,phone=?,user_type = 1",
+            [code, phone]
           );
           await connect.query(
             "INSERT INTO users_contacts SET is_tg = ?, verify_code=?,text=?,user_type = 1,user_id = ?",
