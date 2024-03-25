@@ -27,7 +27,7 @@ bot.on("contact", async (msg) => {
     let phoneNumber = msg.contact.phone_number.toString().replace('+', '');
     const chatId = msg.chat.id;
     let connect = await database.connection.getConnection();
-    console.log('Text on contact', text === "Client")
+    console.log('Text on contact')
     await connect.query(
       "UPDATE users_contacts SET verify = 1,  tg_chat_id = ? WHERE text = ?",
       [chatId, phoneNumber]
