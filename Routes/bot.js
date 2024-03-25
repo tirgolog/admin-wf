@@ -53,6 +53,8 @@ bot.on("message", async (msg) => {
   }
 });
 
+async function sendBotMessageToUser(chatId, text) {
+  bot.sendMessage(chatId, 'Код для логин: ' + text);
+}
 
-
-module.exports = {};
+module.exports = {sendBotMessageToUser};
