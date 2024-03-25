@@ -54,7 +54,7 @@ bot.on("message", async (msg) => {
   try {
     const chatId = msg.chat.id;
     const text = msg.text;
-    console.log('Text on message')
+    console.log('Text on message', 'isClient', text === "Client", 'isDriver', text === "Driver")
     let connect = await database.connection.getConnection();
     // Check if the message is a response to the role selection prompt
     if (text === "Client" || text === "Driver") {
