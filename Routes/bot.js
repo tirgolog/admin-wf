@@ -27,7 +27,7 @@ bot.on("contact", async (msg) => {
     let phoneNumber = msg.contact.phone_number.toString().replace('+', '');
     const chatId = msg.chat.id;
     let connect = await database.connection.getConnection();
-
+    console.log('Text on contact', text === "Client")
     await connect.query(
       "UPDATE users_contacts SET verify = 1,  tg_chat_id = ? WHERE text = ?",
       [chatId, phoneNumber]
@@ -54,6 +54,7 @@ bot.on("message", async (msg) => {
   try {
     const chatId = msg.chat.id;
     const text = msg.text;
+    console.log('Text on message')
     let connect = await database.connection.getConnection();
     // Check if the message is a response to the role selection prompt
     if (text === "Client" || text === "Driver") {
