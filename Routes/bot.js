@@ -12,7 +12,7 @@ bot.onText(/\/start/, (msg, match) => {
         resize_keyboard: true,
         one_time_keyboard: true,
         force_reply: true,
-        keyboard: [[{ text: "contact", request_contact: true }]],
+        keyboard: [[{ text: "Отправить номер", request_contact: true }]],
       },
     };
     const text = `Добро пожаловать, ${msg.from.first_name ? msg.from.first_name : '@'+msg.from.username} ${msg.from.last_name ? msg.from.last_name : ''} ! \nПожалуйста отправьте свой номер телефона !`;
