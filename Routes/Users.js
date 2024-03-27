@@ -4670,11 +4670,11 @@ users.post("/addDriverSubscription", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "SELECT * FROM users_contacts WHERE text = ? AND verify = 1",
+      "SELECT * FROM users_list WHERE phone = ? AND verify = 1 AND deleted = 1",
       [phone]
     );
-    if (rows.length < 0) {
-      appData.error = " Не найден Пользователь";
+    if (rows.length == 0) {
+      appData.error = " пользователь не найден или заблокирован";
       appData.status = false;
       res.status(400).json(appData);
     } else {

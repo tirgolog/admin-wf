@@ -2257,11 +2257,11 @@ admin.post("/addDriverSubscription", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "SELECT * FROM users_contacts WHERE text = ? AND verify = 1",
+      "SELECT * FROM users_list WHERE phone = ? AND verify = 1 AND deleted = 1",
       [phone]
     );
-    if (rows.length < 0) {
-      appData.error = " Не найден Пользователь";
+    if (rows.length == 0) {
+      appData.error = " пользователь не найден или заблокирован";
       appData.status = false;
       res.status(400).json(appData);
     } else {
@@ -2406,7 +2406,7 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
         [rows[0]?.id]
       );
       const [subscriptionPayment] = await connect.query(
-        `SELECT id, amount from subscription_transaction where userid = ? `,
+        `SELECT id, amount from subscription_transaction where userid = ? and  COALESCE(agent_id, admin_id) IS NULL `,
         [rows[0]?.id]
       );
       const [payments] = await connect.query(
