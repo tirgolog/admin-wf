@@ -15,7 +15,7 @@ bot.onText(/\/start/, (msg, match) => {
         keyboard: [[{ text: "contact", request_contact: true }]],
       },
     };
-    const text = `Добро пожаловать, ${msg.from.first_name} ${msg.from.last_name} ! \nПожалуйста отправьте свой номер телефона !`;
+    const text = `Добро пожаловать, ${msg.from.first_name ? msg.from.first_name : '@'+msg.from.username} ${msg.from.last_name ? msg.from.last_name : ''} ! \nПожалуйста отправьте свой номер телефона !`;
     bot.sendMessage(chatId, text, replyOptions);
   } catch (err) {
     console.log('Error on start: ', err)
