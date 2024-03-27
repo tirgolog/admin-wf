@@ -21,6 +21,7 @@ const express = require("express"),
     (req.socket && req.socket.remoteAddress);
 const axios = require("axios");
 const { finishOrderDriver } = require("./rabbit");
+const { sendBotMessageToUser } = require("./bot");
 // Multer configuration
 // const storage = multer.diskStorage({
 //   destination: function (req, file, cb) {
@@ -681,54 +682,62 @@ users.post("/login", async (req, res) => {
     if (phone === "998935421324" || phone === "9988888888") {
       code = "00000";
     }
-    if (phone.substr(0, 3) === "998") {
-      send_sms_res = await sendSmsPlayMobile(phone, code, country_code);
-      console.log("send_sms_res", send_sms_res);
-      //send_sms_res = await sendSms(phone,code,country_code)
-    } else if (phone.substr(0, 3) === "992") {
-      send_sms_res = await sendSmsOson(phone, code);
-      console.log("send_sms_res", send_sms_res);
-      //send_sms_res = await sendSms(phone,code,country_code)
-    } else if (phone.substr(0, 2) === "79") {
-      let options = {
-        method: "GET",
-        uri:
-          "http://api.iqsms.ru/messages/v2/send/?phone=" +
-          phone +
-          "&text=Confirmation code " +
-          code,
-        json: false,
-        headers: {
-          Authorization:
-            "Basic " + Buffer.from("fxkKt7iR:fTsODP6m").toString("base64"),
-        },
-      };
-      console.log("code Russian", code);
-      await rp(options);
-      send_sms_res = "waiting";
-    } else {
-      sendpulse.init(
-        API_USER_ID,
-        API_SECRET,
-        TOKEN_STORAGE,
-        async function (res) {
-          sendpulse.smsSend(
-            function (data) {
-              console.log(data, "senpulse");
-            },
-            "TIRGO",
-            ["+" + phone],
-            "Confirmation code " + code
-          );
-        }
-      );
-      send_sms_res = "waiting";
+    if(!isTelegram) {
+      if (phone.substr(0, 3) === "998") {
+        send_sms_res = await sendSmsPlayMobile(phone, code, country_code);
+        console.log("send_sms_res", send_sms_res);
+        //send_sms_res = await sendSms(phone,code,country_code)
+      } else if (phone.substr(0, 3) === "992") {
+        send_sms_res = await sendSmsOson(phone, code);
+        console.log("send_sms_res", send_sms_res);
+        //send_sms_res = await sendSms(phone,code,country_code)
+      } else if (phone.substr(0, 2) === "79") {
+        let options = {
+          method: "GET",
+          uri:
+            "http://api.iqsms.ru/messages/v2/send/?phone=" +
+            phone +
+            "&text=Confirmation code " +
+            code,
+          json: false,
+          headers: {
+            Authorization:
+              "Basic " + Buffer.from("fxkKt7iR:fTsODP6m").toString("base64"),
+          },
+        };
+        console.log("code Russian", code);
+        await rp(options);
+        send_sms_res = "waiting";
+      } else {
+        sendpulse.init(
+          API_USER_ID,
+          API_SECRET,
+          TOKEN_STORAGE,
+          async function (res) {
+            sendpulse.smsSend(
+              function (data) {
+                console.log(data, "senpulse");
+              },
+              "TIRGO",
+              ["+" + phone],
+              "Confirmation code " + code
+            );
+          }
+        );
+        send_sms_res = "waiting";
+      }
     }
     const [rows] = await connect.query(
       "SELECT * FROM users_contacts WHERE text = ? AND user_type = 1 AND verify = 1",
       [phone]
     );
     if (rows.length > 0) {
+
+      if(isTelegram) {
+        await sendBotMessageToUser(rows[0]?.tg_chat_id, code)
+        send_sms_res ="waiting"
+      }
+
       if (send_sms_res === "waiting") {
         await connect.query(
           "UPDATE users_contacts SET verify_code = ?, is_tg = ? WHERE text = ? AND user_type = 1",
@@ -863,6 +872,7 @@ users.post("/loginClient", async (req, res) => {
     if (phone === "998935421324" || phone === "9988888888") {
       code = "00000";
     }
+    if(!isTelegram) {
     if (phone.substr(0, 3) === "998") {
       send_sms_res = await sendSmsPlayMobile(phone, code, country_code);
       //await sendSms(phone,code,country_code)
@@ -905,11 +915,19 @@ users.post("/loginClient", async (req, res) => {
       );
       send_sms_res = "waiting";
     }
+  }
+
     const [rows] = await connect.query(
       "SELECT * FROM users_contacts WHERE text = ? AND user_type = 2",
       [phone]
     );
     if (rows.length > 0) {
+
+      if(isTelegram) {
+        await sendBotMessageToUser(rows[0]?.tg_chat_id, code)
+        send_sms_res = "waiting";
+      }
+
       if (send_sms_res === "waiting") {
         await connect.query(
           "UPDATE users_contacts SET verify_code = ?, is_tg = ? WHERE text = ? AND user_type = 2",
