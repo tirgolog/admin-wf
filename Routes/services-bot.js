@@ -9,7 +9,6 @@ bot.command("start", onCommandStart);
 // Handle incoming messages
 bot.on('message', async (ctx) => {
   const message = ctx.message;
-
   // Check if the message contains contact information
   if (message.contact) {
     await onContactReceived(ctx)
@@ -20,12 +19,11 @@ bot.on('message', async (ctx) => {
 bot.on('callback_query', async (ctx) => {
   const callbackData = ctx.callbackQuery.data;
 
-  if (callbackData === '#services') {
-      // Handle 'Типы услуг' button click here
-     await onServicesClick(ctx);
-  } else if(callbackData.startsWith('#service_')) {
-    await ctx.reply(`you choosed.` + callbackData );
-  }
+  if(callbackData.startsWith('#service_')) {
+    await onServiceClick(ctx);
+  } else if(callbackData.startsWith('#subscription_')) {
+    await onSubscriptionClick(ctx);
+  } 
 });
 
 bot.start();
@@ -57,13 +55,6 @@ async function onContactReceived(ctx) {
   const connection = await database.connection.getConnection();
   try {
     console.log(`Received contact information from ${chatFirstName}: ${phoneNumber}`);
-     // Create an inline keyboard with menu options
-
-
- // Send the message with the menu
-    await ctx.reply(`Thank you, ${chatFirstName}! We've received your contact information.`);
-
-
     const user = await connection.query(`
       SELECT * FROM users_contacts WHERE text = ?
     `, [phoneNumber]);
@@ -71,9 +62,8 @@ async function onContactReceived(ctx) {
     const userChat = await connection.query(`
       SELECT * FROM services_bot_users WHERE phone_number = ?
     `, [phoneNumber]);
-
     let res;
-    if(!userChat.length) {
+    if(!userChat[0].length) {
       res = await connection.query(`
         INSERT INTO services_bot_users set first_name = ?, last_name = ?, phone_number = ?, tg_username = ?, chat_id = ?
         `, [chatFirstName, chatLastName, phoneNumber, username, chatId]);
@@ -87,23 +77,30 @@ async function onContactReceived(ctx) {
     // Send a notification to the user
     if (res) {
       if(user[0]) {
+        const services = await connection.query('SELECT * FROM services');
         const keyboard = new InlineKeyboard()
-        .text('Типы услуг', '#services')
-        await ctx.reply(`Дорогой ${chatFirstName}! Вы успешно зарегистрировались.`, { reply_markup: keyboard });
+        for (let service of services[0]) {
+          const serviceNameWithLineBreak = service.name.replace(/\\n/g, '\n');
+            keyboard.text(serviceNameWithLineBreak, `#service_${service.id}`);
+            keyboard.row()
+        }
+
+        
+        await ctx.reply(`😊Поздравляем вы прошли регистрацию! Выберете теперь нужную вам услугу`, { reply_markup: keyboard });
       } else {
        await bot.api.sendMessage(
             ctx.message.chat.id,
-            `Дорогой ${chatFirstName}! Пожалуйста, зарегистрируйтесь в приложении по <a href="YOUR_LINK_HERE">ссылке</a>.`,
+            `Пожалуйста, зарегистрируйтесь в приложении по <a href="YOUR_LINK_HERE">ссылке</a>.`,
             { parse_mode: "HTML" },
           );
       }
     } else {
-      await ctx.reply(`Дорогой ${chatFirstName}! Регистрация не удалась. Пожалуйста, попробуйте позднее.`);
+      await ctx.reply(`Регистрация не удалась. Пожалуйста, попробуйте позднее.`);
     }
   } catch (err) {
     console.log(err)
-    await ctx.reply(`Дорогой ${chatFirstName}! Регистрация не удалась. Пожалуйста, попробуйте позднее.`);
-  } finally {
+    await ctx.reply(`Регистрация не удалась. Пожалуйста, попробуйте позднее.`);
+  } finally { 
     // Release the connection back to the pool
     if (connection) {
       connection.release();
@@ -111,31 +108,73 @@ async function onContactReceived(ctx) {
   }
 }
 
-// Function to handle 'Типы услуг' button click
-async function onServicesClick(ctx) {
+async function onServiceClick(ctx) {
+  const chatId = ctx.callbackQuery.from.id;
   const connection = await database.connection.getConnection();
+    try {
+      const [userChat] = await connection.query(
+        `SELECT id, phone_number
+         FROM services_bot_users
+         WHERE chat_id = ?`,
+        [chatId]
+      );
+     const [subscription] = await connection.query(
+        `SELECT id, to_subscription, from_subscription
+         FROM users_list
+         WHERE 
+            to_subscription > CURDATE() 
+            AND from_subscription IS NOT NULL 
+            AND to_subscription IS NOT NULL
+            AND phone = ? 
+           `,
+        [userChat[0].phone_number]
+      );
+      if(!subscription.length) {
   
-  try {
-      const services = await connection.query('SELECT * FROM services');
-      if (services && services.length > 0) {
-          const keyboard = new InlineKeyboard();
-          for (let service of services[0]) {
-            const serviceNameWithLineBreak = service.name.replace(/\\n/g, '\n');
-              keyboard.text(serviceNameWithLineBreak, `#service_${service.id}`);
-              keyboard.row()
-          }
+        const [subscriptions] = await await connection.query(`SELECT * FROM subscription`);
+        const keyboard = new InlineKeyboard()
+        for (let subscription of subscriptions) {
+          const subscriptionNameWithLineBreak = subscription.name.replace(/\\n/g, '\n');
+            keyboard.text(subscriptionNameWithLineBreak, `#subscription_${subscription.id}`);
+            keyboard.row()
+        }
+        await ctx.reply(`Для того чтобы воспользоваться услугами Tirgo, пожалуйста оформите подписку,`, { reply_markup: keyboard });
+      }
+    } catch(err) { 
+      console.log('BOT Error on service click: ', err)
+    } finally {
+      await connection.close();
+    }
+}
 
-          await ctx.reply(`Choose a service:`, { reply_markup: keyboard });
-      } else {
-          await ctx.reply(`No services available.`);
+async function onSubscriptionClick(ctx) {
+  const chatId = ctx.callbackQuery.from.id;
+  const subscriptionId = Number(ctx.callbackQuery.data.split('_')[1]);
+  const connection = await database.connection.getConnection();
+    try {
+      const [userChat] = await connection.query(
+        `SELECT id, phone_number
+         FROM services_bot_users
+         WHERE chat_id = ?`,
+        [chatId]
+      );
+      
+      const [subscription] = await await connection.query(`SELECT * FROM subscription WHERE id = ${subscriptionId}`);
+console.log(subscription)
+      if(!subscription.length) {
+  
+        const [subscriptions] = await await connection.query(`SELECT * FROM subscription`);
+        const keyboard = new InlineKeyboard()
+        for (let subscription of subscriptions) {
+          const subscriptionNameWithLineBreak = subscription.name.replace(/\\n/g, '\n');
+            keyboard.text(subscriptionNameWithLineBreak, `#subscription_${subscription.id}`);
+            keyboard.row()
+        }
+        await ctx.reply(`Для того чтобы воспользоваться услугами Tirgo, пожалуйста оформите подписку,`, { reply_markup: keyboard });
       }
-  } catch (err) {
-      console.log('BOT Error while getting services list: ', err);
-      await ctx.reply(`Error while getting services list.`);
-  } finally {
-      // Release the connection back to the pool
-      if (connection) {
-          connection.release();
-      }
-  }
+    } catch(err) { 
+      console.log('BOT Error on subscription click: ', err)
+    } finally {
+      await connection.close();
+    }
 }
