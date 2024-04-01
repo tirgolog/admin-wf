@@ -28,7 +28,7 @@ reborn.post('/getAllDrivers', async (req, res) => {
       
         connect = await database.connection.getConnection();
         if (!typetransport && subscription === '' &&is_service==0) {
-            [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND is_service==0  ORDER BY id DESC');
+            [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND is_service=0  ORDER BY id DESC');
             [rows] = await connect.query(`
             WITH TotalCount AS (
                 SELECT COUNT(*) AS total_count FROM users_list WHERE user_type = 1
@@ -43,18 +43,32 @@ reborn.post('/getAllDrivers', async (req, res) => {
             RankedUsers AS (
                 SELECT *,
                        ROW_NUMBER() OVER (ORDER BY id DESC) AS row_num
-                FROM users_list
+                FROM users_list WHERE user_type = 1
+                AND is_service = 0
+                AND id LIKE ? 
+                AND IFNULL(name, ?) LIKE ? 
+                AND IFNULL(phone, ?) LIKE ? 
+                AND IFNULL(date_reg, ?) LIKE ? 
+                AND IFNULL(date_last_login, ?) LIKE ? 
+                AND IFNULL(iso_code, ?) LIKE ? 
             )
-            SELECT (TotalCount.total_count - RankedUsers.row_num )+ 1 AS descending_count, TotalCount.total_count, RankedUsers.*
-            FROM RankedUsers
+            SELECT 
+            CASE 
+                WHEN RankedUsers.row_num > TotalCount.total_count THEN 1
+                ELSE (TotalCount.total_count - RankedUsers.row_num) + 1
+            END AS descending_count,
+            TotalCount.total_count,
+            RankedUsers.*
+        FROM 
+            RankedUsers
             CROSS JOIN TotalCount
             ORDER BY RankedUsers.id DESC
             LIMIT ?, ?
             `,
-            [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
+            [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%', id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
         } 
         else if (!typetransport && subscription === '' &&is_service==1) {
-            [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND is_service==1  ORDER BY id DESC');
+            [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND is_service=1  ORDER BY id DESC');
             [rows] = await connect.query(`
             WITH TotalCount AS (
                 SELECT COUNT(*) AS total_count FROM users_list WHERE user_type = 1
@@ -69,15 +83,29 @@ reborn.post('/getAllDrivers', async (req, res) => {
             RankedUsers AS (
                 SELECT *,
                        ROW_NUMBER() OVER (ORDER BY id DESC) AS row_num
-                FROM users_list
+                FROM users_list WHERE user_type = 1
+                AND is_service = 0
+                AND id LIKE ? 
+                AND IFNULL(name, ?) LIKE ? 
+                AND IFNULL(phone, ?) LIKE ? 
+                AND IFNULL(date_reg, ?) LIKE ? 
+                AND IFNULL(date_last_login, ?) LIKE ? 
+                AND IFNULL(iso_code, ?) LIKE ? 
             )
-            SELECT (TotalCount.total_count - RankedUsers.row_num )+ 1 AS descending_count, TotalCount.total_count, RankedUsers.*
-            FROM RankedUsers
+            SELECT 
+            CASE 
+                WHEN RankedUsers.row_num > TotalCount.total_count THEN 1
+                ELSE (TotalCount.total_count - RankedUsers.row_num) + 1
+            END AS descending_count,
+            TotalCount.total_count,
+            RankedUsers.*
+        FROM 
+            RankedUsers
             CROSS JOIN TotalCount
             ORDER BY RankedUsers.id DESC
             LIMIT ?, ?
             `,
-            [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
+            [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%', id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
         }
         else if (!typetransport && subscription === '' &&is_service==2) {
             [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND (is_service = 1 OR is_service = 0)  ORDER BY id DESC');
@@ -95,15 +123,29 @@ reborn.post('/getAllDrivers', async (req, res) => {
             RankedUsers AS (
                 SELECT *,
                        ROW_NUMBER() OVER (ORDER BY id DESC) AS row_num
-                FROM users_list
+                FROM users_list WHERE user_type = 1
+                AND is_service = 0
+                AND id LIKE ? 
+                AND IFNULL(name, ?) LIKE ? 
+                AND IFNULL(phone, ?) LIKE ? 
+                AND IFNULL(date_reg, ?) LIKE ? 
+                AND IFNULL(date_last_login, ?) LIKE ? 
+                AND IFNULL(iso_code, ?) LIKE ? 
             )
-            SELECT (TotalCount.total_count - RankedUsers.row_num )+ 1 AS descending_count, TotalCount.total_count, RankedUsers.*
-            FROM RankedUsers
+            SELECT 
+            CASE 
+                WHEN RankedUsers.row_num > TotalCount.total_count THEN 1
+                ELSE (TotalCount.total_count - RankedUsers.row_num) + 1
+            END AS descending_count,
+            TotalCount.total_count,
+            RankedUsers.*
+        FROM 
+            RankedUsers
             CROSS JOIN TotalCount
             ORDER BY RankedUsers.id DESC
             LIMIT ?, ?
             `,
-            [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
+            [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%', id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
         
         }  
         else if (!typetransport &&  subscription === 'without_subscription'&&is_service==0) {
@@ -134,8 +176,15 @@ reborn.post('/getAllDrivers', async (req, res) => {
                   AND IFNULL(iso_code, ?) LIKE ? 
                   AND subscription_id IS  NULL
             )
-            SELECT (TotalCount.total_count - RankedUsers.row_num )+ 1 AS descending_count, TotalCount.total_count, RankedUsers.*
-            FROM RankedUsers
+            SELECT 
+            CASE 
+                WHEN RankedUsers.row_num > TotalCount.total_count THEN 1
+                ELSE (TotalCount.total_count - RankedUsers.row_num) + 1
+            END AS descending_count,
+            TotalCount.total_count,
+            RankedUsers.*
+        FROM 
+            RankedUsers
             CROSS JOIN TotalCount
             ORDER BY RankedUsers.id DESC
             LIMIT ?, ?
@@ -170,8 +219,15 @@ reborn.post('/getAllDrivers', async (req, res) => {
                   AND IFNULL(iso_code, ?) LIKE ? 
                   AND subscription_id IS  NULL
             )
-            SELECT (TotalCount.total_count - RankedUsers.row_num )+ 1 AS descending_count, TotalCount.total_count, RankedUsers.*
-            FROM RankedUsers
+            SELECT 
+            CASE 
+                WHEN RankedUsers.row_num > TotalCount.total_count THEN 1
+                ELSE (TotalCount.total_count - RankedUsers.row_num) + 1
+            END AS descending_count,
+            TotalCount.total_count,
+            RankedUsers.*
+        FROM 
+            RankedUsers
             CROSS JOIN TotalCount
             ORDER BY RankedUsers.id DESC
             LIMIT ?, ?
@@ -206,8 +262,15 @@ reborn.post('/getAllDrivers', async (req, res) => {
                   AND IFNULL(iso_code, ?) LIKE ? 
                   AND subscription_id IS  NULL
             )
-            SELECT (TotalCount.total_count - RankedUsers.row_num )+ 1 AS descending_count, TotalCount.total_count, RankedUsers.*
-            FROM RankedUsers
+            SELECT 
+            CASE 
+                WHEN RankedUsers.row_num > TotalCount.total_count THEN 1
+                ELSE (TotalCount.total_count - RankedUsers.row_num) + 1
+            END AS descending_count,
+            TotalCount.total_count,
+            RankedUsers.*
+        FROM 
+            RankedUsers
             CROSS JOIN TotalCount
             ORDER BY RankedUsers.id DESC
             LIMIT ?, ?
@@ -217,7 +280,6 @@ reborn.post('/getAllDrivers', async (req, res) => {
         } 
         else if (typetransport === '' && subscription === 'subscription' &&is_service==0) {
             [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND  is_service = 0 AND subscription_id IS NOT NULL  ORDER BY id DESC');
-            
             [rows] = await connect.query(`
             WITH TotalCount AS (
                 SELECT COUNT(*) AS total_count FROM users_list WHERE user_type = 1
@@ -244,8 +306,15 @@ reborn.post('/getAllDrivers', async (req, res) => {
                   AND IFNULL(iso_code, ?) LIKE ? 
                   AND subscription_id IS NOT NULL
             )
-            SELECT (TotalCount.total_count - RankedUsers.row_num )+ 1 AS descending_count, TotalCount.total_count, RankedUsers.*
-            FROM RankedUsers
+            SELECT 
+            CASE 
+                WHEN RankedUsers.row_num > TotalCount.total_count THEN 1
+                ELSE (TotalCount.total_count - RankedUsers.row_num) + 1
+            END AS descending_count,
+            TotalCount.total_count,
+            RankedUsers.*
+        FROM 
+            RankedUsers
             CROSS JOIN TotalCount
             ORDER BY RankedUsers.id DESC
             LIMIT ?, ?`,
@@ -279,8 +348,15 @@ reborn.post('/getAllDrivers', async (req, res) => {
                   AND IFNULL(iso_code, ?) LIKE ? 
                   AND subscription_id IS NOT NULL
             )
-            SELECT (TotalCount.total_count - RankedUsers.row_num )+ 1 AS descending_count, TotalCount.total_count, RankedUsers.*
-            FROM RankedUsers
+            SELECT 
+            CASE 
+                WHEN RankedUsers.row_num > TotalCount.total_count THEN 1
+                ELSE (TotalCount.total_count - RankedUsers.row_num) + 1
+            END AS descending_count,
+            TotalCount.total_count,
+            RankedUsers.*
+        FROM 
+            RankedUsers
             CROSS JOIN TotalCount
             ORDER BY RankedUsers.id DESC
             LIMIT ?, ?`,
@@ -314,13 +390,21 @@ reborn.post('/getAllDrivers', async (req, res) => {
                   AND IFNULL(iso_code, ?) LIKE ? 
                   AND subscription_id IS NOT NULL
             )
-            SELECT (TotalCount.total_count - RankedUsers.row_num )+ 1 AS descending_count, TotalCount.total_count, RankedUsers.*
-            FROM RankedUsers
+            SELECT 
+            CASE 
+                WHEN RankedUsers.row_num > TotalCount.total_count THEN 1
+                ELSE (TotalCount.total_count - RankedUsers.row_num) + 1
+            END AS descending_count,
+            TotalCount.total_count,
+            RankedUsers.*
+        FROM 
+            RankedUsers
             CROSS JOIN TotalCount
             ORDER BY RankedUsers.id DESC
             LIMIT ?, ?`,
             [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
         }
+
         else if (typetransport && subscription === '' && is_service==0) {
             [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND is_service = 0  ORDER BY id DESC');
             [rows] = await connect.query(`
@@ -333,8 +417,8 @@ reborn.post('/getAllDrivers', async (req, res) => {
         LEFT JOIN 
             (
                 SELECT 
-                    ut.user_id,
-                    ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
+                DISTINCT (ut.user_id),
+                ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
                 FROM 
                     users_transport ut
                 LEFT JOIN 
@@ -377,10 +461,7 @@ reborn.post('/getAllDrivers', async (req, res) => {
             AND IFNULL(ul.date_last_login, ?) LIKE ? 
             AND IFNULL(ul.iso_code, ?) LIKE ?
         GROUP BY 
-            TotalCount.total_count, 
-            RankedUsers.row_num, 
-            ul.id,
-            ut.type
+                ut.user_id   
         ORDER BY 
             ul.id DESC 
         LIMIT ?, ?;
@@ -399,8 +480,8 @@ reborn.post('/getAllDrivers', async (req, res) => {
         LEFT JOIN 
             (
                 SELECT 
-                    ut.user_id,
-                    ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
+                DISTINCT (ut.user_id),
+                ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
                 FROM 
                     users_transport ut
                 LEFT JOIN 
@@ -442,10 +523,7 @@ reborn.post('/getAllDrivers', async (req, res) => {
             AND IFNULL(ul.date_last_login, ?) LIKE ? 
             AND IFNULL(ul.iso_code, ?) LIKE ?
         GROUP BY 
-            TotalCount.total_count, 
-            RankedUsers.row_num, 
-            ul.id,
-            ut.type
+            ut.user_id   
         ORDER BY 
             ul.id DESC 
         LIMIT ?, ?
@@ -464,8 +542,8 @@ reborn.post('/getAllDrivers', async (req, res) => {
             LEFT JOIN 
              (
                 SELECT 
-                    DISTINCT (ut.user_id),
-                    ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
+                  DISTINCT (ut.user_id),
+                  ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
                 FROM 
                     users_transport ut
                 LEFT JOIN 
@@ -506,15 +584,13 @@ reborn.post('/getAllDrivers', async (req, res) => {
             AND IFNULL(ul.date_last_login, ?) LIKE ? 
             AND IFNULL(ul.iso_code, ?) LIKE ?
         GROUP BY 
-            TotalCount.total_count, 
-            RankedUsers.row_num, 
-            ul.id,
-            ut.type
+            ut.user_id   
         ORDER BY 
             ul.id DESC 
         LIMIT ?, ?`,
             [+typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%', id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',+typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',from, limit]);
         }
+
         else if (typetransport && subscription === 'without_subscription' && is_service==0) {
             [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND  is_service = 0 AND subscription_id IS  NULL  ORDER BY id DESC');
             [rows] = await connect.query(`
@@ -527,8 +603,8 @@ reborn.post('/getAllDrivers', async (req, res) => {
             LEFT JOIN 
                 (
                     SELECT 
-                        ut.user_id,
-                        ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
+                    DISTINCT (ut.user_id),
+                    ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
                     FROM 
                         users_transport ut
                     LEFT JOIN 
@@ -572,10 +648,7 @@ reborn.post('/getAllDrivers', async (req, res) => {
                 AND IFNULL(ul.iso_code, ?) LIKE ?
                 AND subscription_id IS  NULL
                 GROUP BY 
-                TotalCount.total_count, 
-                RankedUsers.row_num, 
-                ul.id,
-                ut.type    
+                ut.user_id     
             ORDER BY 
                 ul.id DESC 
             LIMIT ?, ?
@@ -594,8 +667,8 @@ reborn.post('/getAllDrivers', async (req, res) => {
             LEFT JOIN 
                 (
                     SELECT 
-                        ut.user_id,
-                        ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
+                    DISTINCT (ut.user_id),
+                    ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
                     FROM 
                         users_transport ut
                     LEFT JOIN 
@@ -640,10 +713,7 @@ reborn.post('/getAllDrivers', async (req, res) => {
                 AND IFNULL(ul.iso_code, ?) LIKE ?
                 AND subscription_id IS  NULL
                 GROUP BY 
-                TotalCount.total_count, 
-                RankedUsers.row_num, 
-                ul.id,
-                ut.type    
+                ut.user_id     
             ORDER BY 
                 ul.id DESC 
             LIMIT ?, ?
@@ -662,8 +732,8 @@ reborn.post('/getAllDrivers', async (req, res) => {
             LEFT JOIN 
                 (
                     SELECT 
-                        ut.user_id,
-                        ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
+                    DISTINCT (ut.user_id),
+                    ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
                     FROM 
                         users_transport ut
                     LEFT JOIN 
@@ -708,15 +778,13 @@ reborn.post('/getAllDrivers', async (req, res) => {
                 AND IFNULL(ul.iso_code, ?) LIKE ?
                 AND subscription_id IS  NULL
                 GROUP BY 
-                TotalCount.total_count, 
-                RankedUsers.row_num, 
-                ul.id,
-                ut.type    
+                ut.user_id    
             ORDER BY 
                 ul.id DESC 
             LIMIT ?, ?`,
                 [+typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%', id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%', +typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',from, limit]);
         }
+
         else if (typetransport && subscription === 'subscription' && is_service==0) {
             [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND   is_service = 0 AND subscription_id IS NOT  NULL  ORDER BY id DESC');
             [rows] = await connect.query(`
@@ -729,8 +797,8 @@ reborn.post('/getAllDrivers', async (req, res) => {
         LEFT JOIN 
             (
                 SELECT 
-                    ut.user_id,
-                    ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
+                DISTINCT (ut.user_id),
+                ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
                 FROM 
                     users_transport ut
                 INNER JOIN 
@@ -780,10 +848,7 @@ reborn.post('/getAllDrivers', async (req, res) => {
             AND IFNULL(ul.iso_code, ?) LIKE ?
             AND subscription_id IS NOT NULL
             GROUP BY 
-            TotalCount.total_count, 
-            RankedUsers.row_num, 
-            ul.id,
-            ut.type    
+            ut.user_id     
         ORDER BY 
             ul.id DESC 
         LIMIT ?, ?
@@ -802,8 +867,8 @@ reborn.post('/getAllDrivers', async (req, res) => {
         LEFT JOIN 
             (
                 SELECT 
-                    ut.user_id,
-                    ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
+                DISTINCT (ut.user_id),
+                ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
                 FROM 
                     users_transport ut
                 INNER JOIN 
@@ -832,7 +897,7 @@ reborn.post('/getAllDrivers', async (req, res) => {
             WHERE 
                 ut.type = ? 
                 AND ul.user_type = 1 
-                AND ul.is_service = 0
+                AND ul.is_service = 1
                 AND ul.id LIKE ? 
                 AND IFNULL(ul.name, ?) LIKE ? 
                 AND IFNULL(ul.phone, ?) LIKE ? 
@@ -844,7 +909,7 @@ reborn.post('/getAllDrivers', async (req, res) => {
         WHERE 
             ut.type = ? 
             AND ul.user_type = 1 
-            AND ul.is_service = 0
+            AND ul.is_service = 1
             AND ul.id LIKE ? 
             AND IFNULL(ul.name, ?) LIKE ? 
             AND IFNULL(ul.phone, ?) LIKE ? 
@@ -853,10 +918,7 @@ reborn.post('/getAllDrivers', async (req, res) => {
             AND IFNULL(ul.iso_code, ?) LIKE ?
             AND subscription_id IS NOT NULL
             GROUP BY 
-            TotalCount.total_count, 
-            RankedUsers.row_num, 
-            ul.id,
-            ut.type
+            ut.user_id      
         ORDER BY 
             ul.id DESC 
         LIMIT ?, ?
@@ -875,8 +937,8 @@ reborn.post('/getAllDrivers', async (req, res) => {
         LEFT JOIN 
             (
                 SELECT 
-                    ut.user_id,
-                    ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
+                DISTINCT (ut.user_id),
+                ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
                 FROM 
                     users_transport ut
                 LEFT JOIN 
@@ -926,10 +988,7 @@ reborn.post('/getAllDrivers', async (req, res) => {
             AND IFNULL(ul.iso_code, ?) LIKE ?
             AND subscription_id IS NOT NULL
            GROUP BY 
-            TotalCount.total_count, 
-            RankedUsers.row_num, 
-            ul.id,
-            ut.type    
+            ut.user_id     
         ORDER BY 
             ul.id DESC 
         LIMIT ?, ?`,
