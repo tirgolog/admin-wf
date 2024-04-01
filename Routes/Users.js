@@ -4688,7 +4688,7 @@ users.post("/addDriverSubscription", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "SELECT * FROM users_list WHERE phone = ? AND verify = 1 AND deleted = 1",
+      "SELECT * FROM users_list WHERE phone = ? AND verify = 1 AND deleted <> 1",
       [phone]
     );
     if (rows.length == 0) {

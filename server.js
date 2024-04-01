@@ -1,6 +1,6 @@
 const Minio = require("minio");
 const Push = require('./Modules/Push');
-require('./Routes/bot');
+// require('./Routes/bot');
 const
     app = require('express')(),
     fs = require('fs'),
@@ -43,19 +43,19 @@ process.env.SERVER_URL = "https://tirgo.io/";
 // });
 
 //AWS
-const minioClient = new Minio.Client({
-    endPoint: "13.232.83.179",
-    port: 9000,
-    useSSL: false,
-    accessKey: "2ByR3PpFGckilG4fhSaJ",
-    secretKey: "8UH4HtIBc7WCwgCVshcxmQslHFyJB8Y79Bauq5Xd",
-});
+// const minioClient = new Minio.Client({
+//     endPoint: "13.232.83.179",
+//     port: 9000,
+//     useSSL: false,
+//     accessKey: "2ByR3PpFGckilG4fhSaJ",
+//     secretKey: "8UH4HtIBc7WCwgCVshcxmQslHFyJB8Y79Bauq5Xd",
+// });
 
-minioClient.bucketExists("tirgo", function (error) {
-    if (error) {
-        return console.log(error);
-    }
-});
+// minioClient.bucketExists("tirgo", function (error) {
+//     if (error) {
+//         return console.log(error);
+//     }
+// });
 app.get('/', function (req, res) {
     res.send('<h1>tirgo glad you!!!</h1>');
 });
