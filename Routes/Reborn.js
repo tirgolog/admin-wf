@@ -22,29 +22,30 @@ reborn.post('/getAllDrivers', async (req, res) => {
         subscription = req.body.subscription ? req.body.subscription:'',
         is_service = req.body.is_service ? req.body.is_service:0,
         [rows] = [],
+        [rows_count]=[],
         appData = {status: false};
     try {
       
         connect = await database.connection.getConnection();
         if (!typetransport && subscription === '' &&is_service==0) {
+            [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND is_service==0  ORDER BY id DESC');
             [rows] = await connect.query(`
             WITH TotalCount AS (
                 SELECT COUNT(*) AS total_count FROM users_list WHERE user_type = 1
+                AND is_service = 0
+                AND id LIKE ? 
+                AND IFNULL(name, ?) LIKE ? 
+                AND IFNULL(phone, ?) LIKE ? 
+                AND IFNULL(date_reg, ?) LIKE ? 
+                AND IFNULL(date_last_login, ?) LIKE ? 
+                AND IFNULL(iso_code, ?) LIKE ? 
             ),
             RankedUsers AS (
                 SELECT *,
                        ROW_NUMBER() OVER (ORDER BY id DESC) AS row_num
                 FROM users_list
-                WHERE user_type = 1 
-                  AND is_service = 0
-                  AND id LIKE ? 
-                  AND IFNULL(name, ?) LIKE ? 
-                  AND IFNULL(phone, ?) LIKE ? 
-                  AND IFNULL(date_reg, ?) LIKE ? 
-                  AND IFNULL(date_last_login, ?) LIKE ? 
-                  AND IFNULL(iso_code, ?) LIKE ? 
             )
-            SELECT TotalCount.total_count - RankedUsers.row_num + 1 AS descending_count, TotalCount.total_count, RankedUsers.*
+            SELECT (TotalCount.total_count - RankedUsers.row_num )+ 1 AS descending_count, TotalCount.total_count, RankedUsers.*
             FROM RankedUsers
             CROSS JOIN TotalCount
             ORDER BY RankedUsers.id DESC
@@ -53,24 +54,24 @@ reborn.post('/getAllDrivers', async (req, res) => {
             [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
         } 
         else if (!typetransport && subscription === '' &&is_service==1) {
+            [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND is_service==1  ORDER BY id DESC');
             [rows] = await connect.query(`
             WITH TotalCount AS (
                 SELECT COUNT(*) AS total_count FROM users_list WHERE user_type = 1
+                AND is_service = 1
+                AND id LIKE ? 
+                AND IFNULL(name, ?) LIKE ? 
+                AND IFNULL(phone, ?) LIKE ? 
+                AND IFNULL(date_reg, ?) LIKE ? 
+                AND IFNULL(date_last_login, ?) LIKE ? 
+                AND IFNULL(iso_code, ?) LIKE ? 
             ),
             RankedUsers AS (
                 SELECT *,
                        ROW_NUMBER() OVER (ORDER BY id DESC) AS row_num
                 FROM users_list
-                WHERE user_type = 1 
-                  AND is_service = 1
-                  AND id LIKE ? 
-                  AND IFNULL(name, ?) LIKE ? 
-                  AND IFNULL(phone, ?) LIKE ? 
-                  AND IFNULL(date_reg, ?) LIKE ? 
-                  AND IFNULL(date_last_login, ?) LIKE ? 
-                  AND IFNULL(iso_code, ?) LIKE ? 
             )
-            SELECT TotalCount.total_count - RankedUsers.row_num + 1 AS descending_count, TotalCount.total_count, RankedUsers.*
+            SELECT (TotalCount.total_count - RankedUsers.row_num )+ 1 AS descending_count, TotalCount.total_count, RankedUsers.*
             FROM RankedUsers
             CROSS JOIN TotalCount
             ORDER BY RankedUsers.id DESC
@@ -79,24 +80,24 @@ reborn.post('/getAllDrivers', async (req, res) => {
             [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
         }
         else if (!typetransport && subscription === '' &&is_service==2) {
+            [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND (is_service = 1 OR is_service = 0)  ORDER BY id DESC');
             [rows] = await connect.query(`
             WITH TotalCount AS (
                 SELECT COUNT(*) AS total_count FROM users_list WHERE user_type = 1
+                AND (is_service = 1 OR is_service = 0)
+                AND id LIKE ? 
+                AND IFNULL(name, ?) LIKE ? 
+                AND IFNULL(phone, ?) LIKE ? 
+                AND IFNULL(date_reg, ?) LIKE ? 
+                AND IFNULL(date_last_login, ?) LIKE ? 
+                AND IFNULL(iso_code, ?) LIKE ?
             ),
             RankedUsers AS (
                 SELECT *,
                        ROW_NUMBER() OVER (ORDER BY id DESC) AS row_num
                 FROM users_list
-                WHERE user_type = 1 
-                  AND (is_service = 1 OR is_service = 0)
-                  AND id LIKE ? 
-                  AND IFNULL(name, ?) LIKE ? 
-                  AND IFNULL(phone, ?) LIKE ? 
-                  AND IFNULL(date_reg, ?) LIKE ? 
-                  AND IFNULL(date_last_login, ?) LIKE ? 
-                  AND IFNULL(iso_code, ?) LIKE ? 
             )
-            SELECT TotalCount.total_count - RankedUsers.row_num + 1 AS descending_count, TotalCount.total_count, RankedUsers.*
+            SELECT (TotalCount.total_count - RankedUsers.row_num )+ 1 AS descending_count, TotalCount.total_count, RankedUsers.*
             FROM RankedUsers
             CROSS JOIN TotalCount
             ORDER BY RankedUsers.id DESC
@@ -105,11 +106,19 @@ reborn.post('/getAllDrivers', async (req, res) => {
             [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
         
         }  
-
-       else if (!typetransport &&  subscription === 'without_subscription'&&is_service==0) {
+        else if (!typetransport &&  subscription === 'without_subscription'&&is_service==0) {
+            [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND is_service = 0 AND subscription_id IS  NULL  ORDER BY id DESC');
             [rows] = await connect.query(`
             WITH TotalCount AS (
                 SELECT COUNT(*) AS total_count FROM users_list WHERE user_type = 1
+                AND is_service = 0
+                AND id LIKE ? 
+                AND IFNULL(name, ?) LIKE ? 
+                AND IFNULL(phone, ?) LIKE ? 
+                AND IFNULL(date_reg, ?) LIKE ? 
+                AND IFNULL(date_last_login, ?) LIKE ? 
+                AND IFNULL(iso_code, ?) LIKE ? 
+                AND subscription_id IS  NULL
             ),
             RankedUsers AS (
                 SELECT *,
@@ -125,18 +134,27 @@ reborn.post('/getAllDrivers', async (req, res) => {
                   AND IFNULL(iso_code, ?) LIKE ? 
                   AND subscription_id IS  NULL
             )
-            SELECT TotalCount.total_count - RankedUsers.row_num + 1 AS descending_count, TotalCount.total_count, RankedUsers.*
+            SELECT (TotalCount.total_count - RankedUsers.row_num )+ 1 AS descending_count, TotalCount.total_count, RankedUsers.*
             FROM RankedUsers
             CROSS JOIN TotalCount
             ORDER BY RankedUsers.id DESC
             LIMIT ?, ?
             `,
-            [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
+            [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
         } 
         else if (!typetransport &&  subscription === 'without_subscription'&&is_service==1) {
+            [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND is_service = 1 AND subscription_id IS  NULL  ORDER BY id DESC');
             [rows] = await connect.query(`
             WITH TotalCount AS (
                 SELECT COUNT(*) AS total_count FROM users_list WHERE user_type = 1
+                AND is_service = 1 
+                AND id LIKE ? 
+                AND IFNULL(name, ?) LIKE ? 
+                AND IFNULL(phone, ?) LIKE ? 
+                AND IFNULL(date_reg, ?) LIKE ? 
+                AND IFNULL(date_last_login, ?) LIKE ? 
+                AND IFNULL(iso_code, ?) LIKE ? 
+                AND subscription_id IS  NULL
             ),
             RankedUsers AS (
                 SELECT *,
@@ -152,18 +170,27 @@ reborn.post('/getAllDrivers', async (req, res) => {
                   AND IFNULL(iso_code, ?) LIKE ? 
                   AND subscription_id IS  NULL
             )
-            SELECT TotalCount.total_count - RankedUsers.row_num + 1 AS descending_count, TotalCount.total_count, RankedUsers.*
+            SELECT (TotalCount.total_count - RankedUsers.row_num )+ 1 AS descending_count, TotalCount.total_count, RankedUsers.*
             FROM RankedUsers
             CROSS JOIN TotalCount
             ORDER BY RankedUsers.id DESC
             LIMIT ?, ?
             `,
-            [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
+            [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
         }
         else if (!typetransport &&  subscription === 'without_subscription'&&is_service==2) {
+            [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND (is_service = 1 OR is_service = 0) AND subscription_id IS  NULL  ORDER BY id DESC');
             [rows] = await connect.query(`
             WITH TotalCount AS (
                 SELECT COUNT(*) AS total_count FROM users_list WHERE user_type = 1
+                AND (is_service = 1 OR is_service = 0)
+                AND id LIKE ? 
+                AND IFNULL(name, ?) LIKE ? 
+                AND IFNULL(phone, ?) LIKE ? 
+                AND IFNULL(date_reg, ?) LIKE ? 
+                AND IFNULL(date_last_login, ?) LIKE ? 
+                AND IFNULL(iso_code, ?) LIKE ? 
+                AND subscription_id IS  NULL
             ),
             RankedUsers AS (
                 SELECT *,
@@ -179,20 +206,29 @@ reborn.post('/getAllDrivers', async (req, res) => {
                   AND IFNULL(iso_code, ?) LIKE ? 
                   AND subscription_id IS  NULL
             )
-            SELECT TotalCount.total_count - RankedUsers.row_num + 1 AS descending_count, TotalCount.total_count, RankedUsers.*
+            SELECT (TotalCount.total_count - RankedUsers.row_num )+ 1 AS descending_count, TotalCount.total_count, RankedUsers.*
             FROM RankedUsers
             CROSS JOIN TotalCount
             ORDER BY RankedUsers.id DESC
             LIMIT ?, ?
             `,
-            [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
+            [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%', id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
         
         } 
-       
         else if (typetransport === '' && subscription === 'subscription' &&is_service==0) {
+            [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND  is_service = 0 AND subscription_id IS NOT NULL  ORDER BY id DESC');
+            
             [rows] = await connect.query(`
             WITH TotalCount AS (
                 SELECT COUNT(*) AS total_count FROM users_list WHERE user_type = 1
+                AND is_service = 0
+                AND id LIKE ? 
+                AND IFNULL(name, ?) LIKE ? 
+                AND IFNULL(phone, ?) LIKE ? 
+                AND IFNULL(date_reg, ?) LIKE ? 
+                AND IFNULL(date_last_login, ?) LIKE ? 
+                AND IFNULL(iso_code, ?) LIKE ? 
+                AND subscription_id IS NOT NULL
             ),
             RankedUsers AS (
                 SELECT *,
@@ -208,18 +244,26 @@ reborn.post('/getAllDrivers', async (req, res) => {
                   AND IFNULL(iso_code, ?) LIKE ? 
                   AND subscription_id IS NOT NULL
             )
-            SELECT TotalCount.total_count - RankedUsers.row_num + 1 AS descending_count, TotalCount.total_count, RankedUsers.*
+            SELECT (TotalCount.total_count - RankedUsers.row_num )+ 1 AS descending_count, TotalCount.total_count, RankedUsers.*
             FROM RankedUsers
             CROSS JOIN TotalCount
             ORDER BY RankedUsers.id DESC
             LIMIT ?, ?`,
-            [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
+            [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
         }
-
         else if (typetransport === '' && subscription === 'subscription' && is_service==1) {
+            [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND  is_service = 1 AND subscription_id IS NOT NULL  ORDER BY id DESC');
             [rows] = await connect.query(`
             WITH TotalCount AS (
                 SELECT COUNT(*) AS total_count FROM users_list WHERE user_type = 1
+                AND is_service = 1
+                AND id LIKE ? 
+                AND IFNULL(name, ?) LIKE ? 
+                AND IFNULL(phone, ?) LIKE ? 
+                AND IFNULL(date_reg, ?) LIKE ? 
+                AND IFNULL(date_last_login, ?) LIKE ? 
+                AND IFNULL(iso_code, ?) LIKE ? 
+                AND subscription_id IS NOT NULL
             ),
             RankedUsers AS (
                 SELECT *,
@@ -235,17 +279,26 @@ reborn.post('/getAllDrivers', async (req, res) => {
                   AND IFNULL(iso_code, ?) LIKE ? 
                   AND subscription_id IS NOT NULL
             )
-            SELECT TotalCount.total_count - RankedUsers.row_num + 1 AS descending_count, TotalCount.total_count, RankedUsers.*
+            SELECT (TotalCount.total_count - RankedUsers.row_num )+ 1 AS descending_count, TotalCount.total_count, RankedUsers.*
             FROM RankedUsers
             CROSS JOIN TotalCount
             ORDER BY RankedUsers.id DESC
             LIMIT ?, ?`,
-            [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
+            [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
         }
         else if (typetransport === '' && subscription === 'subscription' && is_service==2) {
+            [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND  (is_service = 1 OR is_service = 0) AND subscription_id IS NOT NULL  ORDER BY id DESC');
             [rows] = await connect.query(`
             WITH TotalCount AS (
                 SELECT COUNT(*) AS total_count FROM users_list WHERE user_type = 1
+                AND (is_service = 1 OR is_service = 0)
+                AND id LIKE ? 
+                AND IFNULL(name, ?) LIKE ? 
+                AND IFNULL(phone, ?) LIKE ? 
+                AND IFNULL(date_reg, ?) LIKE ? 
+                AND IFNULL(date_last_login, ?) LIKE ? 
+                AND IFNULL(iso_code, ?) LIKE ? 
+                AND subscription_id IS NOT NULL
             ),
             RankedUsers AS (
                 SELECT *,
@@ -261,28 +314,27 @@ reborn.post('/getAllDrivers', async (req, res) => {
                   AND IFNULL(iso_code, ?) LIKE ? 
                   AND subscription_id IS NOT NULL
             )
-            SELECT TotalCount.total_count - RankedUsers.row_num + 1 AS descending_count, TotalCount.total_count, RankedUsers.*
+            SELECT (TotalCount.total_count - RankedUsers.row_num )+ 1 AS descending_count, TotalCount.total_count, RankedUsers.*
             FROM RankedUsers
             CROSS JOIN TotalCount
             ORDER BY RankedUsers.id DESC
             LIMIT ?, ?`,
-            [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
+            [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
         }
-        else if (typetransport && subscription === 'subscription'&& is_service==0) {
+        else if (typetransport && subscription === '' && is_service==0) {
+            [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND is_service = 0  ORDER BY id DESC');
             [rows] = await connect.query(`
-            SELECT 
+            SELECT DISTINCT
             TotalCount.total_count - RankedUsers.row_num + 1 AS descending_count, 
             TotalCount.total_count, 
             ul.*
         FROM 
             users_transport ut 
         LEFT JOIN 
-            users_list ul ON ul.id = ut.user_id 
-        LEFT JOIN 
             (
                 SELECT 
-                    ul.id,
-                    ROW_NUMBER() OVER (ORDER BY ul.id DESC) AS row_num
+                    ut.user_id,
+                    ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
                 FROM 
                     users_transport ut
                 LEFT JOIN 
@@ -297,12 +349,22 @@ reborn.post('/getAllDrivers', async (req, res) => {
                     AND IFNULL(ul.date_reg, ?) LIKE ? 
                     AND IFNULL(ul.date_last_login, ?) LIKE ? 
                     AND IFNULL(ul.iso_code, ?) LIKE ?
-                    AND subscription_id IS NOT NULL
-            ) AS RankedUsers ON ul.id = RankedUsers.id
+            ) AS RankedUsers ON ut.user_id = RankedUsers.user_id
+        LEFT JOIN 
+            users_list ul ON ul.id = ut.user_id 
         CROSS JOIN 
             (
                 SELECT COUNT(*) AS total_count 
-                FROM users_list where  user_type=1
+                FROM users_list 
+                WHERE  
+                    user_type=1
+                    AND is_service = 0
+                    AND id LIKE ? 
+                    AND IFNULL(name, ?) LIKE ? 
+                    AND IFNULL(phone, ?) LIKE ? 
+                    AND IFNULL(date_reg, ?) LIKE ? 
+                    AND IFNULL(date_last_login, ?) LIKE ? 
+                    AND IFNULL(iso_code, ?) LIKE ?
             ) AS TotalCount
         WHERE 
             ut.type = ? 
@@ -314,28 +376,31 @@ reborn.post('/getAllDrivers', async (req, res) => {
             AND IFNULL(ul.date_reg, ?) LIKE ? 
             AND IFNULL(ul.date_last_login, ?) LIKE ? 
             AND IFNULL(ul.iso_code, ?) LIKE ?
-            AND subscription_id IS NOT NULL
+        GROUP BY 
+            TotalCount.total_count, 
+            RankedUsers.row_num, 
+            ul.id,
+            ut.type
         ORDER BY 
             ul.id DESC 
-        LIMIT ?, ?
+        LIMIT ?, ?;
         `,
-         [+typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',+typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',from, limit]);
+         [+typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',+typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',from, limit]);
         }
-        else if (typetransport && subscription === 'subscription'&& is_service==1) {
+        else if (typetransport && subscription === '' && is_service==1) {
+            [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND is_service = 1  ORDER BY id DESC');
             [rows] = await connect.query(`
-            SELECT 
+            SELECT  DISTINCT
             TotalCount.total_count - RankedUsers.row_num + 1 AS descending_count, 
             TotalCount.total_count, 
             ul.*
         FROM 
             users_transport ut 
         LEFT JOIN 
-            users_list ul ON ul.id = ut.user_id 
-        LEFT JOIN 
             (
                 SELECT 
-                    ul.id,
-                    ROW_NUMBER() OVER (ORDER BY ul.id DESC) AS row_num
+                    ut.user_id,
+                    ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
                 FROM 
                     users_transport ut
                 LEFT JOIN 
@@ -350,12 +415,358 @@ reborn.post('/getAllDrivers', async (req, res) => {
                     AND IFNULL(ul.date_reg, ?) LIKE ? 
                     AND IFNULL(ul.date_last_login, ?) LIKE ? 
                     AND IFNULL(ul.iso_code, ?) LIKE ?
-                    AND subscription_id IS NOT NULL
-            ) AS RankedUsers ON ul.id = RankedUsers.id
+            ) AS RankedUsers ON ut.user_id = RankedUsers.user_id
+        LEFT JOIN 
+            users_list ul ON ul.id = ut.user_id 
+        
         CROSS JOIN 
             (
                 SELECT COUNT(*) AS total_count 
                 FROM users_list where  user_type=1
+                AND is_service = 1
+                AND id LIKE ? 
+                AND IFNULL(name, ?) LIKE ? 
+                AND IFNULL(phone, ?) LIKE ? 
+                AND IFNULL(date_reg, ?) LIKE ? 
+                AND IFNULL(date_last_login, ?) LIKE ? 
+                AND IFNULL(iso_code, ?) LIKE ?
+            ) AS TotalCount
+        WHERE 
+            ut.type = ? 
+            AND ul.user_type = 1 
+            AND ul.is_service = 1
+            AND ul.id LIKE ? 
+            AND IFNULL(ul.name, ?) LIKE ? 
+            AND IFNULL(ul.phone, ?) LIKE ? 
+            AND IFNULL(ul.date_reg, ?) LIKE ? 
+            AND IFNULL(ul.date_last_login, ?) LIKE ? 
+            AND IFNULL(ul.iso_code, ?) LIKE ?
+        GROUP BY 
+            TotalCount.total_count, 
+            RankedUsers.row_num, 
+            ul.id,
+            ut.type
+        ORDER BY 
+            ul.id DESC 
+        LIMIT ?, ?
+        `,
+         [+typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%', +typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',from, limit]);
+        }
+        else if (typetransport && subscription === '' && is_service==2) {
+            [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND (is_service = 1 OR is_service = 0)  ORDER BY id DESC');
+            [rows] = await connect.query(`
+            SELECT DISTINCT
+            TotalCount.total_count - RankedUsers.row_num + 1 AS descending_count, 
+            TotalCount.total_count, 
+            ul.*
+            FROM 
+            users_transport ut 
+            LEFT JOIN 
+             (
+                SELECT 
+                    DISTINCT (ut.user_id),
+                    ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
+                FROM 
+                    users_transport ut
+                LEFT JOIN 
+                    users_list ul ON ul.id = ut.user_id
+                WHERE 
+                    ut.type = ? 
+                    AND ul.user_type = 1 
+                    AND (ul.is_service = 1 OR ul.is_service = 0)
+                    AND ul.id LIKE ? 
+                    AND IFNULL(ul.name, ?) LIKE ? 
+                    AND IFNULL(ul.phone, ?) LIKE ? 
+                    AND IFNULL(ul.date_reg, ?) LIKE ? 
+                    AND IFNULL(ul.date_last_login, ?) LIKE ? 
+                    AND IFNULL(ul.iso_code, ?) LIKE ?
+            ) AS RankedUsers ON ut.user_id = RankedUsers.user_id
+        LEFT JOIN 
+            users_list ul ON ul.id = ut.user_id 
+        CROSS JOIN 
+            (
+                SELECT COUNT(*) AS total_count 
+                FROM users_list where  user_type = 1
+                AND (is_service = 1 OR is_service = 0)
+                AND id LIKE ? 
+                AND IFNULL(name, ?) LIKE ? 
+                AND IFNULL(phone, ?) LIKE ? 
+                AND IFNULL(date_reg, ?) LIKE ? 
+                AND IFNULL(date_last_login, ?) LIKE ? 
+                AND IFNULL(iso_code, ?) LIKE ?
+            ) AS TotalCount
+        WHERE 
+            ut.type = ? 
+            AND ul.user_type = 1 
+            AND (ul.is_service = 1 OR ul.is_service = 0)
+            AND ul.id LIKE ? 
+            AND IFNULL(ul.name, ?) LIKE ? 
+            AND IFNULL(ul.phone, ?) LIKE ? 
+            AND IFNULL(ul.date_reg, ?) LIKE ? 
+            AND IFNULL(ul.date_last_login, ?) LIKE ? 
+            AND IFNULL(ul.iso_code, ?) LIKE ?
+        GROUP BY 
+            TotalCount.total_count, 
+            RankedUsers.row_num, 
+            ul.id,
+            ut.type
+        ORDER BY 
+            ul.id DESC 
+        LIMIT ?, ?`,
+            [+typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%', id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',+typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',from, limit]);
+        }
+        else if (typetransport && subscription === 'without_subscription' && is_service==0) {
+            [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND  is_service = 0 AND subscription_id IS  NULL  ORDER BY id DESC');
+            [rows] = await connect.query(`
+                SELECT DISTINCT
+                TotalCount.total_count - RankedUsers.row_num + 1 AS descending_count, 
+                TotalCount.total_count, 
+                ul.*
+            FROM 
+                users_transport ut
+            LEFT JOIN 
+                (
+                    SELECT 
+                        ut.user_id,
+                        ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
+                    FROM 
+                        users_transport ut
+                    LEFT JOIN 
+                        users_list ul ON ul.id = ut.user_id
+                    WHERE 
+                        ut.type = ? 
+                        AND ul.user_type = 1 
+                        AND ul.is_service = 0
+                        AND ul.id LIKE ? 
+                        AND IFNULL(ul.name, ?) LIKE ? 
+                        AND IFNULL(ul.phone, ?) LIKE ? 
+                        AND IFNULL(ul.date_reg, ?) LIKE ? 
+                        AND IFNULL(ul.date_last_login, ?) LIKE ? 
+                        AND IFNULL(ul.iso_code, ?) LIKE ?
+                        AND subscription_id IS  NULL
+                ) AS RankedUsers ON ut.user_id = RankedUsers.user_id    
+            LEFT JOIN 
+                users_list ul ON ul.id = ut.user_id 
+            CROSS JOIN 
+                (
+                    SELECT COUNT(*) AS total_count 
+                    FROM users_list where  user_type=1
+                    AND is_service = 0
+                    AND id LIKE ? 
+                    AND IFNULL(name, ?) LIKE ? 
+                    AND IFNULL(phone, ?) LIKE ? 
+                    AND IFNULL(date_reg, ?) LIKE ? 
+                    AND IFNULL(date_last_login, ?) LIKE ? 
+                    AND IFNULL(iso_code, ?) LIKE ?
+                    AND subscription_id IS  NULL
+                ) AS TotalCount
+            WHERE 
+                ut.type = ? 
+                AND ul.user_type = 1 
+                AND ul.is_service = 0
+                AND ul.id LIKE ? 
+                AND IFNULL(ul.name, ?) LIKE ? 
+                AND IFNULL(ul.phone, ?) LIKE ? 
+                AND IFNULL(ul.date_reg, ?) LIKE ? 
+                AND IFNULL(ul.date_last_login, ?) LIKE ? 
+                AND IFNULL(ul.iso_code, ?) LIKE ?
+                AND subscription_id IS  NULL
+                GROUP BY 
+                TotalCount.total_count, 
+                RankedUsers.row_num, 
+                ul.id,
+                ut.type    
+            ORDER BY 
+                ul.id DESC 
+            LIMIT ?, ?
+            `,
+             [+typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%', +typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',from, limit]);
+        }
+        else if (typetransport && subscription === 'without_subscription' && is_service==1) {
+                [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND  is_service = 1 AND subscription_id IS  NULL  ORDER BY id DESC');
+                [rows] = await connect.query(`
+                SELECT  DISTINCT
+                TotalCount.total_count - RankedUsers.row_num + 1 AS descending_count, 
+                TotalCount.total_count, 
+                ul.*
+            FROM 
+                users_transport ut
+            LEFT JOIN 
+                (
+                    SELECT 
+                        ut.user_id,
+                        ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
+                    FROM 
+                        users_transport ut
+                    LEFT JOIN 
+                        users_list ul ON ul.id = ut.user_id
+                    WHERE 
+                        ut.type = ? 
+                        AND ul.user_type = 1 
+                        AND ul.is_service = 1
+                        AND ul.id LIKE ? 
+                        AND IFNULL(ul.name, ?) LIKE ? 
+                        AND IFNULL(ul.phone, ?) LIKE ? 
+                        AND IFNULL(ul.date_reg, ?) LIKE ? 
+                        AND IFNULL(ul.date_last_login, ?) LIKE ? 
+                        AND IFNULL(ul.iso_code, ?) LIKE ?
+                        AND subscription_id IS  NULL
+                ) AS RankedUsers ON ut.user_id = RankedUsers.user_id     
+            LEFT JOIN 
+                users_list ul ON ul.id = ut.user_id 
+ 
+            CROSS JOIN 
+                (
+                    SELECT COUNT(*) AS total_count 
+                    FROM users_list where  user_type=1
+                    AND is_service = 1
+                    AND id LIKE ? 
+                    AND IFNULL(name, ?) LIKE ? 
+                    AND IFNULL(phone, ?) LIKE ? 
+                    AND IFNULL(date_reg, ?) LIKE ? 
+                    AND IFNULL(date_last_login, ?) LIKE ? 
+                    AND IFNULL(iso_code, ?) LIKE ?
+                    AND subscription_id IS  NULL
+                ) AS TotalCount
+            WHERE 
+                ut.type = ? 
+                AND ul.user_type = 1 
+                AND ul.is_service = 1
+                AND ul.id LIKE ? 
+                AND IFNULL(ul.name, ?) LIKE ? 
+                AND IFNULL(ul.phone, ?) LIKE ? 
+                AND IFNULL(ul.date_reg, ?) LIKE ? 
+                AND IFNULL(ul.date_last_login, ?) LIKE ? 
+                AND IFNULL(ul.iso_code, ?) LIKE ?
+                AND subscription_id IS  NULL
+                GROUP BY 
+                TotalCount.total_count, 
+                RankedUsers.row_num, 
+                ul.id,
+                ut.type    
+            ORDER BY 
+                ul.id DESC 
+            LIMIT ?, ?
+            `,
+             [+typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%', +typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',from, limit]);
+        }
+        else if (typetransport && subscription === 'without_subscription' && is_service==2) {
+            [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND  (is_service = 1 OR is_service = 0) AND subscription_id IS  NULL  ORDER BY id DESC');
+            [rows] = await connect.query(`
+                SELECT  DISTINCT
+                TotalCount.total_count - RankedUsers.row_num + 1 AS descending_count, 
+                TotalCount.total_count, 
+                ul.*
+            FROM 
+                users_transport ut
+            LEFT JOIN 
+                (
+                    SELECT 
+                        ut.user_id,
+                        ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
+                    FROM 
+                        users_transport ut
+                    LEFT JOIN 
+                        users_list ul ON ul.id = ut.user_id
+                    WHERE 
+                        ut.type = ? 
+                        AND ul.user_type = 1 
+                        AND (ul.is_service = 1 OR ul.is_service = 0)
+                        AND ul.id LIKE ? 
+                        AND IFNULL(ul.name, ?) LIKE ? 
+                        AND IFNULL(ul.phone, ?) LIKE ? 
+                        AND IFNULL(ul.date_reg, ?) LIKE ? 
+                        AND IFNULL(ul.date_last_login, ?) LIKE ? 
+                        AND IFNULL(ul.iso_code, ?) LIKE ?
+                        AND subscription_id IS  NULL
+                ) AS RankedUsers ON ut.user_id = RankedUsers.user_id     
+            LEFT JOIN 
+                users_list ul ON ul.id = ut.user_id 
+
+            CROSS JOIN 
+                (
+                    SELECT COUNT(*) AS total_count 
+                    FROM users_list where  user_type=1
+                    AND (is_service = 1 OR is_service = 0)
+                    AND id LIKE ? 
+                    AND IFNULL(name, ?) LIKE ? 
+                    AND IFNULL(phone, ?) LIKE ? 
+                    AND IFNULL(date_reg, ?) LIKE ? 
+                    AND IFNULL(date_last_login, ?) LIKE ? 
+                    AND IFNULL(iso_code, ?) LIKE ?
+                    AND subscription_id IS  NULL
+                ) AS TotalCount
+            WHERE 
+                ut.type = ? 
+                AND ul.user_type = 1 
+                AND (ul.is_service = 1 OR ul.is_service = 0)
+                AND ul.id LIKE ? 
+                AND IFNULL(ul.name, ?) LIKE ? 
+                AND IFNULL(ul.phone, ?) LIKE ? 
+                AND IFNULL(ul.date_reg, ?) LIKE ? 
+                AND IFNULL(ul.date_last_login, ?) LIKE ? 
+                AND IFNULL(ul.iso_code, ?) LIKE ?
+                AND subscription_id IS  NULL
+                GROUP BY 
+                TotalCount.total_count, 
+                RankedUsers.row_num, 
+                ul.id,
+                ut.type    
+            ORDER BY 
+                ul.id DESC 
+            LIMIT ?, ?`,
+                [+typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%', id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%', +typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',from, limit]);
+        }
+        else if (typetransport && subscription === 'subscription' && is_service==0) {
+            [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND   is_service = 0 AND subscription_id IS NOT  NULL  ORDER BY id DESC');
+            [rows] = await connect.query(`
+            SELECT DISTINCT 
+            TotalCount.total_count - RankedUsers.row_num + 1 AS descending_count, 
+            TotalCount.total_count,  
+            ul.*
+        FROM 
+            users_transport ut
+        LEFT JOIN 
+            (
+                SELECT 
+                    ut.user_id,
+                    ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
+                FROM 
+                    users_transport ut
+                INNER JOIN 
+                    users_list ul ON ul.id = ut.user_id
+                WHERE 
+                    ut.type = ? 
+                    AND ul.user_type = 1 
+                    AND ul.is_service = 0
+                    AND ul.id LIKE ? 
+                    AND IFNULL(ul.name, ?) LIKE ? 
+                    AND IFNULL(ul.phone, ?) LIKE ? 
+                    AND IFNULL(ul.date_reg, ?) LIKE ? 
+                    AND IFNULL(ul.date_last_login, ?) LIKE ? 
+                    AND IFNULL(ul.iso_code, ?) LIKE ?
+                    AND subscription_id IS NOT NULL
+            ) AS RankedUsers ON ut.user_id = RankedUsers.user_id     
+        LEFT JOIN 
+            users_list ul ON ul.id = ut.user_id 
+        CROSS JOIN 
+            (
+                SELECT COUNT(*) AS total_count 
+                FROM 
+                users_transport ut
+                INNER  JOIN 
+                users_list ul ON ul.id = ut.user_id
+            WHERE 
+                ut.type = ? 
+                AND ul.user_type = 1 
+                AND ul.is_service = 0
+                AND ul.id LIKE ? 
+                AND IFNULL(ul.name, ?) LIKE ? 
+                AND IFNULL(ul.phone, ?) LIKE ? 
+                AND IFNULL(ul.date_reg, ?) LIKE ? 
+                AND IFNULL(ul.date_last_login, ?) LIKE ? 
+                AND IFNULL(ul.iso_code, ?) LIKE ?
+                AND subscription_id IS NOT NULL
             ) AS TotalCount
         WHERE 
             ut.type = ? 
@@ -368,27 +779,104 @@ reborn.post('/getAllDrivers', async (req, res) => {
             AND IFNULL(ul.date_last_login, ?) LIKE ? 
             AND IFNULL(ul.iso_code, ?) LIKE ?
             AND subscription_id IS NOT NULL
+            GROUP BY 
+            TotalCount.total_count, 
+            RankedUsers.row_num, 
+            ul.id,
+            ut.type    
         ORDER BY 
             ul.id DESC 
         LIMIT ?, ?
         `,
-         [+typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',+typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',from, limit]);
+         [+typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%', typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%', +typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',from, limit]);
         }
-        else {
+        else if (typetransport && subscription === 'subscription' && is_service==1) {
+            [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND  is_service = 1 AND subscription_id IS NOT  NULL  ORDER BY id DESC');
             [rows] = await connect.query(`
-            SELECT 
+            SELECT DISTINCT
             TotalCount.total_count - RankedUsers.row_num + 1 AS descending_count, 
+            TotalCount.total_count,  
+            ul.*
+        FROM 
+            users_transport ut
+        LEFT JOIN 
+            (
+                SELECT 
+                    ut.user_id,
+                    ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
+                FROM 
+                    users_transport ut
+                INNER JOIN 
+                    users_list ul ON ul.id = ut.user_id
+                WHERE 
+                    ut.type = ? 
+                    AND ul.user_type = 1 
+                    AND ul.is_service = 1
+                    AND ul.id LIKE ? 
+                    AND IFNULL(ul.name, ?) LIKE ? 
+                    AND IFNULL(ul.phone, ?) LIKE ? 
+                    AND IFNULL(ul.date_reg, ?) LIKE ? 
+                    AND IFNULL(ul.date_last_login, ?) LIKE ? 
+                    AND IFNULL(ul.iso_code, ?) LIKE ?
+                    AND subscription_id IS NOT NULL
+            ) AS RankedUsers ON ut.user_id = RankedUsers.user_id     
+        LEFT JOIN 
+            users_list ul ON ul.id = ut.user_id 
+        CROSS JOIN 
+            (
+                SELECT COUNT(*) AS total_count 
+                FROM 
+                users_transport ut
+            LEFT JOIN 
+                users_list ul ON ul.id = ut.user_id
+            WHERE 
+                ut.type = ? 
+                AND ul.user_type = 1 
+                AND ul.is_service = 0
+                AND ul.id LIKE ? 
+                AND IFNULL(ul.name, ?) LIKE ? 
+                AND IFNULL(ul.phone, ?) LIKE ? 
+                AND IFNULL(ul.date_reg, ?) LIKE ? 
+                AND IFNULL(ul.date_last_login, ?) LIKE ? 
+                AND IFNULL(ul.iso_code, ?) LIKE ?
+                AND subscription_id IS NOT NULL
+            ) AS TotalCount
+        WHERE 
+            ut.type = ? 
+            AND ul.user_type = 1 
+            AND ul.is_service = 0
+            AND ul.id LIKE ? 
+            AND IFNULL(ul.name, ?) LIKE ? 
+            AND IFNULL(ul.phone, ?) LIKE ? 
+            AND IFNULL(ul.date_reg, ?) LIKE ? 
+            AND IFNULL(ul.date_last_login, ?) LIKE ? 
+            AND IFNULL(ul.iso_code, ?) LIKE ?
+            AND subscription_id IS NOT NULL
+            GROUP BY 
             TotalCount.total_count, 
+            RankedUsers.row_num, 
+            ul.id,
+            ut.type
+        ORDER BY 
+            ul.id DESC 
+        LIMIT ?, ?
+        `,
+         [+typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%', +typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',from, limit]);
+        }
+        else if (typetransport && subscription === 'subscription' && is_service==2) {
+            [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND (is_service = 1 OR is_service = 0) AND subscription_id IS NOT  NULL  ORDER BY id DESC');
+            [rows] = await connect.query(`
+            SELECT DISTINCT
+            TotalCount.total_count - RankedUsers.row_num + 1 AS descending_count, 
+            TotalCount.total_count,  
             ul.*
         FROM 
             users_transport ut 
         LEFT JOIN 
-            users_list ul ON ul.id = ut.user_id 
-        LEFT JOIN 
             (
                 SELECT 
-                    ul.id,
-                    ROW_NUMBER() OVER (ORDER BY ul.id DESC) AS row_num
+                    ut.user_id,
+                    ROW_NUMBER() OVER (ORDER BY ut.user_id DESC) AS row_num
                 FROM 
                     users_transport ut
                 LEFT JOIN 
@@ -396,36 +884,58 @@ reborn.post('/getAllDrivers', async (req, res) => {
                 WHERE 
                     ut.type = ? 
                     AND ul.user_type = 1 
-                    AND (is_service = 1 OR is_service = 0)
+                    AND (ul.is_service = 1 OR ul.is_service = 0)
                     AND ul.id LIKE ? 
                     AND IFNULL(ul.name, ?) LIKE ? 
                     AND IFNULL(ul.phone, ?) LIKE ? 
                     AND IFNULL(ul.date_reg, ?) LIKE ? 
                     AND IFNULL(ul.date_last_login, ?) LIKE ? 
                     AND IFNULL(ul.iso_code, ?) LIKE ?
-            ) AS RankedUsers ON ul.id = RankedUsers.id
+                    AND subscription_id IS NOT NULL
+            ) AS RankedUsers ON ut.user_id = RankedUsers.user_id    
+        LEFT JOIN 
+            users_list ul ON ul.id = ut.user_id 
         CROSS JOIN 
             (
                 SELECT COUNT(*) AS total_count 
-                FROM users_list where  user_type=1
+                FROM 
+                users_transport ut
+            LEFT JOIN 
+                users_list ul ON ul.id = ut.user_id
+            WHERE 
+                ut.type = ? 
+                AND ul.user_type = 1 
+                AND ul.is_service = 0
+                AND ul.id LIKE ? 
+                AND IFNULL(ul.name, ?) LIKE ? 
+                AND IFNULL(ul.phone, ?) LIKE ? 
+                AND IFNULL(ul.date_reg, ?) LIKE ? 
+                AND IFNULL(ul.date_last_login, ?) LIKE ? 
+                AND IFNULL(ul.iso_code, ?) LIKE ?
+                AND subscription_id IS NOT NULL
             ) AS TotalCount
         WHERE 
             ut.type = ? 
             AND ul.user_type = 1 
-            AND ul.is_service = 1
+            AND (ul.is_service = 1 OR ul.is_service = 0)
             AND ul.id LIKE ? 
             AND IFNULL(ul.name, ?) LIKE ? 
             AND IFNULL(ul.phone, ?) LIKE ? 
             AND IFNULL(ul.date_reg, ?) LIKE ? 
             AND IFNULL(ul.date_last_login, ?) LIKE ? 
             AND IFNULL(ul.iso_code, ?) LIKE ?
+            AND subscription_id IS NOT NULL
+           GROUP BY 
+            TotalCount.total_count, 
+            RankedUsers.row_num, 
+            ul.id,
+            ut.type    
         ORDER BY 
             ul.id DESC 
         LIMIT ?, ?`,
-            [+typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',+typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',from, limit]);
+            [+typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%', typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',+typetransport, id ? id:'%', '', name ? '%'+name+'%':'%', '', phone ? '%'+phone+'%':'%', '', dateReg ? '%'+dateReg+'%':'%', '', dateLogin ? '%'+dateLogin+'%':'%', '', indentificator ? '%'+indentificator+'%':'%',from, limit]);
+        }
         
-            }
-        const [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 ORDER BY id DESC');
         if (rows.length){
             appData.data_count = rows_count[0].allcount
             appData.data = await Promise.all(rows.map(async (row) => {
@@ -639,7 +1149,7 @@ reborn.post('/getAllUsers', async (req, res) => {
               AND IFNULL(date_reg, ?) LIKE ? 
               AND IFNULL(date_last_login, ?) LIKE ? 
         )
-        SELECT TotalCount.total_count - RankedUsers.row_num + 1 AS descending_count, TotalCount.total_count, RankedUsers.*
+        SELECT (TotalCount.total_count - RankedUsers.row_num )+ 1 AS descending_count, TotalCount.total_count, RankedUsers.*
         FROM RankedUsers
         CROSS JOIN TotalCount
         ORDER BY RankedUsers.id DESC
