@@ -18,7 +18,7 @@ bot.on('message', async (ctx) => {
 
 bot.on('callback_query', async (ctx) => {
   const callbackData = ctx.callbackQuery.data;
-
+console.log(callbackData)
   if(callbackData.startsWith('#service_')) {
     await onServiceClick(ctx);
   } else if(callbackData.startsWith('#subscription_')) {
@@ -160,17 +160,18 @@ async function onSubscriptionClick(ctx) {
       );
       
       const [subscription] = await await connection.query(`SELECT * FROM subscription WHERE id = ${subscriptionId}`);
-console.log(subscription)
-      if(!subscription.length) {
-  
-        const [subscriptions] = await await connection.query(`SELECT * FROM subscription`);
-        const keyboard = new InlineKeyboard()
-        for (let subscription of subscriptions) {
-          const subscriptionNameWithLineBreak = subscription.name.replace(/\\n/g, '\n');
-            keyboard.text(subscriptionNameWithLineBreak, `#subscription_${subscription.id}`);
-            keyboard.row()
-        }
-        await ctx.reply(`Для того чтобы воспользоваться услугами Tirgo, пожалуйста оформите подписку,`, { reply_markup: keyboard });
+      if(subscription.length) {
+        const options = {
+          reply_markup: JSON.stringify({
+            inline_keyboard: [
+              [
+                { text: 'Payme', url: 'https://payme.uz' },
+                { text: 'Click', url: 'https://click.uz' }
+              ]
+            ]
+          })
+        };
+        await ctx.reply(`Havola orqali pul tolavoring`, options);
       }
     } catch(err) { 
       console.log('BOT Error on subscription click: ', err)
