@@ -27,8 +27,7 @@ reborn.post('/getAllDrivers', async (req, res) => {
             let query = `SELECT 
                 (@driverindex := @driverindex + 1) AS descending_count,
                 ul.* 
-                FROM users_list ul 
-                LEFT JOIN users_transport ut ON ul.id = ut.user_id 
+                FROM users_list ul
                 WHERE ul.user_type = 1`;
 
             // Add conditions based on filters
@@ -61,6 +60,18 @@ reborn.post('/getAllDrivers', async (req, res) => {
             if(dateLogin) {
                 queryFilter += ` AND ul.date_last_login = '%${dateLogin}%'`;
             }
+
+            // Check if transportType parameter is provided
+            if (typetransport) {
+                // Add the transportType filter to the query filter string
+                queryFilter += ` AND EXISTS (
+                                    SELECT 1
+                                    FROM users_transport ut
+                                    WHERE ut.user_id = ul.id
+                                    AND ut.transport_type = '${typetransport}'
+                                )`;
+            }
+
             if(subscription) {
                 queryFilter += ` AND ul.subscription_id IS NOT NULL`;
             }
