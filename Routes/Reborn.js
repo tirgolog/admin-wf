@@ -86,7 +86,7 @@ reborn.post('/getAllDrivers', async (req, res) => {
 
             //set pagination after getting count
             queryFilter += ` ORDER BY ul.id DESC LIMIT ${from}, ${limit};`
-            await connect.query(`SET @driverindex := ${row[0]?.count}`);
+            await connect.query(`SET @driverindex := ${row[0]?.count - from}`);
             const [rows] = await connect.query(`
             ${query + queryFilter}
             `);
