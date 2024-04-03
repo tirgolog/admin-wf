@@ -25,7 +25,7 @@ reborn.post('/getAllDrivers', async (req, res) => {
         connect = await database.connection.getConnection();
 
             let query = `SELECT 
-                (@driverindex := @driverindex + 1) AS descending_count,
+                (@driverindex := @driverindex - 1) AS descending_count,
                 ul.* 
                 FROM users_list ul
                 WHERE ul.user_type = 1`;
