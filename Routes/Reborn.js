@@ -10,9 +10,9 @@ reborn.use(cors());
 
 reborn.post('/getAllDrivers', async (req, res) => {
     let connect,
-        from = +req.body.from,
-        limit = +req.body.limit,
         id = req.body.id ? req.body.id:'',
+        from = +req.body.from ? +req.body.from : 0,
+        limit = +req.body.limit ? +req.body.limit : 10,
         phone = req.body.phone ? req.body.phone.toString().replace('+', ''):'',
         indentificator = req.body.indentificator ? req.body.indentificator:'',
         typetransport = req.body.typetransport ? req.body.typetransport:'',
@@ -20,57 +20,69 @@ reborn.post('/getAllDrivers', async (req, res) => {
         dateReg = req.body.dateReg ? req.body.dateReg:'',
         dateLogin = req.body.dateLogin ? req.body.dateLogin:'',
         subscription = req.body.subscription ? req.body.subscription:'',
-        [rows] = [],
         appData = {status: false};
     try {
         connect = await database.connection.getConnection();
 
-        if (!typetransport && subscription !== 'subscription') {
-            // First Query
+            let query = `SELECT 
+                (@driverindex := @driverindex + 1) AS descending_count,
+                ul.* 
+                FROM users_list ul 
+                LEFT JOIN users_transport ut ON ul.id = ut.user_id 
+                WHERE ul.user_type = 1`;
 
-            [row] = await connect.query('SELECT COUNT(*) as count FROM users_list ul WHERE user_type = 1 AND id LIKE ? AND IFNULL(name, ?) LIKE ? AND IFNULL(phone, ?) LIKE ? AND IFNULL(date_reg, ?) LIKE ? AND IFNULL(date_last_login, ?) LIKE ? AND IFNULL(iso_code, ?) LIKE ? ORDER BY id DESC LIMIT 1',
-                [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%']);
+            // Add conditions based on filters
+            let queryFilter = '';
+            
+            if (id) {
+                queryFilter += ` AND ul.id = '${id}'`;
+            }
 
-            await connect.query(`SET @index := ${row[0].count}`);
+            if (phone) {
+                queryFilter += ` AND ul.phone = '${phone}'`;
+            }
 
-            [rows] = await connect.query('SELECT (@index := @index - 1) AS descending_count, ul.* FROM users_list ul WHERE user_type = 1 AND id LIKE ? AND IFNULL(name, ?) LIKE ? AND IFNULL(phone, ?) LIKE ? AND IFNULL(date_reg, ?) LIKE ? AND IFNULL(date_last_login, ?) LIKE ? AND IFNULL(iso_code, ?) LIKE ? ORDER BY id DESC LIMIT ?, ?',
-                [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
-        } else if (typetransport === '' && subscription === 'subscription') {
-            // Second Query
+            if(indentificator) {
+                queryFilter += ` AND ul.iso_code = '${indentificator}'`;
+            }
 
-            [row] = await connect.query('SELECT COUNT(*) as count FROM users_list ul WHERE user_type = 1 AND subscription_id IS NOT NULL AND id LIKE ? AND IFNULL(name, ?) LIKE ? AND IFNULL(phone, ?) LIKE ? AND IFNULL(date_reg, ?) LIKE ? AND IFNULL(date_last_login, ?) LIKE ? AND IFNULL(iso_code, ?) LIKE ? ORDER BY id DESC LIMIT 1',
-            [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%']);
+            if(typetransport) {
+                queryFilter += ` AND ut.type = '${typetransport}'`;
+            }
 
-            await connect.query(`SET @index := ${row[0].count}`);
+            if(name) {
+                queryFilter += ` AND ul.name = '%${name}%'`;
+            }
 
-            [rows] = await connect.query('SELECT (@index := @index - 1) AS descending_count, ul.* FROM users_list ul WHERE user_type = 1 AND subscription_id IS NOT NULL AND id LIKE ? AND IFNULL(name, ?) LIKE ? AND IFNULL(phone, ?) LIKE ? AND IFNULL(date_reg, ?) LIKE ? AND IFNULL(date_last_login, ?) LIKE ? AND IFNULL(iso_code, ?) LIKE ? ORDER BY id DESC LIMIT ?, ?',
-            [id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
-        }
-        else if (typetransport && subscription === 'subscription') {
-            // Third Query
+            if(dateReg) {
+                queryFilter += ` AND ul.date_reg = '%${dateReg}%'`;
+            }
 
-            [row] = await connect.query('SELECT COUNT(*) as count FROM users_transport ut LEFT JOIN users_list ul ON ul.id = ut.user_id WHERE ut.type = ? AND ul.user_type = 1 AND ul.subscription_id IS NOT NULL  AND ul.id LIKE ? AND IFNULL(ul.name, ?) LIKE ? AND IFNULL(ul.phone, ?) LIKE ? AND IFNULL(ul.date_reg, ?) LIKE ? AND IFNULL(ul.date_last_login, ?) LIKE ? AND IFNULL(ul.iso_code, ?) LIKE ? ORDER BY ul.id DESC LIMIT 1',
-            [+typetransport,id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%']);
+            if(dateLogin) {
+                queryFilter += ` AND ul.date_last_login = '%${dateLogin}%'`;
+            }
+            if(subscription) {
+                queryFilter += ` AND ul.subscription_id IS NOT NULL`;
+            }
+            // console.log(query + queryFilter)
+            
+            let queryCount = `SELECT 
+            COUNT(ul.id) as count
+            FROM users_list ul 
+            LEFT JOIN users_transport ut ON ul.id = ut.user_id 
+            WHERE ul.user_type = 1` + queryFilter;
+            
+            const [row] = await connect.query(queryCount);
 
-            await connect.query(`SET @index := ${row[0].count}`);
+            //set pagination after getting count
+            queryFilter += ` ORDER BY ul.id DESC LIMIT ${from}, ${limit};`
+            await connect.query(`SET @driverindex := 0`);
+            const [rows] = await connect.query(`
+            ${query + queryFilter}
+            `);
 
-            [rows] = await connect.query('SELECT (@index := @index - 1) AS descending_count, ul.* FROM users_transport ut LEFT JOIN users_list ul ON ul.id = ut.user_id WHERE ut.type = ? AND ul.user_type = 1 AND ul.subscription_id IS NOT NULL  AND ul.id LIKE ? AND IFNULL(ul.name, ?) LIKE ? AND IFNULL(ul.phone, ?) LIKE ? AND IFNULL(ul.date_reg, ?) LIKE ? AND IFNULL(ul.date_last_login, ?) LIKE ? AND IFNULL(ul.iso_code, ?) LIKE ? ORDER BY ul.id DESC LIMIT ?, ?',
-                [+typetransport,id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
-        }
-        else {
-            // Fourth Query
-
-            [row] = await connect.query('SELECT COUNT(*) as count FROM users_transport ut LEFT JOIN users_list ul ON ul.id = ut.user_id WHERE ut.type = ? AND ul.user_type = 1 AND ul.id LIKE ? AND IFNULL(ul.name, ?) LIKE ? AND IFNULL(ul.phone, ?) LIKE ? AND IFNULL(ul.date_reg, ?) LIKE ? AND IFNULL(ul.date_last_login, ?) LIKE ? AND IFNULL(ul.iso_code, ?) LIKE ? ORDER BY ul.id DESC LIMIT 1',
-            [+typetransport,id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%']);
-
-            await connect.query(`SET @index := ${row[0].count}`);
-
-            [rows] = await connect.query('SELECT (@index := @index - 1) AS descending_count, ul.* FROM users_transport ut LEFT JOIN users_list ul ON ul.id = ut.user_id WHERE ut.type = ? AND ul.user_type = 1 AND ul.id LIKE ? AND IFNULL(ul.name, ?) LIKE ? AND IFNULL(ul.phone, ?) LIKE ? AND IFNULL(ul.date_reg, ?) LIKE ? AND IFNULL(ul.date_last_login, ?) LIKE ? AND IFNULL(ul.iso_code, ?) LIKE ? ORDER BY ul.id DESC LIMIT ?, ?',
-                [+typetransport,id ? id:'%','',name ? '%'+name+'%':'%','',phone ? '%'+phone+'%':'%','',dateReg ? '%'+dateReg+'%':'%','',dateLogin ? '%'+dateLogin+'%':'%','',indentificator ? '%'+indentificator+'%':'%',from,limit]);
-        }
-        const [rows_count] = await connect.query('SELECT count(*) as allcount FROM users_list WHERE user_type = 1 ORDER BY id DESC');
         if (rows.length){
-            appData.data_count = rows_count[0].allcount
+            appData.data_count = row[0]?.count
             appData.data = await Promise.all(rows.map(async (row) => {
                 let newUser = row;
                 newUser.avatar = fs.existsSync(process.env.FILES_PATCH +'tirgo/drivers/'+row.id+'/'+ row.avatar)?process.env.SERVER_URL +'tirgo/drivers/'+row.id+'/'+ row.avatar : null;
@@ -110,6 +122,7 @@ reborn.post('/getAllDrivers', async (req, res) => {
         }
     }
 });
+
 
 reborn.post('/getAllDriversList', async (req, res) => {
     let connect,
