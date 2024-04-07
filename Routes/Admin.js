@@ -262,16 +262,16 @@ admin.post("/getAllUsers", async (req, res) => {
           let newUser = row;
           newUser.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-              "tirgo/clients/" +
-              row.id +
-              "/" +
-              row.avatar
+            "tirgo/clients/" +
+            row.id +
+            "/" +
+            row.avatar
           )
             ? process.env.SERVER_URL +
-              "tirgo/clients/" +
-              row.id +
-              "/" +
-              row.avatar
+            "tirgo/clients/" +
+            row.id +
+            "/" +
+            row.avatar
             : null;
           const [contacts] = await connect.query(
             "SELECT * FROM users_contacts WHERE user_id = ?",
@@ -307,16 +307,16 @@ admin.post("/getAllDrivers", async (req, res) => {
           let newUser = row;
           newUser.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-              "tirgo/drivers/" +
-              row.id +
-              "/" +
-              row.avatar
+            "tirgo/drivers/" +
+            row.id +
+            "/" +
+            row.avatar
           )
             ? process.env.SERVER_URL +
-              "tirgo/drivers/" +
-              row.id +
-              "/" +
-              row.avatar
+            "tirgo/drivers/" +
+            row.id +
+            "/" +
+            row.avatar
             : null;
           const [files] = await connect.query(
             "SELECT * FROM users_list_files WHERE user_id = ?",
@@ -327,16 +327,16 @@ admin.post("/getAllDrivers", async (req, res) => {
               let newFile = file;
               newFile.preview = fs.existsSync(
                 process.env.FILES_PATCH +
-                  "tirgo/drivers/" +
-                  row.id +
-                  "/" +
-                  file.name
+                "tirgo/drivers/" +
+                row.id +
+                "/" +
+                file.name
               )
                 ? process.env.SERVER_URL +
-                  "tirgo/drivers/" +
-                  row.id +
-                  "/" +
-                  file.name
+                "tirgo/drivers/" +
+                row.id +
+                "/" +
+                file.name
                 : null;
               return newFile;
             })
@@ -357,16 +357,16 @@ admin.post("/getAllDrivers", async (req, res) => {
                   let docks = filetruck;
                   docks.preview = fs.existsSync(
                     process.env.FILES_PATCH +
-                      "tirgo/drivers/" +
-                      row.id +
-                      "/" +
-                      filetruck.name
+                    "tirgo/drivers/" +
+                    row.id +
+                    "/" +
+                    filetruck.name
                   )
                     ? process.env.SERVER_URL +
-                      "tirgo/drivers/" +
-                      row.id +
-                      "/" +
-                      filetruck.name
+                    "tirgo/drivers/" +
+                    row.id +
+                    "/" +
+                    filetruck.name
                     : null;
                   return docks;
                 })
@@ -1356,16 +1356,16 @@ admin.post("/getAllOrders", async (req, res) => {
               let newItemUsers = item2;
               newItemUsers.avatar = fs.existsSync(
                 process.env.FILES_PATCH +
-                  "tirgo/drivers/" +
-                  item2.id +
-                  "/" +
-                  item2.avatar
+                "tirgo/drivers/" +
+                item2.id +
+                "/" +
+                item2.avatar
               )
                 ? process.env.SERVER_URL +
-                  "tirgo/drivers/" +
-                  item2.id +
-                  "/" +
-                  item2.avatar
+                "tirgo/drivers/" +
+                item2.id +
+                "/" +
+                item2.avatar
                 : null;
               return newItemUsers;
             })
@@ -1465,16 +1465,16 @@ admin.get("/getAllMessages", async (req, res) => {
           let newItem = item;
           newItem.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-              "tirgo/drivers/" +
-              item.user_id +
-              "/" +
-              item.avatar
+            "tirgo/drivers/" +
+            item.user_id +
+            "/" +
+            item.avatar
           )
             ? process.env.SERVER_URL +
-              "tirgo/drivers/" +
-              item.user_id +
-              "/" +
-              item.avatar
+            "tirgo/drivers/" +
+            item.user_id +
+            "/" +
+            item.avatar
             : null;
           const [messages] = await connect.query(
             "SELECT * FROM chat_support WHERE user_id = ? ORDER BY id",
@@ -3500,5 +3500,116 @@ admin.post("/services-transaction/status/by", async (req, res) => {
     }
   }
 });
+
+admin.get("/driver-groups", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  const { id, status, pageIndex, pageSize } = req.query;
+
+  try {
+    if (!pageSize) {
+      pageSize = 10
+    }
+    if (!pageIndex) {
+      pageIndex = 0;
+    }
+    connect = await database.connection.getConnection();
+    const [driverGroups] = await connect.query(`
+      SELECT * FROM driver_group ORDER BY id DESC LIMIT ${pageIndex}, ${pageSize}; 
+    `);
+    appData.data = driverGroups
+    const [rows_count] = await connect.query('SELECT count(*) as allcount FROM driver_group');
+    appData.data_count = rows_count[0].allcount
+    appData.status = true;
+    res.status(200).json(appData);
+  } catch (e) {
+    console.log('ERROR while getting driver groups: ', e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.post("/driver-group", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  const { name } = req.body;
+  try {
+    connect = await database.connection.getConnection();
+    const [res] = await connect.query(`
+      INSERT INTO driver_group (name) values ('${name}');
+    `);
+    if (res.affectedRows) {
+      appData.data = res;
+      appData.status = true;
+      res.status(200).json(appData);
+    } else {
+      appData.status = true;
+      res.status(400).json(appData);
+    }
+
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.post("/add-driver-to-group", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  const { userId, groupId } = req.body;
+  try {
+    connect = await database.connection.getConnection();
+    const [res] = await connect.query(`
+      SELECT id from driver_group where id = ${groupId};
+    `);
+    if (res[0].id) {
+
+      const [user] = await connect.query(`
+      SELECT id from users_list where id = ${userId};
+    `);
+
+      if (user[0].id) {
+        const [row] = await connect.query(
+          `UPDATE users_list SET driver_group_id = ${groupId} WHERE id = ${userId}`
+        );
+
+        if (row.affectedRows) {
+          appData.status = true;
+          res.status(200).json(appData);
+        }
+        else {
+          appData.status = false;
+          res.status(400).json(appData);
+        }
+      } else {
+        appData.status = false;
+        res.status(400).json(appData);
+      }
+
+    } else {
+      appData.status = false;
+      res.status(400).json(appData);
+    }
+
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 
 module.exports = admin;
