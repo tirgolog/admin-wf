@@ -3593,7 +3593,7 @@ admin.post("/add-driver-to-group", async (req, res) => {
       } else {
         appData.status = false;
         res.status(400).json(appData);
-      }
+      } 
 
     } else {
       appData.status = false;
