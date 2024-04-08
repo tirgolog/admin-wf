@@ -3501,6 +3501,34 @@ admin.post("/services-transaction/status/by", async (req, res) => {
   }
 });
 
+admin.get("/get-all-drivers/reference", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+
+  try {
+      connect = await database.connection.getConnection();
+      const [drivers] = await connect.query(`
+        SELECT id, phone, name FROM users_list WHERE user_type = 1; 
+      `);
+      if(!drivers.length) {
+        res.status(204).json(appData);
+      } else {
+        appData.data = drivers
+        appData.status = true;
+        res.status(200).json(appData);
+      }
+
+  } catch (e) {
+    console.log('ERROR while getting all drivers: ', e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 admin.get("/driver-groups", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
@@ -3522,6 +3550,51 @@ admin.get("/driver-groups", async (req, res) => {
     appData.data_count = rows_count[0].allcount
     appData.status = true;
     res.status(200).json(appData);
+  } catch (e) {
+    console.log('ERROR while getting driver groups: ', e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/get-drivers-by-group", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  const { id, groupId, pageIndex, pageSize } = req.query;
+
+  try {
+
+    if(!groupId) {
+      appData.error = 'group id is required';
+      appData.status = false;
+      res.status(400).json(appData);
+    } else {
+
+      if (!pageSize) {
+        pageSize = 10
+      }
+      if (!pageIndex) {
+        pageIndex = 0;
+      }
+      connect = await database.connection.getConnection();
+      const [groupDrivers] = await connect.query(`
+        SELECT * FROM users_list WHERE user_type = 1 AND driver_group_id = ${groupId} ORDER BY id DESC LIMIT ${pageIndex}, ${pageSize}; 
+      `);
+      if(!groupDrivers.length) {
+        res.status(204).json(appData);
+      } else {
+        appData.data = groupDrivers
+        const [rows_count] = await connect.query(`SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND driver_group_id = ${groupId}`);
+        appData.data_count = rows_count[0].allcount
+        appData.status = true;
+        res.status(200).json(appData);
+      }
+    }
+
   } catch (e) {
     console.log('ERROR while getting driver groups: ', e);
     appData.error = e.message;
@@ -3568,16 +3641,16 @@ admin.post("/add-driver-to-group", async (req, res) => {
   const { userId, groupId } = req.body;
   try {
     connect = await database.connection.getConnection();
-    const [res] = await connect.query(`
+    const [row] = await connect.query(`
       SELECT id from driver_group where id = ${groupId};
     `);
-    if (res[0].id) {
+    if (row[0].id) {
 
       const [user] = await connect.query(`
       SELECT id from users_list where id = ${userId};
     `);
 
-      if (user[0].id) {
+      if (user[0].id && !user[0].driver_group_id) {
         const [row] = await connect.query(
           `UPDATE users_list SET driver_group_id = ${groupId} WHERE id = ${userId}`
         );
@@ -3591,11 +3664,20 @@ admin.post("/add-driver-to-group", async (req, res) => {
           res.status(400).json(appData);
         }
       } else {
-        appData.status = false;
-        res.status(400).json(appData);
+
+        if(user[0].id && user[0].driver_group_id) {
+          appData.message = 'user already added to group';
+          appData.status = false;
+          res.status(400).json(appData);
+        } else {
+          appData.message = 'user not found';
+          appData.status = false;
+          res.status(400).json(appData);
+        }
       } 
 
     } else {
+      appData.message = 'group not found';
       appData.status = false;
       res.status(400).json(appData);
     }
