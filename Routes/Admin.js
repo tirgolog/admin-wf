@@ -3533,6 +3533,45 @@ admin.get("/driver-groups", async (req, res) => {
   }
 });
 
+
+admin.get("/drivers-by-group", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  const { id, groupId, status, pageIndex, pageSize } = req.query;
+
+  try {
+    if (!pageSize) {
+      pageSize = 10
+    }
+    if (!pageIndex) {
+      pageIndex = 0;
+    }
+
+    if (!groupId) {
+      appData.error = 'group id is required';
+      res.status(400).json(appData);
+    }
+
+    connect = await database.connection.getConnection();
+    const [driverGroups] = await connect.query(`
+      SELECT * FROM users_list WHERE user_type = 1 AND driver_group_id = ${groupId}  ORDER BY id DESC LIMIT ${pageIndex}, ${pageSize}; 
+    `);
+    appData.data = driverGroups
+    const [rows_count] = await connect.query(`SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND driver_group_id = ${groupId}`);
+    appData.data_count = rows_count[0].allcount
+    appData.status = true;
+    res.status(200).json(appData);
+  } catch (e) {
+    console.log('ERROR while getting driver groups: ', e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 admin.post("/driver-group", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
@@ -3568,10 +3607,10 @@ admin.post("/add-driver-to-group", async (req, res) => {
   const { userId, groupId } = req.body;
   try {
     connect = await database.connection.getConnection();
-    const [res] = await connect.query(`
+    const [query] = await connect.query(`
       SELECT id from driver_group where id = ${groupId};
     `);
-    if (res[0].id) {
+    if (query[0].id) {
 
       const [user] = await connect.query(`
       SELECT id from users_list where id = ${userId};
@@ -3593,13 +3632,330 @@ admin.post("/add-driver-to-group", async (req, res) => {
       } else {
         appData.status = false;
         res.status(400).json(appData);
-      } 
+      }
 
     } else {
       appData.status = false;
       res.status(400).json(appData);
     }
 
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.post("/driver-group/add-subscription", async (req, res) => {
+  let connect,
+    appData = { status: false },
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+  const { user_id, subscription_id, phone, group_id } = req.body;
+  const userId = user_id;
+  const subscriptionId = subscription_id;
+  const groupId = group_id;
+
+  try {
+    connect = await database.connection.getConnection();
+
+    const [user] = await connect.query(
+      "SELECT * FROM users_list WHERE to_subscription > CURDATE() AND id = ?",
+      [userId]
+    );
+    if (user.length > 0) {
+      appData.error = "Пользователь уже имеет подписку";
+      appData.status = false;
+      res.status(400).json(appData);
+    } else {
+
+      const [subscription] = await connect.query(
+        "SELECT * FROM subscription where id = ? ",
+        [subscriptionId]
+      );
+      if (!subscription.length) {
+        appData.message = 'subscription not found'
+        res.status(400).json(appData);
+      } else {
+
+        let valueofPayment;
+        if (subscription[0].duration == 1) {
+          valueofPayment = 80000;
+        }
+        if (subscription[0].duration == 3) {
+          valueofPayment = 180000;
+        }
+        if (subscription[0].duration == 12) {
+          valueofPayment = 570000;
+        }
+        const [withdrawals] = await connect.query(
+          `SELECT amount from driver_withdrawal where driver_id = ?`,
+          [userId]
+        );
+        const [activeBalance] = await connect.query(
+          `SELECT amount from secure_transaction where dirverid = ? and status = 2`,
+          [userId]
+        );
+        const [subscriptionPayment] = await connect.query(
+          `SELECT id, amount from subscription_transaction where userid = ? `,
+          [userId]
+        );
+        const [payments] = await connect.query(
+          "SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",
+          [userId]
+        );
+        const totalWithdrawalAmount = withdrawals.reduce(
+          (accumulator, secure) => accumulator + +Number(secure.amount),
+          0
+        );
+        const totalActiveAmount = activeBalance.reduce(
+          (accumulator, secure) => accumulator + +Number(secure.amount),
+          0
+        );
+        const totalPayments = payments.reduce(
+          (accumulator, secure) => accumulator + +Number(secure.amount),
+          0
+        );
+        const totalSubscriptionPayment = subscriptionPayment.reduce(
+          (accumulator, subPay) => {
+            return accumulator + Number(subPay.amount);
+          },
+          0
+        );
+        let balance =
+          totalActiveAmount +
+          (totalPayments - totalSubscriptionPayment) -
+          totalWithdrawalAmount;
+
+        // paymentUser active balance
+        if (Number(balance) >= Number(valueofPayment)) {
+          let nextMonth = new Date(
+            new Date().setMonth(
+              new Date().getMonth() + subscription[0].duration
+            )
+          );
+          const [userUpdate] = await connect.query(
+            "UPDATE users_list SET subscriptionId = ?, from_subscription = ? , to_subscription=?  WHERE id = ?",
+            [subscriptionId, new Date(), nextMonth, userId]
+          );
+          if (userUpdate.affectedRows == 1) {
+            const subscription_transaction = await connect.query(
+              "INSERT INTO subscription_transaction SET userid = ?, subscriptionId = ?, phone = ?, amount = ?, admin_id = ?, group_id = ?, is_group = ?",
+              [userId, subscriptionId, phone, valueofPayment, userInfo.id, groupId, true]
+            );
+            if (subscription_transaction.length > 0) {
+              appData.status = true;
+              res.status(200).json(appData);
+            }
+          } else {
+            appData.error = "Невозможно обновить данные пользователя";
+            appData.status = false;
+            res.status(400).json(appData);
+          }
+        } else {
+          appData.error = "Недостаточно средств на балансе";
+          appData.status = false;
+          res.status(400).json(appData);
+        }
+      }
+    }
+
+  }
+  catch (e) {
+    console.log(e)
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.post("/driver-group/add-services", async (req, res) => {
+  let connect,
+    appData = { status: false };
+  const { user_id, phone, services, group_id } = req.body;
+  try {
+    if (!services) {
+      appData.error = "Необходимо оформить подписку";
+      return res.status(400).json(appData);
+    }
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      "SELECT * FROM users_contacts WHERE text = ? AND verify = 1",
+      [phone]
+    );
+    if (rows.length < 1) {
+      appData.error = " Не найден Пользователь";
+      appData.status = false;
+      res.status(400).json(appData);
+    } else {
+      const [paymentUser] = await connect.query(
+        "SELECT * FROM alpha_payment where  userid = ? ",
+        [user_id]
+      );
+      const totalPaymentAmount = paymentUser.reduce(
+        (accumulator, secure) => accumulator + Number(secure.amount),
+        0
+      );
+
+      const [paymentTransaction] = await connect.query(
+        "SELECT * FROM services_transaction where  userid = ? AND status <> 2 ",
+        [user_id]
+      );
+
+      const totalPaymentAmountTransaction = paymentTransaction.reduce(
+        (accumulator, secure) => accumulator + Number(secure.price_uzs),
+        0
+      );
+
+      const totalAmount = services.reduce(
+        (accumulator, secure) => accumulator + Number(secure.price_uzs),
+        0
+      );
+
+      let balance = totalPaymentAmount - totalPaymentAmountTransaction;
+      if (balance >= totalAmount) {
+        const [editUser] = await connect.query(
+          "UPDATE users_list SET is_service = 1  WHERE id = ?",
+          [user_id]
+        );
+        if (editUser.affectedRows > 0) {
+          const insertValues = await Promise.all(
+            services.map(async (service) => {
+              try {
+                const [result] = await connect.query(
+                  "SELECT * FROM services WHERE id = ?",
+                  [service.service_id]
+                );
+                if (result.length === 0) {
+                  throw new Error(
+                    `Service with ID ${service.service_id} not found.`
+                  );
+                }
+                return [
+                  user_id,
+                  service.service_id,
+                  result[0].name,
+                  service.price_uzs,
+                  service.price_kzs,
+                  service.rate,
+                  0,
+                  group_id,
+                  true
+                ];
+              } catch (error) {
+                console.error("Error occurred while fetching service:", error);
+              }
+            })
+          );
+          const sql =
+            "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, group_id, is_group) VALUES ?";
+          const [result] = await connect.query(sql, [insertValues]);
+          if (result.affectedRows > 0) {
+            appData.status = true;
+            socket.updateAllMessages("update-alpha-balance", "1");
+            res.status(200).json(appData);
+          }
+        } else {
+          appData.error = "Пользователь не может обновить";
+          appData.status = false;
+          res.status(400).json(appData);
+        }
+      } else {
+        appData.error = "Недостаточно средств на балансе";
+        appData.status = false;
+        res.status(400).json(appData);
+      }
+    }
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.post("/driver-group/add-balance", async (req, res) => {
+  let connect,
+    appData = { status: false },
+    group_id = req.body.groupId,
+    amount = req.body.amount,
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+  try {
+    connect = await database.connection.getConnection();
+    const insertResult = await connect.query(
+      "INSERT INTO driver_group_transaction SET admin_id = ?, driver_group_id = ?, amount = ?, created_at = ?, type = 'Пополнение'",
+      [userInfo.id, group_id, amount, new Date()]
+    );
+
+    if (insertResult) {
+      appData.data = insertResult;
+      appData.status = true;
+      res.status(200).json(appData);
+    } else {
+      appData.status = false;
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/driver-group/balance", async (req, res) => {
+  let connect,
+    appData = { status: false },
+    group_id = req.query.groupId;
+  try {
+    connect = await database.connection.getConnection();
+
+    const [topUpTransactions] = await connect.query(
+      `SELECT * from driver_group_transaction where driver_group_id = ${group_id} AND type = 'Пополнение'`
+    );
+
+    const [withdrawTransactions] = await connect.query(
+      `SELECT * from driver_group_transaction where driver_group_id = ${group_id} AND type = 'Вывод'`
+    );
+
+    const [subTransactions] = await connect.query(
+      `SELECT * from subscription_transaction where group_id = ${group_id}`
+    );
+
+    const [serviceTransactions] = await connect.query(
+      `SELECT * from services_transaction where group_id = ${group_id}`
+    );
+
+    const totalTopUpTransactions = topUpTransactions.reduce(
+      (accumulator, secure) => accumulator + +Number(secure.amount),
+      0
+    );
+    const totalWithdrawTransactions = withdrawTransactions.reduce(
+      (accumulator, secure) => accumulator + +Number(secure.amount),
+      0
+    );
+    const totalTSubransactions = subTransactions.reduce(
+      (accumulator, secure) => accumulator + +Number(secure.amount),
+      0
+    );
+    const totalTServiceransactions = serviceTransactions.reduce(
+      (accumulator, secure) => accumulator + +Number(secure.amount),
+      0
+    );
+    appData.data = { balance: (totalTopUpTransactions - totalWithdrawTransactions) - (totalTSubransactions + totalTServiceransactions) };
+    appData.status = true;
+    res.status(200).json(appData);
   } catch (e) {
     console.log(e);
     appData.error = e.message;
