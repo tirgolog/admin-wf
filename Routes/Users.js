@@ -748,7 +748,8 @@ users.post("/login", async (req, res) => {
         appData.error = "Не удалось отправить SMS";
       }
     } else {
-      if (send_sms_res === "waiting") {
+
+      // if (send_sms_res === "waiting") {
         const [notVerified] = await connect.query(
           "SELECT * FROM users_contacts WHERE text = ? AND user_type = 1 AND verify = 0",
           [phone]
@@ -770,9 +771,10 @@ users.post("/login", async (req, res) => {
           );
           appData.status = true;
         }
-      } else {
-        appData.error = "Не удалось отправить SMS";
-      }
+      // } else {
+      //   appData.error = "Не удалось отправить SMS";
+      // }
+
     }
     res.status(200).json(appData);
   } catch (err) {

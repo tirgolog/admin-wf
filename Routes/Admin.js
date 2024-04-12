@@ -3501,6 +3501,34 @@ admin.post("/services-transaction/status/by", async (req, res) => {
   }
 });
 
+admin.get("/get-all-drivers/reference", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+
+  try {
+      connect = await database.connection.getConnection();
+      const [drivers] = await connect.query(`
+        SELECT id, phone, name FROM users_list WHERE user_type = 1; 
+      `);
+      if(!drivers.length) {
+        res.status(204).json(appData);
+      } else {
+        appData.data = drivers
+        appData.status = true;
+        res.status(200).json(appData);
+      }
+
+  } catch (e) {
+    console.log('ERROR while getting all drivers: ', e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 admin.get("/driver-groups", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
