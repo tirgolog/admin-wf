@@ -3606,11 +3606,11 @@ admin.post("/driver-group", async (req, res) => {
   const { name } = req.body;
   try {
     connect = await database.connection.getConnection();
-    const [res] = await connect.query(`
+    const [row] = await connect.query(`
       INSERT INTO driver_group (name) values ('${name}');
     `);
-    if (res.affectedRows) {
-      appData.data = res;
+    if (row.affectedRows) {
+      appData.data = row;
       appData.status = true;
       res.status(200).json(appData);
     } else {
