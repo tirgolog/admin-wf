@@ -3561,6 +3561,77 @@ admin.get("/driver-groups", async (req, res) => {
   }
 });
 
+admin.get("/driver-group/transactions", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+    const { groupId } = req.query;
+
+  try {
+    connect = await database.connection.getConnection();
+
+    const [balanceTransactions] = await connect.query(
+      `SELECT * from driver_group_transaction where driver_group_id = ${groupId}`
+    );
+
+    const [subTransactions] = await connect.query(
+      `SELECT *, ul.id as "driverId", ul.name as "driverName" from subscription_transaction st 
+      LEFT JOIN users_list ul on ul.id = st.userid
+      where is_group = true AND group_id = ${groupId}`
+    );
+
+    const [serviceTransactions] = await connect.query(
+      `SELECT *, ul.id as "driverId", ul.name as "driverName" from services_transaction st
+      LEFT JOIN users_list ul on ul.id = st.userid
+      where is_group = true AND group_id = ${groupId}`
+    );
+
+   const transactions =  [...balanceTransactions.map((el) => {
+      return {
+        transactionId: el.id,
+        groupId: el.driver_group_id,
+        amount: el.amount,
+        adminId: el.admin_id,
+        createdAt: el.created_at,
+        transactionType: el.type
+      }
+    }), ...
+    subTransactions.map((el) => {
+      return {
+        transactionId: el.id,
+        groupId: el.group_id,
+        amount: el.amount,
+        driverId: el.driverId,
+        driverName: el.driverName,
+        adminId: el.admin_id,
+        createdAt: el.created_at,
+        transactionType: 'Подписка'
+      }
+    }), ...serviceTransactions.map((el) => {
+      return {
+        transactionId: el.id,
+        groupId: el.group_id,
+        driverId: el.driverId,
+        driverName: el.driverName,
+        amount: el.price_uzs,
+        createdAt: el.createdAt,
+        serviceName: el.service_name,
+        transactionType: 'Подписка'
+      }
+    })];
+
+    appData.data = transactions;
+    appData.status = true;
+    res.status(200).json(appData);
+  } catch (e) {
+    console.log('ERROR while getting driver groups: ', e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
 
 admin.get("/drivers-by-group", async (req, res) => {
   let connect,
