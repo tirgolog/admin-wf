@@ -3893,31 +3893,31 @@ admin.post("/driver-group/add-services", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
-      const [paymentUser] = await connect.query(
-        "SELECT * FROM alpha_payment where  userid = ? ",
-        [user_id]
-      );
-      const totalPaymentAmount = paymentUser.reduce(
-        (accumulator, secure) => accumulator + Number(secure.amount),
-        0
-      );
 
-      const [paymentTransaction] = await connect.query(
-        "SELECT * FROM services_transaction where  userid = ? AND status <> 2 ",
-        [user_id]
-      );
+      const [result] = await connect.query(`
+          SELECT 
+              COALESCE((SELECT SUM(amount) 
+                        FROM driver_group_transaction 
+                        WHERE driver_group_id = ${group_id} AND type = 'Пополнение'), 0) AS totalTopUpTransactions,
+              COALESCE((SELECT SUM(amount) 
+                        FROM driver_group_transaction 
+                        WHERE driver_group_id = ${group_id} AND type = 'Вывод'), 0) AS totalWithdrawTransactions,
+              COALESCE((SELECT SUM(amount) 
+                        FROM subscription_transaction 
+                        WHERE group_id = ${group_id}), 0) AS totalSubTransactions,
+              COALESCE((SELECT SUM(price_uzs) 
+                        FROM services_transaction 
+                        WHERE group_id = ${group_id}), 0) AS totalServiceTransactions;
+      `);
 
-      const totalPaymentAmountTransaction = paymentTransaction.reduce(
-        (accumulator, secure) => accumulator + Number(secure.price_uzs),
-        0
-      );
+      const { totalTopUpTransactions, totalWithdrawTransactions, totalSubTransactions, totalServiceTransactions } = result[0];
 
+      const balance = (totalTopUpTransactions - totalWithdrawTransactions) - (totalSubTransactions + totalServiceTransactions);
       const totalAmount = services.reduce(
         (accumulator, secure) => accumulator + Number(secure.price_uzs),
         0
       );
 
-      let balance = totalPaymentAmount - totalPaymentAmountTransaction;
       if (balance >= totalAmount) {
         const [editUser] = await connect.query(
           "UPDATE users_list SET is_service = 1  WHERE id = ?",
@@ -3972,6 +3972,7 @@ admin.post("/driver-group/add-services", async (req, res) => {
       }
     }
   } catch (e) {
+    console.log(e)
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
@@ -4049,7 +4050,7 @@ admin.get("/driver-group/balance", async (req, res) => {
       0
     );
     const totalTServiceransactions = serviceTransactions.reduce(
-      (accumulator, secure) => accumulator + +Number(secure.amount),
+      (accumulator, secure) => accumulator + +Number(secure.price_uzs),
       0
     );
     appData.data = { balance: (totalTopUpTransactions - totalWithdrawTransactions) - (totalTSubransactions + totalTServiceransactions) };
