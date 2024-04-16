@@ -2385,7 +2385,7 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "SELECT id, phone, name FROM users_list where id = ? ",
+      "SELECT id, phone, name, to_subscription FROM users_list where id = ? ",
       [driverId]
     );
     if (rows.length > 0) {
