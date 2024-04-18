@@ -138,7 +138,7 @@ admin.put("/changeAgentBalance", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const insertResult = await connect.query(
-      "INSERT INTO agent_transaction SET admin_id = ?, agent_id = ?, amount = ?, created_at = ?, type = 'Пополнение'",
+      "INSERT INTO agent_transaction SET admin_id = ?, agent_id = ?, amount = ?, created_at = ?, type = 'tirgo_balance'",
       [userInfo.id, agent_id, agent_balance, new Date()]
     );
 
@@ -199,7 +199,7 @@ admin.get("/getAgentBalanse/:agent_id", async (req, res) => {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
       `SELECT 
-      COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'Пополнение'), 0) - 
+      COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'tirgo_balance'), 0) - 
       COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'Подписка'), 0) AS total_amount
     `,
       [agent_id, agent_id]
@@ -692,7 +692,7 @@ admin.post("/addUser", async (req, res) => {
           );
           const [agentBalance] = await connect.query(
             `SELECT 
-            COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'Пополнение'), 0) - 
+            COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'tirgo_balance'), 0) - 
             COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'Подписка'), 0) AS total_amount
           `,
             [data.agent_id, data.agent_id]
@@ -2785,7 +2785,7 @@ admin.post("/addUserByAgent", async (req, res) => {
         );
         const [agentBalance] = await connect.query(
           `SELECT 
-            COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'Пополнение'), 0) - 
+            COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'tirgo_balance'), 0) - 
             COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'Подписка'), 0) AS total_amount
           `,
           [agent_id, agent_id]
