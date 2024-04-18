@@ -169,7 +169,7 @@ admin.put("/changeAgentBalance", async (req, res) => {
 admin.post("/agent-service/add-balance", async (req, res) => {
   let connect,
     appData = { status: false },
-    agent_id = req.body.agent_id,
+    agentId = req.body.agentId,
     amount = req.body.amount,
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
 
@@ -177,7 +177,7 @@ admin.post("/agent-service/add-balance", async (req, res) => {
     connect = await database.connection.getConnection();
     const insertResult = await connect.query(
       "INSERT INTO agent_transaction SET admin_id = ?, agent_id = ?, amount = ?, created_at = ?, type = 'service_balance'",
-      [userInfo.id, agent_id, amount, new Date()]
+      [userInfo.id, agentId, amount, new Date()]
     );
 
     // SELECT at.*, u_admin.name AS admin_name, u_agent.name AS agent_name
