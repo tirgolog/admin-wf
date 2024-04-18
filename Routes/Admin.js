@@ -375,8 +375,8 @@ admin.get("/agent-service-transactions", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      `SELECT * FROM services_transaction where created_by_id = ? AND status <> 2  ORDER BY id DESC LIMIT ?, ?;`,
-      [agentId, from, limit]
+      `SELECT * FROM services_transaction where created_by_id = ? AND status <> 2  ORDER BY id DESC LIMIT ?, ?`,
+      [agentId, +from, +limit]
     );
     const [row] = await connect.query(
       `SELECT Count(id) as count FROM services_transaction where created_by_id = ? AND status <> 2`,
@@ -406,11 +406,11 @@ admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      `SELECT * FROM agent_transaction where agent_id = ? AND type = 'tirgo_balance' OR type = 'subscription  ORDER BY id DESC LIMIT ?, ?;`,
-      [agentId, from, limit]
+      `SELECT * FROM agent_transaction WHERE agent_id = ? AND type IN ('tirgo_balance', 'subscription') ORDER BY id DESC LIMIT ?, ?;`,
+      [agentId, +from, +limit]
     );
     const [row] = await connect.query(
-      `SELECT Count(id) as count FROM agent_transaction where agent_id = ? AND type = 'tirgo_balance' OR type = 'subscription`,
+      `SELECT Count(id) as count FROM agent_transaction where agent_id = ? AND type IN ('tirgo_balance', 'subscription')`,
       [agentId]
     );
     if (rows.length) {
