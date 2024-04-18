@@ -347,9 +347,9 @@ admin.get("/getAgentBalanse/:agent_id", async (req, res) => {
       COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'tirgo_balance'), 0) - 
       COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'subscription'), 0) AS tirgoBalance,
       COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'service_balance'), 0) - 
-      COALESCE((SELECT SUM(price_uzs) FROM services_transaction where created_by_id = ${agent_id} AND status <> 2), 0) AS serviceBalance      
+      COALESCE((SELECT SUM(price_uzs) FROM services_transaction where created_by_id = ? AND status <> 2), 0) AS serviceBalance      
     `,
-      [agent_id, agent_id]
+      [agent_id, agent_id, agent_id, agent_id]
     );
     if (rows.length) {
       appData.status = true;
