@@ -366,6 +366,68 @@ admin.get("/getAgentBalanse/:agent_id", async (req, res) => {
   }
 });
 
+admin.get("/agent-service-transactions", async (req, res) => {
+  let connect,
+    appData = { status: false },
+    agentId = req.query.agentId,
+    from = req.query.from,
+    limit = req.query.limit;
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      `SELECT * FROM services_transaction where created_by_id = ? AND status <> 2  ORDER BY id DESC LIMIT ?, ?;`,
+      [agentId, from, limit]
+    );
+    const [row] = await connect.query(
+      `SELECT Count(id) as count FROM services_transaction where created_by_id = ? AND status <> 2`,
+      [agentId]
+    );
+    if (rows.length) {
+      appData.status = true;
+      appData.data = { content: rows[0], from, limit, totalCount: row[0].count};
+    }
+    res.status(200).json(appData);
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
+  let connect,
+    appData = { status: false },
+    agentId = req.query.agentId,
+    from = req.query.from,
+    limit = req.query.limit;
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      `SELECT * FROM agent_transaction where agent_id = ? AND type = 'tirgo_balance' OR type = 'subscription  ORDER BY id DESC LIMIT ?, ?;`,
+      [agentId, from, limit]
+    );
+    const [row] = await connect.query(
+      `SELECT Count(id) as count FROM agent_transaction where agent_id = ? AND type = 'tirgo_balance' OR type = 'subscription`,
+      [agentId]
+    );
+    if (rows.length) {
+      appData.status = true;
+      appData.data = { content: rows[0], from, limit, totalCount: row[0].count};
+    }
+    res.status(200).json(appData);
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 admin.get("/sumOfDriversSubcription/:agent_id", async (req, res) => {
   let connect,
     appData = { status: false };
