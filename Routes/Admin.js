@@ -204,6 +204,40 @@ admin.post("/agent-service/add-balance", async (req, res) => {
   }
 });
 
+admin.post("/agent/add-balance-to-driver", async (req, res) => {
+  let connect,
+    appData = { status: false },
+    agentId = req.body.agentId,
+    driverId = req.body.driverId,
+    amount = req.body.amount,
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+
+  try {
+    connect = await database.connection.getConnection();
+    const [insertResult] = await connect.query(`
+     INSERT INTO alpha_payment SET userid = ?, date_timestamp = ?, amount = ?, agent_id = ?, is_agent = true`, 
+     [driverId, new Date(), amount, agentId]
+    );
+
+    if (insertResult) {
+      appData.data = insertResult;
+      appData.status = true;
+      res.status(200).json(appData);
+    } else {
+      appData.status = false;
+      res.status(200).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 admin.post("/agent-service/add-to-driver", async (req, res) => {
   let connect,
     appData = { status: false },
@@ -409,6 +443,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
           amount: el.price_uzs,
           created_at: el.created_at,
           type: el.service_name,
+          driver_id: el.userid
         }
       }
     });
@@ -447,7 +482,7 @@ admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
     );
     if (rows.length) {
       appData.status = true;
-      appData.data = { content: rows[0], from, limit, totalCount: row[0].count};
+      appData.data = { content: rows, from, limit, totalCount: row[0].count};
     }
     res.status(200).json(appData);
   } catch (e) {
