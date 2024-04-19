@@ -375,16 +375,48 @@ admin.get("/agent-service-transactions", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      `SELECT * FROM services_transaction where created_by_id = ? AND status <> 2  ORDER BY id DESC LIMIT ?, ?`,
+      `SELECT *, 'st' as 'rawType' FROM services_transaction where created_by_id = ? AND status <> 2  ORDER BY id DESC LIMIT ?, ?`,
       [agentId, +from, +limit]
     );
+
     const [row] = await connect.query(
       `SELECT Count(id) as count FROM services_transaction where created_by_id = ? AND status <> 2`,
       [agentId]
     );
-    if (rows.length) {
+
+    const [balanceRows] = await connect.query(
+      `SELECT *, 'at' as 'rawType' FROM agent_transaction WHERE agent_id = ? AND type = 'service_balance' ORDER BY id DESC LIMIT ?, ?`,
+      [agentId, +from, +limit]
+    );
+    const [balanceRow] = await connect.query(
+      `SELECT Count(id) as count FROM agent_transaction where agent_id = ? AND type = 'service_balance'`,
+      [agentId]
+    );
+
+    const data = ([...rows, ...balanceRows].sort((a, b) => b.created_at < a.created_at).splice(0, 10)).map((el) => {
+      if(el.rawType == 'at') {
+        return {
+          id: el.id,
+          agent_id: el.agent_id,
+          amount: el.amount,
+          created_at: el.created_at,
+          type: 'Пополнение',
+        }
+      } else {
+        return {
+          id: el.id,
+          agent_id: el.created_by_id,
+          amount: el.price_uzs,
+          created_at: el.created_at,
+          type: el.service_name,
+        }
+      }
+    });
+
+  
+    if (data.length) {
       appData.status = true;
-      appData.data = { content: rows[0], from, limit, totalCount: row[0].count};
+      appData.data = { content: data, from, limit, totalCount: row[0].count + balanceRow[0].count};
     }
     res.status(200).json(appData);
   } catch (e) {
