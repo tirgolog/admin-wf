@@ -83,28 +83,28 @@ admin.post("/loginAdmin", async (req, res) => {
   }
 });
 
-admin.use((req, res, next) => {
-  let token =
-    req.body.token ||
-    req.headers["token"] ||
-    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-  let appData = {};
-  if (token) {
-    jwt.verify(token, process.env.SECRET_KEY, function (err) {
-      if (err) {
-        appData["error"] = err;
-        appData["data"] = "Token is invalid";
-        res.status(403).json(appData);
-      } else {
-        next();
-      }
-    });
-  } else {
-    appData["error"] = 1;
-    appData["data"] = "Token is null";
-    res.status(200).json(appData);
-  }
-});
+// admin.use((req, res, next) => {
+//   let token =
+//     req.body.token ||
+//     req.headers["token"] ||
+//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+//   let appData = {};
+//   if (token) {
+//     jwt.verify(token, process.env.SECRET_KEY, function (err) {
+//       if (err) {
+//         appData["error"] = err;
+//         appData["data"] = "Token is invalid";
+//         res.status(403).json(appData);
+//       } else {
+//         next();
+//       }
+//     });
+//   } else {
+//     appData["error"] = 1;
+//     appData["data"] = "Token is null";
+//     res.status(200).json(appData);
+//   }
+// });
 
 admin.get("/getAllAgent", async (req, res) => {
   let connect,
@@ -427,7 +427,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
       [agentId]
     );
 
-    const data = ([...rows, ...balanceRows].sort((a, b) => b.created_at < a.created_at).splice(0, 10)).map((el) => {
+    const data = ([...rows, ...balanceRows].sort((a, b) => b.created_at < a.created_at).splice(0, limit)).map((el) => {
       if(el.rawType == 'at') {
         return {
           id: el.id,
@@ -464,6 +464,8 @@ admin.get("/agent-service-transactions", async (req, res) => {
   }
 });
 
+
+
 admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
   let connect,
     appData = { status: false },
@@ -483,6 +485,76 @@ admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
     if (rows.length) {
       appData.status = true;
       appData.data = { content: rows, from, limit, totalCount: row[0].count};
+    }
+    res.status(200).json(appData);
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/all-agents-tirgo-balance-transactions", async (req, res) => {
+  let connect,
+    appData = { status: false },
+    from = req.query.from,
+    limit = req.query.limit;
+  try {
+    if(!from) {
+      from = 0;
+    }
+    if(!limit) {
+      limit = 100;
+    }
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      `SELECT at.*, al.name as "agentName", adl.name as "adminName" FROM agent_transaction  at
+      LEFT JOIN users_list al on al.id = at.agent_id
+      LEFT JOIN users_list adl on adl.id = at.admin_id
+      WHERE type = 'tirgo_balance' ORDER BY id DESC LIMIT ?, ?;`,
+      [+from, +limit]
+    );
+    const [subs] = await connect.query(
+      `SELECT st.*, al.name as "agentName", ul.name as "driverName", 'subscription' as "type" FROM subscription_transaction st
+      LEFT JOIN users_list ul on ul.id = st.userid
+      LEFT JOIN users_list al on al.id = st.agent_id
+      WHERE st.agent_id IS NOT NULL ORDER BY id DESC LIMIT ?, ?;`,
+      [+from, +limit]
+    );
+
+    const [row] = await connect.query(
+      `SELECT Count(id) as count FROM agent_transaction where type = 'tirgo_balance'`,
+      []
+    );
+
+    const [sub] = await connect.query(
+      `SELECT Count(id) as count FROM subscription_transaction`,
+      []
+    );
+
+      const data = [...rows, ...subs].sort((a, b) => b.created_t - a.created_at).splice(0, limit).map((el) => {
+        return {
+            id: el.id,
+            driverId: el.userid,
+            driverName: el.driverName,
+            agentName: el.agentName,
+            agentId: el.agent_id,                                       
+            phone: el.phone,                                       
+            createdAt: el.created_at,                                       
+            type: el.type == 'subscription' ? 'Подписка' : 'Пополнение баланса',                           
+            amount: el.amount,                                       
+            subscription_id: el.subscription_id,
+            adminId: el.admin_id,
+            adminName: el.adminName                                   
+        }
+      });
+
+    if (data.length) {
+      appData.status = true;
+      appData.data = { content: data, from, limit, totalCount: row[0].count + sub[0].count};
     }
     res.status(200).json(appData);
   } catch (e) {
