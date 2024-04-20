@@ -83,28 +83,28 @@ admin.post("/loginAdmin", async (req, res) => {
   }
 });
 
-// admin.use((req, res, next) => {
-//   let token =
-//     req.body.token ||
-//     req.headers["token"] ||
-//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-//   let appData = {};
-//   if (token) {
-//     jwt.verify(token, process.env.SECRET_KEY, function (err) {
-//       if (err) {
-//         appData["error"] = err;
-//         appData["data"] = "Token is invalid";
-//         res.status(403).json(appData);
-//       } else {
-//         next();
-//       }
-//     });
-//   } else {
-//     appData["error"] = 1;
-//     appData["data"] = "Token is null";
-//     res.status(200).json(appData);
-//   }
-// });
+admin.use((req, res, next) => {
+  let token =
+    req.body.token ||
+    req.headers["token"] ||
+    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+  let appData = {};
+  if (token) {
+    jwt.verify(token, process.env.SECRET_KEY, function (err) {
+      if (err) {
+        appData["error"] = err;
+        appData["data"] = "Token is invalid";
+        res.status(403).json(appData);
+      } else {
+        next();
+      }
+    });
+  } else {
+    appData["error"] = 1;
+    appData["data"] = "Token is null";
+    res.status(200).json(appData);
+  }
+});
 
 admin.get("/getAllAgent", async (req, res) => {
   let connect,
@@ -464,7 +464,86 @@ admin.get("/agent-service-transactions", async (req, res) => {
   }
 });
 
+admin.get("/all-agents-service-transactions", async (req, res) => {
+  let connect,
+    appData = { status: false },
+    from = req.query.from,
+    limit = req.query.limit;
+    if(!limit) {
+      limit = 10;
+    } 
+    if(!from) {
+      from = 0;
+    }
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      `SELECT *, 'st' as 'rawType', al.name as "agentName", adl.name as "driverName" FROM services_transaction st
+      LEFT JOIN users_list al on al.id = st.created_by_id AND al.user_type = 4
+      LEFT JOIN users_list adl on adl.id = st.userid AND adl.user_type = 1
+      where st.status <> 2  ORDER BY st.id DESC LIMIT ?, ?`,
+      [+from, +limit]
+    );
 
+    const [row] = await connect.query(
+      `SELECT Count(id) as count FROM services_transaction where status <> 2`,
+      []
+    );
+
+    const [balanceRows] = await connect.query(
+      `SELECT *, adl.name as "adminName", al.name as "agentName", 'at' as 'rawType' FROM agent_transaction at
+      LEFT JOIN users_list al on al.id = at.agent_id
+      LEFT JOIN users_list adl on adl.id = at.admin_id
+      WHERE type = 'service_balance' ORDER BY at.id DESC LIMIT ?, ?`,
+      [+from, +limit]
+    );
+    const [balanceRow] = await connect.query(
+      `SELECT Count(id) as count FROM agent_transaction where type = 'service_balance'`,
+      []
+    );
+
+    const data = ([...rows, ...balanceRows].sort((a, b) => b.created_at < a.created_at).splice(0, limit)).map((el) => {
+      if(el.rawType == 'at') {
+        return {
+          id: el.id,
+          agent_id: el.agent_id,
+          agentName: el.agentName,
+          amount: el.amount,
+          created_at: el.created_at,
+          type: 'Пополнение',
+          adminId: el.admin_id,
+          adminName: el.adminName
+        }
+      } else {
+        return {
+          id: el.id,
+          agentId: el.created_by_id,
+          agentName: el.agentName,
+          amount: el.price_uzs,
+          created_at: el.created_at,
+          type: el.service_name,
+          driverId: el.userid,
+          driverName: el.driverName,
+          adminId: el.admin_id
+        }
+      }
+    });
+
+  
+    if (data.length) {
+      appData.status = true;
+      appData.data = { content: data, from, limit, totalCount: row[0].count + balanceRow[0].count};
+    }
+    res.status(200).json(appData);
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
 
 admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
   let connect,
@@ -507,7 +586,7 @@ admin.get("/all-agents-tirgo-balance-transactions", async (req, res) => {
       from = 0;
     }
     if(!limit) {
-      limit = 100;
+      limit = 10;
     }
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
@@ -534,8 +613,7 @@ admin.get("/all-agents-tirgo-balance-transactions", async (req, res) => {
       `SELECT Count(id) as count FROM subscription_transaction`,
       []
     );
-
-      const data = [...rows, ...subs].sort((a, b) => b.created_t - a.created_at).splice(0, limit).map((el) => {
+      const data = [...rows, ...subs].sort((a, b) => b.created_at - a.created_at).splice(0, limit).map((el) => {
         return {
             id: el.id,
             driverId: el.userid,
