@@ -665,7 +665,7 @@ admin.get("/all-agents-tirgo-balance-transactions", async (req, res) => {
         `SELECT at.*, al.name as "agentName", adl.name as "adminName" FROM agent_transaction  at
         LEFT JOIN users_list al on al.id = at.agent_id
         LEFT JOIN users_list adl on adl.id = at.admin_id
-        WHERE type = 'tirgo_balance' ORDER BY id DESC LIMIT ?, ?;`,
+        WHERE type = 'tirgo_balance' ${sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?;`,
         [+from, +limit]
       );
 
@@ -674,7 +674,7 @@ admin.get("/all-agents-tirgo-balance-transactions", async (req, res) => {
         []
       );
     }
-    console.log(rows)
+
     if(!transactionType || transactionType == 'subscription') {
       let whereClause = 'st.agent_id IS NOT NULL'
       if(driverId) {
@@ -684,7 +684,7 @@ admin.get("/all-agents-tirgo-balance-transactions", async (req, res) => {
         `SELECT st.*, al.name as "agentName", ul.name as "driverName", 'subscription' as "type" FROM subscription_transaction st
         LEFT JOIN users_list ul on ul.id = st.userid
         LEFT JOIN users_list al on al.id = st.agent_id
-        WHERE ${whereClause} ORDER BY id DESC LIMIT ?, ?;`,
+        WHERE ${whereClause} ${sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?;`,
         [+from, +limit]
       );
   
