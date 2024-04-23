@@ -370,6 +370,7 @@ admin.get("/getAgent/:agent_id", async (req, res) => {
   }
 });
 
+
 admin.get("/getAgentBalanse/:agent_id", async (req, res) => {
   let connect,
     appData = { status: false },
@@ -381,9 +382,10 @@ admin.get("/getAgentBalanse/:agent_id", async (req, res) => {
       COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'tirgo_balance'), 0) - 
       COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'subscription'), 0) AS tirgoBalance,
       COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'service_balance'), 0) - 
+      COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE agent_id = ? AND is_agent = true), 0) - 
       COALESCE((SELECT SUM(price_uzs) FROM services_transaction where created_by_id = ? AND status <> 2), 0) AS serviceBalance      
     `,
-      [agent_id, agent_id, agent_id, agent_id]
+      [agent_id, agent_id, agent_id, agent_id, agent_id]
     );
     if (rows.length) {
       appData.status = true;
@@ -391,6 +393,7 @@ admin.get("/getAgentBalanse/:agent_id", async (req, res) => {
     }
     res.status(200).json(appData);
   } catch (e) {
+    console.log(e)
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
@@ -412,7 +415,10 @@ admin.get("/agent-service-transactions", async (req, res) => {
     rows = [],
     row = [],
     balanceRows = [],
-    balanceRow = [];
+    balanceRow = [],
+    alphaRows = [],
+    alphaRow = [];
+
   try {
     connect = await database.connection.getConnection();
 
@@ -427,7 +433,6 @@ admin.get("/agent-service-transactions", async (req, res) => {
     if (sortByDate) {
       sortClause = `ORDER BY created_at ${sortType}`;
     }
-
     if (!transactionType || transactionType == 'service') {
       let whereClause = "created_by_id = ? AND status <> 2";
       const queryParams = [agentId];
@@ -440,9 +445,12 @@ admin.get("/agent-service-transactions", async (req, res) => {
         `SELECT Count(id) as count FROM services_transaction where ${whereClause}`,
         [agentId]
       );
-    } else if (!transactionType || transactionType !== 'service') {
+
+    } 
+    if (!transactionType || transactionType !== 'service') {
       // Construct the WHERE clause for optional filters
-      let balanceWhereClause = `agent_id = ${agentId} AND type = '${transactionType ? transactionType : 'service_balance'}'`;
+      const type = transactionType ? transactionType : 'service_balance';
+      let balanceWhereClause = `agent_id = ${agentId} AND type = '${type}'`;
       [balanceRows] = await connect.query(
         `SELECT *, 'at' as 'rawType' FROM agent_transaction WHERE ${balanceWhereClause} ${sortClause} LIMIT ?, ?`,
         [+from, +limit]
@@ -451,9 +459,21 @@ admin.get("/agent-service-transactions", async (req, res) => {
         `SELECT Count(id) as count FROM agent_transaction WHERE ${balanceWhereClause}`,
         []
       );
-    }
 
-    const data = ([...rows, ...balanceRows].sort((a, b) => b.created_at < a.created_at).splice(0, limit)).map((el) => {
+      if(type == 'service_balance') {
+        [alphaRows] = await connect.query(
+          `SELECT *, 'alpha' as "rawType" FROM alpha_payment WHERE agent_id = ? ${sortClause} LIMIT ?, ?`,
+          [agentId, +from, +limit]
+        );
+
+        [alphaRow] = await connect.query(
+          `SELECT Count(id) as count FROM alpha_payment WHERE agent_id = ?`,
+          [agentId]
+          );
+        }
+      }
+      
+    const data = ([...rows, ...balanceRows, ...alphaRows].sort((a, b) => b.created_at < a.created_at).splice(0, limit)).map((el) => {
       if (el.rawType == 'at') {
         return {
           id: el.id,
@@ -461,6 +481,14 @@ admin.get("/agent-service-transactions", async (req, res) => {
           amount: el.amount,
           created_at: el.created_at,
           type: el.type == 'subscription' ? 'Подписка' : 'Пополнение баланса',
+        }
+      } else if(el.rawType == 'alpha') {
+        return {
+          id: el.id,
+          agent_id: el.agent_id,
+          amount: el.amount,
+          created_at: el.created_at,
+          type: 'Пополнение баланса',
         }
       } else {
         return {
@@ -474,10 +502,9 @@ admin.get("/agent-service-transactions", async (req, res) => {
       }
     });
 
-    console.log(data)
     if (data.length) {
       appData.status = true;
-      appData.data = { content: data, from, limit, totalCount: row[0]?.count + balanceRow[0]?.count };
+      appData.data = { content: data, from, limit, totalCount: row[0]?.count + balanceRow[0]?.count + alphaRow[0]?.count };
     }
     res.status(200).json(appData);
   } catch (e) {
@@ -503,7 +530,9 @@ admin.get("/all-agents-service-transactions", async (req, res) => {
     rows = [],
     row = [],
     balanceRows = [],
-    balanceRow = [];
+    balanceRow = [],
+    alphaRows = [],
+    alphaRow = [];
     if (!limit) {
       limit = 10;
     }
@@ -534,7 +563,8 @@ admin.get("/all-agents-service-transactions", async (req, res) => {
     }
 
     if(!transactionType || transactionType !== 'service') {
-       let rowWhereClause = `type = '${transactionType ? transactionType : 'service_balance'}'`;
+      const type = transactionType ? transactionType : 'service_balance';
+       let rowWhereClause = `type = '${type}'`;
       [balanceRows] = await connect.query(
         `SELECT *, adl.name as "adminName", al.name as "agentName", 'at' as 'rawType' FROM agent_transaction at
         LEFT JOIN users_list al on al.id = at.agent_id
@@ -546,9 +576,23 @@ admin.get("/all-agents-service-transactions", async (req, res) => {
         `SELECT Count(id) as count FROM agent_transaction where type = 'service_balance'`,
         []
       );
+
+      if(type == 'service_balance') {
+        [alphaRows] = await connect.query(
+          `SELECT *, 'alpha' as "rawType", al.name as "agentName", d.name as "driverName" FROM alpha_payment ap 
+          LEFT JOIN users_list al on al.id = ap.agent_id
+          LEFT JOIN users_list d on d.id = ap.userid
+          WHERE is_agent = true LIMIT ?, ?`,
+          [+from, +limit]
+        );
+
+        [alphaRow] = await connect.query(
+          `SELECT Count(id) as count FROM alpha_payment WHERE is_agent = true`,
+          );
+        }
     }
 
-    const data = ([...rows, ...balanceRows].sort((a, b) => b.created_at < a.created_at).splice(0, limit)).map((el) => {
+    const data = ([...balanceRows, ...rows, ...alphaRows].sort((a, b) => b.created_at < a.created_at).splice(0, limit)).map((el) => {
       if (el.rawType == 'at') {
         return {
           id: el.id,
@@ -559,6 +603,18 @@ admin.get("/all-agents-service-transactions", async (req, res) => {
           type: el.type == 'subscription' ? 'Подписка' : 'Пополнение баланса',
           adminId: el.admin_id,
           adminName: el.adminName
+        }
+      } else if(el.rawType == 'alpha') {
+        return {
+          id: el.id,
+          agent_id: el.agent_id,
+          amount: el.amount,
+          created_at: el.created_at,
+          type: 'Пополнение баланса',
+          agentName: el.agentName,
+          agentId: el.agent_id,
+          driverName: el.driverName,
+          driverId: el.userid
         }
       } else {
         return {
@@ -578,7 +634,7 @@ admin.get("/all-agents-service-transactions", async (req, res) => {
 
     if (data.length) {
       appData.status = true;
-      appData.data = { content: data, from, limit, totalCount: row[0]?.count + balanceRow[0]?.count };
+      appData.data = { content: data, from, limit, totalCount: row[0]?.count + balanceRow[0]?.count + alphaRow[0]?.count };
     }
     res.status(200).json(appData);
   } catch (e) {
@@ -1202,7 +1258,7 @@ admin.post("/addUser", async (req, res) => {
           const [agentBalance] = await connect.query(
             `SELECT 
             COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'tirgo_balance'), 0) - 
-            COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'subscription'), 0) AS total_amount
+            COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'subscription'), 0) AS tirgoBalance
           `,
             [data.agent_id, data.agent_id]
           );
@@ -1210,7 +1266,7 @@ admin.post("/addUser", async (req, res) => {
             if (subscription[0].duration === 1) {
               let paymentValue = 80000;
               if (
-                Number(agentBalance[0].total_amount) >= Number(paymentValue)
+                Number(agentBalance[0].tirgoBalance) >= Number(paymentValue)
               ) {
                 const insertResult = await connect.query(
                   "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, created_at = ?, type = 'subscription'",
@@ -1275,7 +1331,7 @@ admin.post("/addUser", async (req, res) => {
             } else if (subscription[0].duration === 3) {
               let paymentValue = 180000;
               if (
-                Number(agentBalance[0].total_amount) >= Number(paymentValue)
+                Number(agentBalance[0].tirgoBalance) >= Number(paymentValue)
               ) {
                 const insertResult = await connect.query(
                   "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, created_at = ?, type = 'subscription'",
@@ -1340,7 +1396,7 @@ admin.post("/addUser", async (req, res) => {
             } else if (subscription[0].duration === 12) {
               let paymentValue = 570000;
               if (
-                Number(agentBalance[0].total_amount) >= Number(paymentValue)
+                Number(agentBalance[0].tirgoBalance) >= Number(paymentValue)
               ) {
                 const insertResult = await connect.query(
                   "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, created_at = ?, type = 'subscription'",
@@ -3294,15 +3350,15 @@ admin.post("/addUserByAgent", async (req, res) => {
         );
         const [agentBalance] = await connect.query(
           `SELECT 
-            COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'tirgo_balance'), 0) - 
-            COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'subscription'), 0) AS total_amount
+          COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'tirgo_balance'), 0) - 
+          COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'subscription'), 0) AS tirgoBalance
           `,
           [agent_id, agent_id]
         );
         if (agentBalance.length) {
           if (subscription[0].duration === 1) {
             let paymentValue = 80000;
-            if (Number(agentBalance[0].total_amount) >= Number(paymentValue)) {
+            if (Number(agentBalance[0].tirgoBalance) >= Number(paymentValue)) {
               const insertResult = await connect.query(
                 "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, created_at = ?, type = 'subscription'",
                 [agent_id, paymentValue, new Date()]
@@ -3343,7 +3399,7 @@ admin.post("/addUserByAgent", async (req, res) => {
             }
           } else if (subscription[0].duration === 3) {
             let paymentValue = 180000;
-            if (Number(agentBalance[0].total_amount) >= Number(paymentValue)) {
+            if (Number(agentBalance[0].tirgoBalance) >= Number(paymentValue)) {
               const insertResult = await connect.query(
                 "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, created_at = ?, type = 'subscription'",
                 [agent_id, paymentValue, new Date()]
@@ -3383,7 +3439,7 @@ admin.post("/addUserByAgent", async (req, res) => {
             }
           } else if (subscription[0].duration === 12) {
             let paymentValue = 570000;
-            if (Number(agentBalance[0].total_amount) >= Number(paymentValue)) {
+            if (Number(agentBalance[0].tirgoBalance) >= Number(paymentValue)) {
               const insertResult = await connect.query(
                 "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, created_at = ?, type = 'subscription'",
                 [agent_id, paymentValue, new Date()]
@@ -4053,8 +4109,8 @@ admin.post("/services-transaction/status/to-priced", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [updateResult] = await connect.query(
-      "UPDATE services_transaction SET status = 1 WHERE id = ?, amount = ?",
-      [id, amount]
+      "UPDATE services_transaction SET status = 1, amount = ? WHERE id = ?",
+      [amount, id]
     );
     if (updateResult.affectedRows > 0) {
       appData.status = true;
