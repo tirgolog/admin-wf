@@ -3802,26 +3802,39 @@ admin.post("/services-transaction", async (req, res) => {
   const { from, limit } = req.body;
   try {
     connect = await database.connection.getConnection();
+
     const [services_transaction] = await connect.query(
-      `SELECT  
+      ` SELECT 
       st.id,
-      st.userid,
-      st.service_id,
-      COALESCE(
-          st.service_name,
-          (SELECT name FROM services WHERE id = st.service_id)
-      ) AS name,
+      st.userid as "driverId",
+      ul.name as "driverName",
+      s.name as "serviceName",
+      s.id as "serviceId",
       st.price_uzs,
       st.price_kzs,
+      st.amount,
       st.rate,
-      status,
-      st.createAt
-  FROM 
-      services_transaction st
-  ORDER BY 
-      st.id DESC 
-  LIMIT 
-      ?, ?
+      st.status as "statusId",
+      st.created_at as "createdAt",
+      al.name as "agentName",
+      al.id as "agentId",
+      adl.name as "adminName",
+      adl.id as "adminId",
+      CASE 
+          WHEN al.name IS NOT NULL THEN true
+          ELSE false
+      END AS isByAgent,
+      CASE 
+          WHEN adl.name IS NOT NULL THEN true
+          ELSE false
+      END AS isByAdmin
+      FROM services_transaction st
+      LEFT JOIN users_list ul ON ul.id = st.userid
+      LEFT JOIN users_list al ON al.id = st.created_by_id AND al.user_type = 4
+      LEFT JOIN users_list adl ON adl.id = st.created_by_id AND adl.user_type = 3
+      LEFT JOIN services s ON s.id = st.service_id
+      ORDER BY st.id DESC
+      LIMIT ?, ?;
     `,
       [from, limit]
     );
