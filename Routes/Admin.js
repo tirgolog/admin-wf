@@ -650,7 +650,9 @@ admin.get("/all-agents-tirgo-balance-transactions", async (req, res) => {
     rows = [],
     subs = [],
     row = [],
-    sub = [];
+    sub = [],
+    sortByDate = req.query.sortByDate == 'true',  //true or false
+    sortType = req.query.sortType;
   try {
     if (!from) {
       from = 0;
@@ -665,7 +667,7 @@ admin.get("/all-agents-tirgo-balance-transactions", async (req, res) => {
         `SELECT at.*, al.name as "agentName", adl.name as "adminName" FROM agent_transaction  at
         LEFT JOIN users_list al on al.id = at.agent_id
         LEFT JOIN users_list adl on adl.id = at.admin_id
-        WHERE type = 'tirgo_balance' ${sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?;`,
+        WHERE type = 'tirgo_balance' ORDER BY ${ sortByDate ? 'created_at' : 'id' } ${sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?;`,
         [+from, +limit]
       );
 
@@ -684,7 +686,7 @@ admin.get("/all-agents-tirgo-balance-transactions", async (req, res) => {
         `SELECT st.*, al.name as "agentName", ul.name as "driverName", 'subscription' as "type" FROM subscription_transaction st
         LEFT JOIN users_list ul on ul.id = st.userid
         LEFT JOIN users_list al on al.id = st.agent_id
-        WHERE ${whereClause} ${sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?;`,
+        WHERE ${whereClause} ORDER BY ${ sortByDate ? 'created_at' : 'id' } ${sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?;`,
         [+from, +limit]
       );
   
