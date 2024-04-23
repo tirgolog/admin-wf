@@ -3529,14 +3529,14 @@ admin.put("/services/:id", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const { id } = req.params;
-    const { name, price_uzs, price_kzs, rate } = req.body;
-    if (!id || !name || !price_uzs || !price_kzs || !rate) {
+    const { name, code, price_uzs, price_kzs, rate } = req.body;
+    if (!id || !name || !code || !price_uzs || !price_kzs || !rate) {
       appData.error = "All fields are required";
       return res.status(400).json(appData);
     }
     const [rows] = await connect.query(
-      `UPDATE services SET name = ? , price_uzs = ?, price_kzs = ?, rate = ? WHERE id = ?`,
-      [name, price_uzs, price_kzs, rate, id]
+      `UPDATE services SET name = ? , price_uzs = ?, price_kzs = ?, rate = ?, code = ? WHERE id = ?`,
+      [name, price_uzs, price_kzs, rate, code, id]
     );
     if (rows.affectedRows > 0) {
       appData.status = true;
@@ -3579,27 +3579,28 @@ admin.delete("/services/:id", async (req, res) => {
 admin.post("/services", async (req, res) => {
   let connect,
     name = req.body.name,
+    code = req.body.code,
     price_uzs = req.body.price_uzs,
     price_kzs = req.body.price_kzs,
     rate = req.body.rate,
     appData = { status: false };
   try {
-    if (!name || !price_uzs || !price_kzs || !rate) {
+    if (!name || !price_uzs || !price_kzs || !rate || !code) {
       appData.error = "All fields are required";
       return res.status(400).json(appData);
     }
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "SELECT * FROM services where name = ?",
-      [name]
+      "SELECT * FROM services where name = ?, code = ?",
+      [name, code]
     );
     if (rows.length > 0) {
       appData.error = "если уже есть услуги.";
       res.status(400).json(appData);
     } else {
       const [subscription] = await connect.query(
-        "INSERT INTO services SET name = ?, price_uzs = ?, price_kzs = ?, rate = ?",
-        [name, price_uzs, price_kzs, rate]
+        "INSERT INTO services SET name = ?, code = ?, price_uzs = ?, price_kzs = ?, rate = ?",
+        [name, code, price_uzs, price_kzs, rate]
       );
       appData.status = true;
       appData.data = subscription;
@@ -3811,6 +3812,7 @@ admin.post("/services-transaction", async (req, res) => {
       st.userid as "driverId",
       ul.name as "driverName",
       s.name as "serviceName",
+      s.code as "serviceCode",
       s.id as "serviceId",
       st.price_uzs,
       st.price_kzs,
@@ -3866,22 +3868,41 @@ admin.post("/services-transaction/user", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [services_transaction] = await connect.query(
-      `SELECT 
-    id,
-    userid,
-    service_id,
-    COALESCE(
-      st.service_name,
-      (SELECT name FROM services WHERE id = st.service_id)
-  ) AS name,
-    price_uzs,
-    price_kzs,
-    rate,
-    status,
-    createAt
-    FROM services_transaction st where userid = ?
-    AND status <> 2
-    ORDER BY id DESC LIMIT ?, ?`,
+      `
+    SELECT 
+      st.id,
+      st.userid as "driverId",
+      ul.name as "driverName",
+      s.name as "serviceName",
+      s.code as "serviceCode",
+      s.id as "serviceId",
+      st.price_uzs,
+      st.price_kzs,
+      st.amount,
+      st.rate,
+      st.status as "statusId",
+      st.created_at as "createdAt",
+      al.name as "agentName",
+      al.id as "agentId",
+      adl.name as "adminName",
+      adl.id as "adminId",
+      CASE 
+          WHEN al.name IS NOT NULL THEN true
+          ELSE false
+      END AS isByAgent,
+      CASE 
+          WHEN adl.name IS NOT NULL THEN true
+          ELSE false
+      END AS isByAdmin
+      FROM services_transaction st
+      LEFT JOIN users_list ul ON ul.id = st.userid
+      LEFT JOIN users_list al ON al.id = st.created_by_id AND al.user_type = 4
+      LEFT JOIN users_list adl ON adl.id = st.created_by_id AND adl.user_type = 3
+      LEFT JOIN services s ON s.id = st.service_id
+      WHERE userid = ?
+      ORDER BY st.id DESC
+      LIMIT ?, ?;
+    `,
       [userid, from, limit]
     );
     if (services_transaction.length) {
