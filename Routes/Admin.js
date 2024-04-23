@@ -4025,6 +4025,34 @@ admin.post("/services-transaction/status/by", async (req, res) => {
   }
 });
 
+admin.post("/services-transaction/status/to-priced", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  const { id, amount } = req.body;
+  try {
+    connect = await database.connection.getConnection();
+    const [updateResult] = await connect.query(
+      "UPDATE services_transaction SET status = 1 WHERE id = ?, amount = ?",
+      [id, amount]
+    );
+    if (updateResult.affectedRows > 0) {
+      appData.status = true;
+      res.status(200).json(appData);
+    } else {
+      appData.error = "История транзакций не изменилась";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 admin.get("/get-all-drivers/reference", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
