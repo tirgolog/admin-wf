@@ -208,7 +208,7 @@ users.post("/prepareClickPay", async function (req, res) {
 });
 
 users.post("/alphaCompleteClickPay", async function (req, res) {
-  let connect,
+  let connect,  
     merchant_prepare_id = "",
     data = [],
     appData = { status: false };
