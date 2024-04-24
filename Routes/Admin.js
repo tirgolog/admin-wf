@@ -214,8 +214,7 @@ admin.post("/agent/add-balance-to-driver", async (req, res) => {
 
   try {
     connect = await database.connection.getConnection();
-    const [insertResult] = await connect.query(
-      `
+    const [insertResult] = await connect.query(`
      INSERT INTO alpha_payment SET userid = ?, date_timestamp = ?, amount = ?, agent_id = ?, is_agent = true`,
       [driverId, new Date(), amount, agentId]
     );
@@ -310,7 +309,7 @@ admin.post("/agent-service/add-to-driver", async (req, res) => {
                   service.price_kzs,
                   service.rate,
                   0,
-                  userInfo.id,
+                  userInfo.id
                 ];
               } catch (error) {
                 console.error("Error occurred while fetching service:", error);
@@ -409,7 +408,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
     appData = { status: false },
     agentId = req.query.agentId,
     transactionType = req.query.transactionType,
-    sortByDate = req.query.sortByDate, //true or false
+    sortByDate = req.query.sortByDate,  //true or false
     sortType = req.query.sortType,
     from = req.query.from,
     limit = req.query.limit,
@@ -434,9 +433,8 @@ admin.get("/agent-service-transactions", async (req, res) => {
     if (sortByDate) {
       sortClause = `ORDER BY created_at ${sortType}`;
     }
-
     if (!transactionType || transactionType == 'service') {
-      let whereClause = "created_by_id = ? AND status <> 2";
+      let whereClause = "created_by_id = ? AND status <> 4";
       const queryParams = [agentId];
       // Query for service transactions
       [rows] = await connect.query(
@@ -447,9 +445,12 @@ admin.get("/agent-service-transactions", async (req, res) => {
         `SELECT Count(id) as count FROM services_transaction where ${whereClause}`,
         [agentId]
       );
-    } else if (!transactionType || transactionType !== 'service') {
+
+    } 
+    if (!transactionType || transactionType !== 'service') {
       // Construct the WHERE clause for optional filters
-      let balanceWhereClause = `agent_id = ${agentId} AND type = '${transactionType ? transactionType : 'service_balance'}'`;
+      const type = transactionType ? transactionType : 'service_balance';
+      let balanceWhereClause = `agent_id = ${agentId} AND type = '${type}'`;
       [balanceRows] = await connect.query(
         `SELECT *, 'at' as 'rawType' FROM agent_transaction WHERE ${balanceWhereClause} ${sortClause} LIMIT ?, ?`,
         [+from, +limit]
@@ -458,9 +459,21 @@ admin.get("/agent-service-transactions", async (req, res) => {
         `SELECT Count(id) as count FROM agent_transaction WHERE ${balanceWhereClause}`,
         []
       );
-    }
 
-    const data = ([...rows, ...balanceRows].sort((a, b) => b.created_at < a.created_at).splice(0, limit)).map((el) => {
+      if(type == 'service_balance') {
+        [alphaRows] = await connect.query(
+          `SELECT *, 'alpha' as "rawType" FROM alpha_payment WHERE agent_id = ? ${sortClause} LIMIT ?, ?`,
+          [agentId, +from, +limit]
+        );
+
+        [alphaRow] = await connect.query(
+          `SELECT Count(id) as count FROM alpha_payment WHERE agent_id = ?`,
+          [agentId]
+          );
+        }
+      }
+       
+    const data = ([...rows, ...balanceRows, ...alphaRows].sort((a, b) => b.created_at < a.created_at).splice(0, limit)).map((el) => {
       if (el.rawType == 'at') {
         return {
           id: el.id,
@@ -469,26 +482,34 @@ admin.get("/agent-service-transactions", async (req, res) => {
           created_at: el.created_at,
           type: el.type == 'subscription' ? 'Подписка' : 'Пополнение баланса',
         }
+      } else if(el.rawType == 'alpha') {
+        return {
+          id: el.id,
+          agent_id: el.agent_id,
+          amount: el.amount,
+          created_at: el.created_at,
+          type: 'Пополнение баланса',
+        }
       } else {
         return {
           id: el.id,
           agent_id: el.created_by_id,
-          amount: el.price_uzs,
+          amount: el.amount,
           created_at: el.created_at,
           type: el.service_name,
-          driver_id: el.userid
+          driver_id: el.userid,
+          status: el.status
         }
       }
     });
 
-    console.log(data)
     if (data.length) {
       appData.status = true;
-      appData.data = { content: data, from, limit, totalCount: row[0]?.count + balanceRow[0]?.count };
+      appData.data = { content: data, from, limit, totalCount: row[0]?.count + balanceRow[0]?.count + alphaRow[0]?.count };
     }
     res.status(200).json(appData);
   } catch (e) {
-    console.log(e);
+    console.log(e)
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
@@ -503,14 +524,16 @@ admin.get("/all-agents-service-transactions", async (req, res) => {
     appData = { status: false },
     from = req.query.from,
     transactionType = req.query.transactionType,
-    driverId = req.query.driverId,
-    sortByDate = req.query.sortByDate == "true", //true or false
+    driverId = req.query.driverId,    
+    sortByDate = req.query.sortByDate == 'true',  //true or false
     sortType = req.query.sortType,
     limit = req.query.limit,
     rows = [],
     row = [],
     balanceRows = [],
-    balanceRow = [];
+    balanceRow = [],
+    alphaRows = [],
+    alphaRow = [];
     if (!limit) {
       limit = 10;
     }
@@ -518,10 +541,11 @@ admin.get("/all-agents-service-transactions", async (req, res) => {
       from = 0;
     }
   try {
+
     connect = await database.connection.getConnection();
    
     if(!transactionType || transactionType == 'service') {
-      let rowWhereClause = 'st.status <> 2';
+      let rowWhereClause = 'st.status <> 4';
       if(driverId) {
         rowWhereClause += ` AND userid = ${driverId}`
       }
@@ -529,14 +553,10 @@ admin.get("/all-agents-service-transactions", async (req, res) => {
         `SELECT *, 'st' as 'rawType', al.name as "agentName", adl.name as "driverName" FROM services_transaction st
         LEFT JOIN users_list al on al.id = st.created_by_id AND al.user_type = 4
         LEFT JOIN users_list adl on adl.id = st.userid AND adl.user_type = 1
-        where ${rowWhereClause} ORDER BY ${
-          sortByDate ? "st.created_at" : "st.id"
-        } ${
-          sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
-        } LIMIT ?, ?`,
+        where ${rowWhereClause} ORDER BY ${ sortByDate ? 'st.created_at'  : 'st.id'} ${ sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?`,
         [+from, +limit]
       );
-
+  
       [row] = await connect.query(
         `SELECT Count(id) as count FROM services_transaction where status <> 4`,
         []
@@ -544,25 +564,36 @@ admin.get("/all-agents-service-transactions", async (req, res) => {
     }
 
     if(!transactionType || transactionType !== 'service') {
-       let rowWhereClause = `type = '${transactionType ? transactionType : 'service_balance'}'`;
+      const type = transactionType ? transactionType : 'service_balance';
+       let rowWhereClause = `type = '${type}'`;
       [balanceRows] = await connect.query(
         `SELECT *, adl.name as "adminName", al.name as "agentName", 'at' as 'rawType' FROM agent_transaction at
         LEFT JOIN users_list al on al.id = at.agent_id
         LEFT JOIN users_list adl on adl.id = at.admin_id
-        WHERE ${rowWhereClause} ORDER BY ${
-          sortByDate ? "at.created_at" : "at.id"
-        } ${
-          sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
-        } LIMIT ?, ?`,
+        WHERE ${rowWhereClause} ORDER BY ${ sortByDate ? 'at.created_at'  : 'at.id'} ${ sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?`,
         [+from, +limit]
       );
       [balanceRow] = await connect.query(
         `SELECT Count(id) as count FROM agent_transaction where type = 'service_balance'`,
         []
       );
+
+      if(type == 'service_balance') {
+        [alphaRows] = await connect.query(
+          `SELECT *, 'alpha' as "rawType", al.name as "agentName", d.name as "driverName" FROM alpha_payment ap 
+          LEFT JOIN users_list al on al.id = ap.agent_id
+          LEFT JOIN users_list d on d.id = ap.userid
+          WHERE is_agent = true LIMIT ?, ?`,
+          [+from, +limit]
+        );
+
+        [alphaRow] = await connect.query(
+          `SELECT Count(id) as count FROM alpha_payment WHERE is_agent = true`,
+          );
+        }
     }
 
-    const data = ([...rows, ...balanceRows].sort((a, b) => b.created_at < a.created_at).splice(0, limit)).map((el) => {
+    const data = ([...balanceRows, ...rows, ...alphaRows].sort((a, b) => b.created_at < a.created_at).splice(0, limit)).map((el) => {
       if (el.rawType == 'at') {
         return {
           id: el.id,
@@ -574,24 +605,38 @@ admin.get("/all-agents-service-transactions", async (req, res) => {
           adminId: el.admin_id,
           adminName: el.adminName
         }
+      } else if(el.rawType == 'alpha') {
+        return {
+          id: el.id,
+          agent_id: el.agent_id,
+          amount: el.amount,
+          created_at: el.created_at,
+          type: 'Пополнение баланса',
+          agentName: el.agentName,
+          agentId: el.agent_id,
+          driverName: el.driverName,
+          driverId: el.userid
+        }
       } else {
         return {
           id: el.id,
           agentId: el.created_by_id,
           agentName: el.agentName,
-          amount: el.price_uzs,
+          amount: el.amount,
           created_at: el.created_at,
           type: el.service_name,
           driverId: el.userid,
           driverName: el.driverName,
-          adminId: el.admin_id
+          adminId: el.admin_id,
+          status: el.status
         }
       }
     });
 
+
     if (data.length) {
       appData.status = true;
-      appData.data = { content: data, from, limit, totalCount: row[0]?.count + balanceRow[0]?.count };
+      appData.data = { content: data, from, limit, totalCount: row[0]?.count + balanceRow[0]?.count + alphaRow[0]?.count };
     }
     res.status(200).json(appData);
   } catch (e) {
@@ -611,27 +656,23 @@ admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
     from = req.query.from,
     limit = req.query.limit,
     transactionType = req.query.transactionType,
-    driverId = req.query.driverId,
-    sortByDate = req.query.sortByDate == "true", //true or false
+    driverId = req.query.driverId,    
+    sortByDate = req.query.sortByDate == 'true',  //true or false
     sortType = req.query.sortType;
   try {
     connect = await database.connection.getConnection();
-
+    
     let whereClause = `agent_id = ${agentId}`;
-    if (transactionType) {
+    if(transactionType) {
       whereClause += ` AND type = '${transactionType}'`;
     } else {
       whereClause += ` AND type IN ('tirgo_balance', 'subscription')`;
-    }
-    if (driverId) {
+    } 
+    if(driverId) {
       whereClause = ` AND driver_id = '${driverId}')`;
     }
     const [rows] = await connect.query(
-      `SELECT * FROM agent_transaction WHERE ${whereClause} ORDER BY ${
-        sortByDate ? "created_at" : "id"
-      } ${
-        sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
-      } LIMIT ?, ?;`,
+      `SELECT * FROM agent_transaction WHERE ${whereClause} ORDER BY ${ sortByDate ? 'created_at' : 'id' } ${sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?;`,
       [+from, +limit]
     );
     const [row] = await connect.query(
@@ -639,15 +680,15 @@ admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
       [agentId]
     );
     rows.forEach((el) => {
-      el.type = el.type == "subscription" ? "Подписка" : "Пополнение баланса";
-    });
+      el.type = el.type == 'subscription' ? 'Подписка' : 'Пополнение баланса';
+    })
     if (rows.length) {
       appData.status = true;
       appData.data = { content: rows, from, limit, totalCount: row[0].count };
     }
     res.status(200).json(appData);
   } catch (e) {
-    console.log(e);
+    console.log(e)
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
@@ -679,12 +720,12 @@ admin.get("/all-agents-tirgo-balance-transactions", async (req, res) => {
     }
     connect = await database.connection.getConnection();
 
-    if ((!transactionType || transactionType == "tirgo_balance") && !driverId) {
+    if((!transactionType || transactionType == 'tirgo_balance') && !driverId) {
       [rows] = await connect.query(
         `SELECT at.*, al.name as "agentName", adl.name as "adminName" FROM agent_transaction  at
         LEFT JOIN users_list al on al.id = at.agent_id
         LEFT JOIN users_list adl on adl.id = at.admin_id
-        WHERE type = 'tirgo_balance' ${sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?;`,
+        WHERE type = 'tirgo_balance' ORDER BY ${ sortByDate ? 'created_at' : 'id' } ${sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?;`,
         [+from, +limit]
       );
 
@@ -694,53 +735,45 @@ admin.get("/all-agents-tirgo-balance-transactions", async (req, res) => {
       );
     }
 
-    if (!transactionType || transactionType == "subscription") {
-      let whereClause = "st.agent_id IS NOT NULL";
-      if (driverId) {
-        whereClause += ` AND userid = ${driverId}`;
+    if(!transactionType || transactionType == 'subscription') {
+      let whereClause = 'st.agent_id IS NOT NULL'
+      if(driverId) {
+        whereClause += ` AND userid = ${driverId}`
       }
       [subs] = await connect.query(
         `SELECT st.*, al.name as "agentName", ul.name as "driverName", 'subscription' as "type" FROM subscription_transaction st
         LEFT JOIN users_list ul on ul.id = st.userid
         LEFT JOIN users_list al on al.id = st.agent_id
-        WHERE ${whereClause} ${sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?;`,
+        WHERE ${whereClause} ORDER BY ${ sortByDate ? 'created_at' : 'id' } ${sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?;`,
         [+from, +limit]
       );
-
+  
       [sub] = await connect.query(
         `SELECT Count(id) as count FROM subscription_transaction`,
         []
       );
     }
 
-    const data = [...rows, ...subs]
-      .sort((a, b) => b.created_at - a.created_at)
-      .splice(0, limit)
-      .map((el) => {
-        return {
-          id: el.id,
-          driverId: el.userid,
-          driverName: el.driverName,
-          agentName: el.agentName,
-          agentId: el.agent_id,
-          phone: el.phone,
-          createdAt: el.created_at,
-          type: el.type == "subscription" ? "Подписка" : "Пополнение баланса",
-          amount: el.amount,
-          subscription_id: el.subscription_id,
-          adminId: el.admin_id,
-          adminName: el.adminName,
-        };
-      });
+    const data = [...rows, ...subs].sort((a, b) => b.created_at - a.created_at).splice(0, limit).map((el) => {
+      return {
+        id: el.id,
+        driverId: el.userid,
+        driverName: el.driverName,
+        agentName: el.agentName,
+        agentId: el.agent_id,
+        phone: el.phone,
+        createdAt: el.created_at,
+        type: el.type == 'subscription' ? 'Подписка' : 'Пополнение баланса',
+        amount: el.amount,
+        subscription_id: el.subscription_id,
+        adminId: el.admin_id,
+        adminName: el.adminName
+      }
+    });
 
     if (data.length) {
       appData.status = true;
-      appData.data = {
-        content: data,
-        from,
-        limit,
-        totalCount: row[0]?.count + sub[0]?.count,
-      };
+      appData.data = { content: data, from, limit, totalCount: row[0]?.count + sub[0]?.count };
     }
     res.status(200).json(appData);
   } catch (e) {
@@ -825,16 +858,16 @@ admin.post("/getAllUsers", async (req, res) => {
           let newUser = row;
           newUser.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-              "tirgo/clients/" +
-              row.id +
-              "/" +
-              row.avatar
+            "tirgo/clients/" +
+            row.id +
+            "/" +
+            row.avatar
           )
             ? process.env.SERVER_URL +
-              "tirgo/clients/" +
-              row.id +
-              "/" +
-              row.avatar
+            "tirgo/clients/" +
+            row.id +
+            "/" +
+            row.avatar
             : null;
           const [contacts] = await connect.query(
             "SELECT * FROM users_contacts WHERE user_id = ?",
@@ -870,16 +903,16 @@ admin.post("/getAllDrivers", async (req, res) => {
           let newUser = row;
           newUser.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-              "tirgo/drivers/" +
-              row.id +
-              "/" +
-              row.avatar
+            "tirgo/drivers/" +
+            row.id +
+            "/" +
+            row.avatar
           )
             ? process.env.SERVER_URL +
-              "tirgo/drivers/" +
-              row.id +
-              "/" +
-              row.avatar
+            "tirgo/drivers/" +
+            row.id +
+            "/" +
+            row.avatar
             : null;
           const [files] = await connect.query(
             "SELECT * FROM users_list_files WHERE user_id = ?",
@@ -890,16 +923,16 @@ admin.post("/getAllDrivers", async (req, res) => {
               let newFile = file;
               newFile.preview = fs.existsSync(
                 process.env.FILES_PATCH +
-                  "tirgo/drivers/" +
-                  row.id +
-                  "/" +
-                  file.name
+                "tirgo/drivers/" +
+                row.id +
+                "/" +
+                file.name
               )
                 ? process.env.SERVER_URL +
-                  "tirgo/drivers/" +
-                  row.id +
-                  "/" +
-                  file.name
+                "tirgo/drivers/" +
+                row.id +
+                "/" +
+                file.name
                 : null;
               return newFile;
             })
@@ -920,16 +953,16 @@ admin.post("/getAllDrivers", async (req, res) => {
                   let docks = filetruck;
                   docks.preview = fs.existsSync(
                     process.env.FILES_PATCH +
-                      "tirgo/drivers/" +
-                      row.id +
-                      "/" +
-                      filetruck.name
+                    "tirgo/drivers/" +
+                    row.id +
+                    "/" +
+                    filetruck.name
                   )
                     ? process.env.SERVER_URL +
-                      "tirgo/drivers/" +
-                      row.id +
-                      "/" +
-                      filetruck.name
+                    "tirgo/drivers/" +
+                    row.id +
+                    "/" +
+                    filetruck.name
                     : null;
                   return docks;
                 })
@@ -1919,16 +1952,16 @@ admin.post("/getAllOrders", async (req, res) => {
               let newItemUsers = item2;
               newItemUsers.avatar = fs.existsSync(
                 process.env.FILES_PATCH +
-                  "tirgo/drivers/" +
-                  item2.id +
-                  "/" +
-                  item2.avatar
+                "tirgo/drivers/" +
+                item2.id +
+                "/" +
+                item2.avatar
               )
                 ? process.env.SERVER_URL +
-                  "tirgo/drivers/" +
-                  item2.id +
-                  "/" +
-                  item2.avatar
+                "tirgo/drivers/" +
+                item2.id +
+                "/" +
+                item2.avatar
                 : null;
               return newItemUsers;
             })
@@ -2028,16 +2061,16 @@ admin.get("/getAllMessages", async (req, res) => {
           let newItem = item;
           newItem.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-              "tirgo/drivers/" +
-              item.user_id +
-              "/" +
-              item.avatar
+            "tirgo/drivers/" +
+            item.user_id +
+            "/" +
+            item.avatar
           )
             ? process.env.SERVER_URL +
-              "tirgo/drivers/" +
-              item.user_id +
-              "/" +
-              item.avatar
+            "tirgo/drivers/" +
+            item.user_id +
+            "/" +
+            item.avatar
             : null;
           const [messages] = await connect.query(
             "SELECT * FROM chat_support WHERE user_id = ? ORDER BY id",
@@ -3698,7 +3731,7 @@ admin.get("/services", async (req, res) => {
 admin.post("/addDriverServices", async (req, res) => {
   let connect,
     appData = { status: false },
-    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);;
   const { user_id, phone, services } = req.body;
   try {
     if (!services) {
@@ -3766,7 +3799,7 @@ admin.post("/addDriverServices", async (req, res) => {
                   service.price_kzs,
                   service.rate,
                   0,
-                  userInfo.id,
+                  userInfo.id
                 ];
               } catch (error) {
                 console.error("Error occurred while fetching service:", error);
@@ -4140,12 +4173,13 @@ admin.get("/get-all-drivers/reference", async (req, res) => {
     if (!drivers.length) {
       res.status(204).json(appData);
     } else {
-      appData.data = drivers;
+      appData.data = drivers
       appData.status = true;
       res.status(200).json(appData);
     }
+
   } catch (e) {
-    console.log("ERROR while getting all drivers: ", e);
+    console.log('ERROR while getting all drivers: ', e);
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
@@ -4162,7 +4196,7 @@ admin.get("/driver-groups", async (req, res) => {
 
   try {
     if (!pageSize) {
-      pageSize = 10;
+      pageSize = 10
     }
     if (!pageIndex) {
       pageIndex = 0;
@@ -4171,15 +4205,13 @@ admin.get("/driver-groups", async (req, res) => {
     const [driverGroups] = await connect.query(`
       SELECT * FROM driver_group ORDER BY id DESC LIMIT ${pageIndex}, ${pageSize}; 
     `);
-    appData.data = driverGroups;
-    const [rows_count] = await connect.query(
-      "SELECT count(*) as allcount FROM driver_group"
-    );
-    appData.data_count = rows_count[0].allcount;
+    appData.data = driverGroups
+    const [rows_count] = await connect.query('SELECT count(*) as allcount FROM driver_group');
+    appData.data_count = rows_count[0].allcount
     appData.status = true;
     res.status(200).json(appData);
   } catch (e) {
-    console.log("ERROR while getting driver groups: ", e);
+    console.log('ERROR while getting driver groups: ', e);
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
@@ -4213,48 +4245,45 @@ admin.get("/driver-group/transactions", async (req, res) => {
       where is_group = true AND group_id = ${groupId}`
     );
 
-    const transactions = [
-      ...balanceTransactions.map((el) => {
-        return {
-          transactionId: el.id,
-          groupId: el.driver_group_id,
-          amount: el.amount,
-          adminId: el.admin_id,
-          createdAt: el.created_at,
-          transactionType: el.type,
-        };
-      }),
-      ...subTransactions.map((el) => {
-        return {
-          transactionId: el.id,
-          groupId: el.group_id,
-          amount: el.amount,
-          driverId: el.driverId,
-          driverName: el.driverName,
-          adminId: el.admin_id,
-          createdAt: el.created_at,
-          transactionType: "subscription",
-        };
-      }),
-      ...serviceTransactions.map((el) => {
-        return {
-          transactionId: el.id,
-          groupId: el.group_id,
-          driverId: el.driverId,
-          driverName: el.driverName,
-          amount: el.price_uzs,
-          createdAt: el.createdAt,
-          serviceName: el.service_name,
-          transactionType: "subscription",
-        };
-      }),
-    ];
+    const transactions = [...balanceTransactions.map((el) => {
+      return {
+        transactionId: el.id,
+        groupId: el.driver_group_id,
+        amount: el.amount,
+        adminId: el.admin_id,
+        createdAt: el.created_at,
+        transactionType: el.type
+      }
+    }), ...
+    subTransactions.map((el) => {
+      return {
+        transactionId: el.id,
+        groupId: el.group_id,
+        amount: el.amount,
+        driverId: el.driverId,
+        driverName: el.driverName,
+        adminId: el.admin_id,
+        createdAt: el.created_at,
+        transactionType: 'subscription'
+      }
+    }), ...serviceTransactions.map((el) => {
+      return {
+        transactionId: el.id,
+        groupId: el.group_id,
+        driverId: el.driverId,
+        driverName: el.driverName,
+        amount: el.price_uzs,
+        createdAt: el.createdAt,
+        serviceName: el.service_name,
+        transactionType: 'subscription'
+      }
+    })];
 
     appData.data = transactions;
     appData.status = true;
     res.status(200).json(appData);
   } catch (e) {
-    console.log("ERROR while getting driver groups: ", e);
+    console.log('ERROR while getting driver groups: ', e);
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
@@ -4271,14 +4300,14 @@ admin.get("/drivers-by-group", async (req, res) => {
 
   try {
     if (!pageSize) {
-      pageSize = 10;
+      pageSize = 10
     }
     if (!pageIndex) {
       pageIndex = 0;
     }
 
     if (!groupId) {
-      appData.error = "group id is required";
+      appData.error = 'group id is required';
       res.status(400).json(appData);
     }
 
@@ -4286,15 +4315,13 @@ admin.get("/drivers-by-group", async (req, res) => {
     const [driverGroups] = await connect.query(`
       SELECT * FROM users_list WHERE user_type = 1 AND driver_group_id = ${groupId}  ORDER BY id DESC LIMIT ${pageIndex}, ${pageSize}; 
     `);
-    appData.data = driverGroups;
-    const [rows_count] = await connect.query(
-      `SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND driver_group_id = ${groupId}`
-    );
-    appData.data_count = rows_count[0].allcount;
+    appData.data = driverGroups
+    const [rows_count] = await connect.query(`SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND driver_group_id = ${groupId}`);
+    appData.data_count = rows_count[0].allcount
     appData.status = true;
     res.status(200).json(appData);
   } catch (e) {
-    console.log("ERROR while getting driver groups: ", e);
+    console.log('ERROR while getting driver groups: ', e);
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
@@ -4321,6 +4348,7 @@ admin.post("/driver-group", async (req, res) => {
       appData.status = true;
       res.status(400).json(appData);
     }
+
   } catch (e) {
     console.log(e);
     appData.error = e.message;
@@ -4342,6 +4370,7 @@ admin.post("/add-driver-to-group", async (req, res) => {
       SELECT id from driver_group where id = ${groupId};
     `);
     if (query[0].id) {
+
       const [user] = await connect.query(`
       SELECT id from users_list where id = ${userId};
     `);
@@ -4354,7 +4383,8 @@ admin.post("/add-driver-to-group", async (req, res) => {
         if (row.affectedRows) {
           appData.status = true;
           res.status(200).json(appData);
-        } else {
+        }
+        else {
           appData.status = false;
           res.status(400).json(appData);
         }
@@ -4362,10 +4392,12 @@ admin.post("/add-driver-to-group", async (req, res) => {
         appData.status = false;
         res.status(400).json(appData);
       }
+
     } else {
       appData.status = false;
       res.status(400).json(appData);
     }
+
   } catch (e) {
     console.log(e);
     appData.error = e.message;
@@ -4398,14 +4430,16 @@ admin.post("/driver-group/add-subscription", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
+
       const [subscription] = await connect.query(
         "SELECT * FROM subscription where id = ? ",
         [subscriptionId]
       );
       if (!subscription.length) {
-        appData.message = "subscription not found";
+        appData.message = 'subscription not found'
         res.status(400).json(appData);
       } else {
+
         let valueofPayment;
         if (subscription[0].duration == 1) {
           valueofPayment = 80000;
@@ -4469,15 +4503,7 @@ admin.post("/driver-group/add-subscription", async (req, res) => {
           if (userUpdate.affectedRows == 1) {
             const subscription_transaction = await connect.query(
               "INSERT INTO subscription_transaction SET userid = ?, subscriptionId = ?, phone = ?, amount = ?, admin_id = ?, group_id = ?, is_group = ?",
-              [
-                userId,
-                subscriptionId,
-                phone,
-                valueofPayment,
-                userInfo.id,
-                groupId,
-                true,
-              ]
+              [userId, subscriptionId, phone, valueofPayment, userInfo.id, groupId, true]
             );
             if (subscription_transaction.length > 0) {
               appData.status = true;
@@ -4495,8 +4521,10 @@ admin.post("/driver-group/add-subscription", async (req, res) => {
         }
       }
     }
-  } catch (e) {
-    console.log(e);
+
+  }
+  catch (e) {
+    console.log(e)
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
@@ -4525,6 +4553,7 @@ admin.post("/driver-group/add-services", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
+
       const [result] = await connect.query(`
           SELECT 
               COALESCE((SELECT SUM(amount) 
@@ -4541,17 +4570,9 @@ admin.post("/driver-group/add-services", async (req, res) => {
                         WHERE group_id = ${group_id}), 0) AS totalServiceTransactions;
       `);
 
-      const {
-        totalTopUpTransactions,
-        totalWithdrawTransactions,
-        totalSubTransactions,
-        totalServiceTransactions,
-      } = result[0];
+      const { totalTopUpTransactions, totalWithdrawTransactions, totalSubTransactions, totalServiceTransactions } = result[0];
 
-      const balance =
-        totalTopUpTransactions -
-        totalWithdrawTransactions -
-        (totalSubTransactions + totalServiceTransactions);
+      const balance = (totalTopUpTransactions - totalWithdrawTransactions) - (totalSubTransactions + totalServiceTransactions);
       const totalAmount = services.reduce(
         (accumulator, secure) => accumulator + Number(secure.price_uzs),
         0
@@ -4584,7 +4605,7 @@ admin.post("/driver-group/add-services", async (req, res) => {
                   service.rate,
                   0,
                   group_id,
-                  true,
+                  true
                 ];
               } catch (error) {
                 console.error("Error occurred while fetching service:", error);
@@ -4611,7 +4632,7 @@ admin.post("/driver-group/add-services", async (req, res) => {
       }
     }
   } catch (e) {
-    console.log(e);
+    console.log(e)
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
@@ -4692,15 +4713,11 @@ admin.get("/driver-group/balance", async (req, res) => {
       (accumulator, secure) => accumulator + +Number(secure.price_uzs),
       0
     );
-    appData.data = {
-      balance:
-        totalTopUpTransactions -
-        totalWithdrawTransactions -
-        (totalTSubransactions + totalTServiceransactions),
-    };
+    appData.data = { balance: (totalTopUpTransactions - totalWithdrawTransactions) - (totalTSubransactions + totalTServiceransactions) };
     appData.status = true;
     res.status(200).json(appData);
   } catch (e) {
+    console.log(e);
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
@@ -4710,273 +4727,5 @@ admin.get("/driver-group/balance", async (req, res) => {
   }
 });
 
-admin.post("/remove-subscription-agent", async (req, res) => {  
-  let connect,
-    { agent_id, subscription_id, user_id, phone } = req.body,
-    appData = { status: false };
-  try {
-    connect = await database.connection.getConnection();
-    phone = phone.replace(/[^0-9, ]/g, "").replace(/ /g, "");
-    const [rows] = await connect.query(
-      "SELECT * FROM users_contacts WHERE text = ? ",
-      [phone]
-    );
-    if (rows.length < 0) {
-      appData.error = "Драйвер не найден";
-      appData.status = false;
-      res.status(400).json(appData);
-    } else {
-      if (agent_id) {
-        const [subscription] = await connect.query(
-          "SELECT * FROM subscription where id = ? ",
-          [subscription_id]
-        );
-        if (subscription[0].duration === 1) {
-          let paymentValue = 80000;
-          const [select_agent_transactions] = await connect.query(
-            "SELECT * FROM agent_transaction WHERE agent_id = ? AND amount = ? AND type = 'subscription'",
-            [agent_id, paymentValue]
-          );
-          const [select_subscription_transaction] = await connect.query(
-            "SELECT * FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? AND  agent_id = ?",
-            [user_id, subscription_id, phone, paymentValue, agent_id]
-          );
-          if (
-            select_agent_transactions.length > 0 &&
-            select_subscription_transaction.length > 0
-          ) {
-            const agent_transactions = await connect.query(
-              "DELETE FROM agent_transaction WHERE agent_id = ? AND amount = ? AND type = 'subscription'",
-              [agent_id, paymentValue]
-            );
-            if (agent_transactions) {
-              const subscription_transaction = await connect.query(
-                "DELETE FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? AND  agent_id = ?",
-                [user_id, subscription_id, phone, paymentValue, agent_id]
-              );
-              if (subscription_transaction) {
-                const [edit] = await connect.query(
-                  "UPDATE users_list SET subscription_id = NULL, from_subscription = NULL, to_subscription = NULL WHERE id = ?",
-                  [user_id]
-                );
-                appData.data = edit;
-                appData.status = true;
-                res.status(200).json(appData);
-              } else {
-                appData.error = "Транзакция подписки не удалена";
-                appData.status = false;
-                res.status(400).json(appData);
-              }
-            } else {
-              appData.error = "Транзакция агента не удалена";
-              appData.status = false;
-              res.status(400).json(appData);
-            }
-          } else {
-            appData.error = "Агентская или подписка транзакция не найдена";
-            appData.status = false;
-            res.status(400).json(appData);
-          }
-        } else if (subscription[0].duration === 3) {
-          let paymentValue = 180000;
-          const [select_agent_transactions] = await connect.query(
-            "SELECT * FROM agent_transaction WHERE agent_id = ? AND amount = ? AND type = 'subscription'",
-            [agent_id, paymentValue]
-          );
-          const [select_subscription_transaction] = await connect.query(
-            "SELECT * FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? AND  agent_id = ?",
-            [user_id, subscription_id, phone, paymentValue, agent_id]
-          );
-          if (
-            select_agent_transactions.length > 0 &&
-            select_subscription_transaction.length > 0
-          ) {
-            const agent_transactions = await connect.query(
-              "DELETE FROM agent_transaction WHERE agent_id = ? AND amount = ? AND type = 'subscription'",
-              [agent_id, paymentValue]
-            );
-            if (agent_transactions) {
-              const subscription_transaction = await connect.query(
-                "DELETE FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? AND  agent_id = ?",
-                [user_id, subscription_id, phone, paymentValue, agent_id]
-              );
-              if (subscription_transaction) {
-                const [edit] = await connect.query(
-                  "UPDATE users_list SET subscription_id = NULL, from_subscription = NULL, to_subscription = NULL WHERE id = ?",
-                  [user_id]
-                );
-                appData.data = edit;
-                appData.status = true;
-                res.status(200).json(appData);
-              } else {
-                appData.error = "Транзакция подписки не удалена";
-                appData.status = false;
-                res.status(400).json(appData);
-              }
-            } else {
-              appData.error = "Транзакция агента не удалена";
-              appData.status = false;
-              res.status(400).json(appData);
-            }
-          } else {
-            appData.error = "Агентская или подписка транзакция не найдена";
-            appData.status = false;
-            res.status(400).json(appData);
-          }
-        } else if (subscription[0].duration === 12) {
-          let paymentValue = 570000;
-          const [select_agent_transactions] = await connect.query(
-            "SELECT * FROM agent_transaction WHERE agent_id = ? AND amount = ? AND type = 'subscription'",
-            [agent_id, paymentValue]
-          );
-          const [select_subscription_transaction] = await connect.query(
-            "SELECT * FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? AND  agent_id = ?",
-            [user_id, subscription_id, phone, paymentValue, agent_id]
-          );
-          if (
-            select_agent_transactions.length > 0 &&
-            select_subscription_transaction.length > 0
-          ) {
-            const agent_transactions = await connect.query(
-              "DELETE FROM agent_transaction WHERE agent_id = ? AND amount = ? AND type = 'subscription'",
-              [agent_id, paymentValue]
-            );
-            if (agent_transactions) {
-              const subscription_transaction = await connect.query(
-                "DELETE FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? AND  agent_id = ?",
-                [user_id, subscription_id, phone, paymentValue, agent_id]
-              );
-              if (subscription_transaction) {
-                const [edit] = await connect.query(
-                  "UPDATE users_list SET subscription_id = NULL, from_subscription = NULL, to_subscription = NULL WHERE id = ?",
-                  [user_id]
-                );
-                appData.data = edit;
-                appData.status = true;
-                res.status(200).json(appData);
-              } else {
-                appData.error = "Транзакция подписки не удалена";
-                appData.status = false;
-                res.status(400).json(appData);
-              }
-            } else {
-              appData.error = "Транзакция агента не удалена";
-              appData.status = false;
-              res.status(400).json(appData);
-            }
-          } else {
-            appData.error = "Агентская или подписка транзакция не найдена";
-            appData.status = false;
-            res.status(400).json(appData);
-          }
-        }
-      } else {
-        const [subscription] = await connect.query(
-          "SELECT * FROM subscription where id = ? ",
-          [subscription_id]
-        );
-        if (subscription[0].duration === 1) {
-          let paymentValue = 80000;
-        console.log("Подписка не найдена");
-          const [select_subscription_transaction] = await connect.query(
-            "SELECT * FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? ",
-            [user_id, subscription_id, phone, paymentValue]
-          );
-          console.log(select_subscription_transaction);
-          if (select_subscription_transaction.length > 0) {
-            const subscription_transaction = await connect.query(
-              "DELETE FROM subscription_transaction WHERE   userid = ? AND subscription_id = ? AND phone = ? AND amount = ?",
-              [user_id, subscription_id, phone, paymentValue]
-            );
-            if (subscription_transaction) {
-              const [edit] = await connect.query(
-                "UPDATE users_list SET subscription_id = NULL, from_subscription = NULL, to_subscription = NULL WHERE id = ?",
-                [user_id]
-              );
-              appData.data = edit;
-              appData.status = true;
-              res.status(200).json(appData);
-            } else {
-              appData.error = "Транзакция подписки не удалена";
-              appData.status = false;
-              res.status(400).json(appData);
-            }
-          }else{
-            appData.error = "Транзакция подписки не удалена";
-            appData.status = false;
-            res.status(400).json(appData);
-          }
-        } else if (subscription[0].duration === 3) {
-          let paymentValue = 180000;
-          const [select_subscription_transaction] = await connect.query(
-            "SELECT * FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? ",
-            [user_id, subscription_id, phone, paymentValue, agent_id]
-          );
-          if (select_subscription_transaction.length > 0) {
-            const subscription_transaction = await connect.query(
-              "DELETE FROM subscription_transaction WHERE   userid = ? AND subscription_id = ? AND phone = ? AND amount = ?",
-              [user_id, subscription_id, phone, paymentValue]
-            );
-            if (subscription_transaction) {
-              const [edit] = await connect.query(
-                "UPDATE users_list SET subscription_id = NULL, from_subscription = NULL, to_subscription = NULL WHERE id = ?",
-                [user_id]
-              );
-              appData.data = edit;
-              appData.status = true;
-              res.status(200).json(appData);
-            } else {
-              appData.error = "Транзакция подписки не удалена";
-              appData.status = false;
-              res.status(400).json(appData);
-            }
-          }else{
-            appData.error = "Транзакция подписки не удалена";
-            appData.status = false;
-            res.status(400).json(appData);
-          }
-        } else if (subscription[0].duration === 12) {
-          let paymentValue = 570000;
-          const [select_subscription_transaction] = await connect.query(
-            "SELECT * FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? ",
-            [user_id, subscription_id, phone, paymentValue, agent_id]
-          );
-          if (select_subscription_transaction.length > 0) {
-            const subscription_transaction = await connect.query(
-              "DELETE FROM subscription_transaction WHERE   userid = ? AND subscription_id = ? AND phone = ? AND amount = ?",
-              [user_id, subscription_id, phone, paymentValue]
-            );
-            if (subscription_transaction) {
-              const [edit] = await connect.query(
-                "UPDATE users_list SET subscription_id = NULL, from_subscription = NULL, to_subscription = NULL WHERE id = ?",
-                [user_id]
-              );
-              appData.data = edit;
-              appData.status = true;
-              res.status(200).json(appData);
-            } else {
-              appData.error = "Транзакция подписки не удалена";
-              appData.status = false;
-              res.status(400).json(appData);
-            }
-          }else{
-            appData.error = "Транзакция подписки не удалена";
-            appData.status = false;
-            res.status(400).json(appData);
-          }
-        }
-      }
-    }
-  } catch (err) {
-    console.log(err);
-    appData.error = err;
-    appData.status = false;
-    res.status(400).json(appData);
-  } finally {
-    if (connect) {
-      connect.release();
-    }
-  }
-});
 
 module.exports = admin;
