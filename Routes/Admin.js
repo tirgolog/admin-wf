@@ -494,10 +494,11 @@ admin.get("/agent-service-transactions", async (req, res) => {
         return {
           id: el.id,
           agent_id: el.created_by_id,
-          amount: el.price_uzs,
+          amount: el.amount,
           created_at: el.created_at,
           type: el.service_name,
-          driver_id: el.userid
+          driver_id: el.userid,
+          status: el.status
         }
       }
     });
