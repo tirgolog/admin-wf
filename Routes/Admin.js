@@ -4727,5 +4727,274 @@ admin.get("/driver-group/balance", async (req, res) => {
   }
 });
 
+admin.post("/remove-subscription-agent", async (req, res) => {  
+  let connect,
+    { agent_id, subscription_id, user_id, phone } = req.body,
+    appData = { status: false };
+  try {
+    connect = await database.connection.getConnection();
+    phone = phone.replace(/[^0-9, ]/g, "").replace(/ /g, "");
+    const [rows] = await connect.query(
+      "SELECT * FROM users_contacts WHERE text = ? ",
+      [phone]
+    );
+    if (rows.length < 0) {
+      appData.error = "Драйвер не найден";
+      appData.status = false;
+      res.status(400).json(appData);
+    } else {
+      if (agent_id) {
+        const [subscription] = await connect.query(
+          "SELECT * FROM subscription where id = ? ",
+          [subscription_id]
+        );
+        if (subscription[0].duration === 1) {
+          let paymentValue = 80000;
+          const [select_agent_transactions] = await connect.query(
+            "SELECT * FROM agent_transaction WHERE agent_id = ? AND amount = ? AND type = 'subscription'",
+            [agent_id, paymentValue]
+          );
+          const [select_subscription_transaction] = await connect.query(
+            "SELECT * FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? AND  agent_id = ?",
+            [user_id, subscription_id, phone, paymentValue, agent_id]
+          );
+          if (
+            select_agent_transactions.length > 0 &&
+            select_subscription_transaction.length > 0
+          ) {
+            const agent_transactions = await connect.query(
+              "DELETE FROM agent_transaction WHERE agent_id = ? AND amount = ? AND type = 'subscription'",
+              [agent_id, paymentValue]
+            );
+            if (agent_transactions) {
+              const subscription_transaction = await connect.query(
+                "DELETE FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? AND  agent_id = ?",
+                [user_id, subscription_id, phone, paymentValue, agent_id]
+              );
+              if (subscription_transaction) {
+                const [edit] = await connect.query(
+                  "UPDATE users_list SET subscription_id = NULL, from_subscription = NULL, to_subscription = NULL WHERE id = ?",
+                  [user_id]
+                );
+                appData.data = edit;
+                appData.status = true;
+                res.status(200).json(appData);
+              } else {
+                appData.error = "Транзакция подписки не удалена";
+                appData.status = false;
+                res.status(400).json(appData);
+              }
+            } else {
+              appData.error = "Транзакция агента не удалена";
+              appData.status = false;
+              res.status(400).json(appData);
+            }
+          } else {
+            appData.error = "Агентская или подписка транзакция не найдена";
+            appData.status = false;
+            res.status(400).json(appData);
+          }
+        } else if (subscription[0].duration === 3) {
+          let paymentValue = 180000;
+          const [select_agent_transactions] = await connect.query(
+            "SELECT * FROM agent_transaction WHERE agent_id = ? AND amount = ? AND type = 'subscription'",
+            [agent_id, paymentValue]
+          );
+          const [select_subscription_transaction] = await connect.query(
+            "SELECT * FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? AND  agent_id = ?",
+            [user_id, subscription_id, phone, paymentValue, agent_id]
+          );
+          if (
+            select_agent_transactions.length > 0 &&
+            select_subscription_transaction.length > 0
+          ) {
+            const agent_transactions = await connect.query(
+              "DELETE FROM agent_transaction WHERE agent_id = ? AND amount = ? AND type = 'subscription'",
+              [agent_id, paymentValue]
+            );
+            if (agent_transactions) {
+              const subscription_transaction = await connect.query(
+                "DELETE FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? AND  agent_id = ?",
+                [user_id, subscription_id, phone, paymentValue, agent_id]
+              );
+              if (subscription_transaction) {
+                const [edit] = await connect.query(
+                  "UPDATE users_list SET subscription_id = NULL, from_subscription = NULL, to_subscription = NULL WHERE id = ?",
+                  [user_id]
+                );
+                appData.data = edit;
+                appData.status = true;
+                res.status(200).json(appData);
+              } else {
+                appData.error = "Транзакция подписки не удалена";
+                appData.status = false;
+                res.status(400).json(appData);
+              }
+            } else {
+              appData.error = "Транзакция агента не удалена";
+              appData.status = false;
+              res.status(400).json(appData);
+            }
+          } else {
+            appData.error = "Агентская или подписка транзакция не найдена";
+            appData.status = false;
+            res.status(400).json(appData);
+          }
+        } else if (subscription[0].duration === 12) {
+          let paymentValue = 570000;
+          const [select_agent_transactions] = await connect.query(
+            "SELECT * FROM agent_transaction WHERE agent_id = ? AND amount = ? AND type = 'subscription'",
+            [agent_id, paymentValue]
+          );
+          const [select_subscription_transaction] = await connect.query(
+            "SELECT * FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? AND  agent_id = ?",
+            [user_id, subscription_id, phone, paymentValue, agent_id]
+          );
+          if (
+            select_agent_transactions.length > 0 &&
+            select_subscription_transaction.length > 0
+          ) {
+            const agent_transactions = await connect.query(
+              "DELETE FROM agent_transaction WHERE agent_id = ? AND amount = ? AND type = 'subscription'",
+              [agent_id, paymentValue]
+            );
+            if (agent_transactions) {
+              const subscription_transaction = await connect.query(
+                "DELETE FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? AND  agent_id = ?",
+                [user_id, subscription_id, phone, paymentValue, agent_id]
+              );
+              if (subscription_transaction) {
+                const [edit] = await connect.query(
+                  "UPDATE users_list SET subscription_id = NULL, from_subscription = NULL, to_subscription = NULL WHERE id = ?",
+                  [user_id]
+                );
+                appData.data = edit;
+                appData.status = true;
+                res.status(200).json(appData);
+              } else {
+                appData.error = "Транзакция подписки не удалена";
+                appData.status = false;
+                res.status(400).json(appData);
+              }
+            } else {
+              appData.error = "Транзакция агента не удалена";
+              appData.status = false;
+              res.status(400).json(appData);
+            }
+          } else {
+            appData.error = "Агентская или подписка транзакция не найдена";
+            appData.status = false;
+            res.status(400).json(appData);
+          }
+        }
+      } else {
+        const [subscription] = await connect.query(
+          "SELECT * FROM subscription where id = ? ",
+          [subscription_id]
+        );
+        if (subscription[0].duration === 1) {
+          let paymentValue = 80000;
+        console.log("Подписка не найдена");
+          const [select_subscription_transaction] = await connect.query(
+            "SELECT * FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? ",
+            [user_id, subscription_id, phone, paymentValue]
+          );
+          console.log(select_subscription_transaction);
+          if (select_subscription_transaction.length > 0) {
+            const subscription_transaction = await connect.query(
+              "DELETE FROM subscription_transaction WHERE   userid = ? AND subscription_id = ? AND phone = ? AND amount = ?",
+              [user_id, subscription_id, phone, paymentValue]
+            );
+            if (subscription_transaction) {
+              const [edit] = await connect.query(
+                "UPDATE users_list SET subscription_id = NULL, from_subscription = NULL, to_subscription = NULL WHERE id = ?",
+                [user_id]
+              );
+              appData.data = edit;
+              appData.status = true;
+              res.status(200).json(appData);
+            } else {
+              appData.error = "Транзакция подписки не удалена";
+              appData.status = false;
+              res.status(400).json(appData);
+            }
+          }else{
+            appData.error = "Транзакция подписки не удалена";
+            appData.status = false;
+            res.status(400).json(appData);
+          }
+        } else if (subscription[0].duration === 3) {
+          let paymentValue = 180000;
+          const [select_subscription_transaction] = await connect.query(
+            "SELECT * FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? ",
+            [user_id, subscription_id, phone, paymentValue, agent_id]
+          );
+          if (select_subscription_transaction.length > 0) {
+            const subscription_transaction = await connect.query(
+              "DELETE FROM subscription_transaction WHERE   userid = ? AND subscription_id = ? AND phone = ? AND amount = ?",
+              [user_id, subscription_id, phone, paymentValue]
+            );
+            if (subscription_transaction) {
+              const [edit] = await connect.query(
+                "UPDATE users_list SET subscription_id = NULL, from_subscription = NULL, to_subscription = NULL WHERE id = ?",
+                [user_id]
+              );
+              appData.data = edit;
+              appData.status = true;
+              res.status(200).json(appData);
+            } else {
+              appData.error = "Транзакция подписки не удалена";
+              appData.status = false;
+              res.status(400).json(appData);
+            }
+          }else{
+            appData.error = "Транзакция подписки не удалена";
+            appData.status = false;
+            res.status(400).json(appData);
+          }
+        } else if (subscription[0].duration === 12) {
+          let paymentValue = 570000;
+          const [select_subscription_transaction] = await connect.query(
+            "SELECT * FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? ",
+            [user_id, subscription_id, phone, paymentValue, agent_id]
+          );
+          if (select_subscription_transaction.length > 0) {
+            const subscription_transaction = await connect.query(
+              "DELETE FROM subscription_transaction WHERE   userid = ? AND subscription_id = ? AND phone = ? AND amount = ?",
+              [user_id, subscription_id, phone, paymentValue]
+            );
+            if (subscription_transaction) {
+              const [edit] = await connect.query(
+                "UPDATE users_list SET subscription_id = NULL, from_subscription = NULL, to_subscription = NULL WHERE id = ?",
+                [user_id]
+              );
+              appData.data = edit;
+              appData.status = true;
+              res.status(200).json(appData);
+            } else {
+              appData.error = "Транзакция подписки не удалена";
+              appData.status = false;
+              res.status(400).json(appData);
+            }
+          }else{
+            appData.error = "Транзакция подписки не удалена";
+            appData.status = false;
+            res.status(400).json(appData);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.log(err);
+    appData.error = err;
+    appData.status = false;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 
 module.exports = admin;
