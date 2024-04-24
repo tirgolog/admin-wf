@@ -438,9 +438,9 @@ admin.get("/agent-service-transactions", async (req, res) => {
       let whereClause = "created_by_id = ? AND status <> 4";
       // Query for service transactions
       [rows] = await connect.query(
-        `SELECT *, 'st' as 'rawType' FROM services_transaction 
-        LEFT JOIN services s on s.id = ${serviceId}
-        WHERE created_by_id = ? AND status <> 4 AND s.id = ? ${sortClause} LIMIT ?, ?`,
+        `SELECT *, 'st' as 'rawType' FROM services_transaction st 
+        LEFT JOIN services s on s.id = st.service_id
+        WHERE st.created_by_id = ? AND st.status <> 4 AND s.id = ? ${sortClause} LIMIT ?, ?`,
         [agentId, serviceId, +from, +limit]
       );
       [row] = await connect.query(
