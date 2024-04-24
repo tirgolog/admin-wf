@@ -472,7 +472,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
           );
         }
       }
-      
+       
     const data = ([...rows, ...balanceRows, ...alphaRows].sort((a, b) => b.created_at < a.created_at).splice(0, limit)).map((el) => {
       if (el.rawType == 'at') {
         return {
