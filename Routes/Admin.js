@@ -268,7 +268,7 @@ admin.post("/agent-service/add-to-driver", async (req, res) => {
       );
 
       const [paymentTransaction] = await connect.query(
-        "SELECT * FROM services_transaction where  userid = ? AND status <> 2 ",
+        "SELECT * FROM services_transaction where  userid = ? AND status <> 4 ",
         [user_id]
       );
 
@@ -3857,7 +3857,7 @@ admin.get("/alpha-payment/:userid", async (req, res) => {
     );
 
     const [paymentTransaction] = await connect.query(
-      "SELECT * FROM services_transaction where  userid = ? AND status <> 2",
+      "SELECT * FROM services_transaction where  userid = ? AND status <> 4",
       [userid]
     );
 
