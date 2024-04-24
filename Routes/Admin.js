@@ -440,7 +440,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
       [rows] = await connect.query(
         `SELECT *, 'st' as 'rawType' FROM services_transaction 
         LEFT JOIN servcies s on s.id = ${serviceId}
-        WHERE created_by_id = ? AND status <> 4 s.id = ? ${sortClause} LIMIT ?, ?`,
+        WHERE created_by_id = ? AND status <> 4 AND s.id = ? ${sortClause} LIMIT ?, ?`,
         [agentId, serviceId, +from, +limit]
       );
       [row] = await connect.query(
