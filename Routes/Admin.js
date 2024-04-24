@@ -621,12 +621,13 @@ admin.get("/all-agents-service-transactions", async (req, res) => {
           id: el.id,
           agentId: el.created_by_id,
           agentName: el.agentName,
-          amount: el.price_uzs,
+          amount: el.amount,
           created_at: el.created_at,
           type: el.service_name,
           driverId: el.userid,
           driverName: el.driverName,
-          adminId: el.admin_id
+          adminId: el.admin_id,
+          status: el.status
         }
       }
     });
@@ -801,6 +802,35 @@ admin.get("/sumOfDriversSubcription/:agent_id", async (req, res) => {
     if (rows.length) {
       appData.status = true;
       appData.data = { total_sum: total_sum };
+    }
+    res.status(200).json(appData);
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/agent-services/transations-total-amount", async (req, res) => {
+  let connect,
+    appData = { status: false };
+    agentId = req.query.agentId;
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      `  SELECT   amount  FROM   services_transaction   WHERE  agentId = ?`,
+      [agentId]
+    );
+    const totalAmount = rows.reduce(
+      (accumulator, secure) => accumulator + +Number(secure.amount),
+      0
+    );
+    if (rows.length) {
+      appData.status = true;
+      appData.data = { totalAmount };
     }
     res.status(200).json(appData);
   } catch (e) {
