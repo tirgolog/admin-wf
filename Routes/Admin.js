@@ -822,7 +822,7 @@ admin.get("/agent-services/transations-total-amount", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      `  SELECT   amount  FROM   services_transaction   WHERE  agentId = ?`,
+      `  SELECT   amount  FROM   services_transaction   WHERE  created_by_id = ?`,
       [agentId]
     );
     const totalAmount = rows.reduce(
