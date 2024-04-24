@@ -224,7 +224,7 @@ payme.post('/payMeMerchantApi', async function(req, res) {
                                         "title": "Tirgo Service",
                                         "price": +params.amount,
                                         "count": 1,
-                                        "vat_percent": 12,
+                                        "vat_percent": 0,
                                         "package_code": "1495342",
                                         "code": "10716001001000000",
                                         "discount": 0

@@ -6,7 +6,6 @@
     const connection = await amqp.connect("amqp://13.232.83.179:5672");
     const channel = await connection.createChannel();
     await channel.assertQueue('acceptDriverOffer');
-
     channel.consume('acceptDriverOffer', async (msg) => {
         const data = JSON.parse(msg.content)
         let connect,
@@ -17,7 +16,6 @@
             addAmount = data.additionalAmount,
             isSafe = data.isSafe;
         console.log(`acceptDriverOffer: driverId ${driverId} orderId ${orderid}`)
-
         try {
             connect = await database.connection.getConnection();
             await connect.query('DELETE FROM orders_accepted WHERE user_id = ? AND order_id <> ? AND status_order = 0', [driverId, orderid]);
@@ -38,6 +36,4 @@
             }
         }
     }, { noAck: true });
-
-
 })()
