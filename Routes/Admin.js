@@ -408,6 +408,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
     appData = { status: false },
     agentId = req.query.agentId,
     transactionType = req.query.transactionType,
+    serviceId = req.query.serviceId,
     sortByDate = req.query.sortByDate,  //true or false
     sortType = req.query.sortType,
     from = req.query.from,
@@ -435,11 +436,12 @@ admin.get("/agent-service-transactions", async (req, res) => {
     }
     if (!transactionType || transactionType == 'service') {
       let whereClause = "created_by_id = ? AND status <> 4";
-      const queryParams = [agentId];
       // Query for service transactions
       [rows] = await connect.query(
-        `SELECT *, 'st' as 'rawType' FROM services_transaction WHERE ${whereClause} ${sortClause} LIMIT ?, ?`,
-        [...queryParams, +from, +limit]
+        `SELECT *, 'st' as 'rawType' FROM services_transaction 
+        LEFT JOIN servcies s on s.id = ${serviceId}
+        WHERE created_by_id = ? AND status <> 4 s.id = ? ${sortClause} LIMIT ?, ?`,
+        [agentId, serviceId, +from, +limit]
       );
       [row] = await connect.query(
         `SELECT Count(id) as count FROM services_transaction where ${whereClause}`,
