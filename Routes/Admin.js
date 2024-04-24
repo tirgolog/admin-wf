@@ -383,7 +383,7 @@ admin.get("/getAgentBalanse/:agent_id", async (req, res) => {
       COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'subscription'), 0) AS tirgoBalance,
       COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'service_balance'), 0) - 
       COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE agent_id = ? AND is_agent = true), 0) - 
-      COALESCE((SELECT SUM(price_uzs) FROM services_transaction where created_by_id = ? AND status <> 2), 0) AS serviceBalance      
+      COALESCE((SELECT SUM(price_uzs) FROM services_transaction where created_by_id = ? AND status <> 4), 0) AS serviceBalance      
     `,
       [agent_id, agent_id, agent_id, agent_id, agent_id]
     );
@@ -434,7 +434,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
       sortClause = `ORDER BY created_at ${sortType}`;
     }
     if (!transactionType || transactionType == 'service') {
-      let whereClause = "created_by_id = ? AND status <> 2";
+      let whereClause = "created_by_id = ? AND status <> 4";
       const queryParams = [agentId];
       // Query for service transactions
       [rows] = await connect.query(
@@ -545,7 +545,7 @@ admin.get("/all-agents-service-transactions", async (req, res) => {
     connect = await database.connection.getConnection();
    
     if(!transactionType || transactionType == 'service') {
-      let rowWhereClause = 'st.status <> 2';
+      let rowWhereClause = 'st.status <> 4';
       if(driverId) {
         rowWhereClause += ` AND userid = ${driverId}`
       }
@@ -558,7 +558,7 @@ admin.get("/all-agents-service-transactions", async (req, res) => {
       );
   
       [row] = await connect.query(
-        `SELECT Count(id) as count FROM services_transaction where status <> 2`,
+        `SELECT Count(id) as count FROM services_transaction where status <> 4`,
         []
       );
     }
