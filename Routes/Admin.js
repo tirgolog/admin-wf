@@ -379,13 +379,15 @@ admin.get("/getAgentBalanse/:agent_id", async (req, res) => {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
       `SELECT 
-      COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'tirgo_balance'), 0) - 
-      COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'subscription'), 0) AS tirgoBalance,
+      COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'tirgo_balance' ), 0) - 
+      COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'subscription'  AND deleted = 0), 0) +
+      COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'subscription'  AND deleted = 1), 0)
+      AS tirgoBalance,
       COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'service_balance'), 0) - 
       COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE agent_id = ? AND is_agent = true), 0) - 
       COALESCE((SELECT SUM(price_uzs) FROM services_transaction where created_by_id = ? AND status <> 4), 0) AS serviceBalance      
     `,
-      [agent_id, agent_id, agent_id, agent_id, agent_id]
+      [agent_id, agent_id,  agent_id, agent_id, agent_id, agent_id]
     );
     if (rows.length) {
       appData.status = true;
@@ -449,7 +451,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
     } 
     if (!transactionType || transactionType !== 'service') {
       // Construct the WHERE clause for optional filters
-      const type = transactionType ? transactionType : 'service_balance';
+      const type = transactionType ? `${transactionType} AND deleted <> 1`: 'service_balance';
       let balanceWhereClause = `agent_id = ${agentId} AND type = '${type}'`;
       [balanceRows] = await connect.query(
         `SELECT *, 'at' as 'rawType' FROM agent_transaction WHERE ${balanceWhereClause} ${sortClause} LIMIT ?, ?`,
@@ -564,7 +566,7 @@ admin.get("/all-agents-service-transactions", async (req, res) => {
     }
 
     if(!transactionType || transactionType !== 'service') {
-      const type = transactionType ? transactionType : 'service_balance';
+      const type = transactionType ? `${transactionType} AND deleted <> 1 `: 'service_balance';
        let rowWhereClause = `type = '${type}'`;
       [balanceRows] = await connect.query(
         `SELECT *, adl.name as "adminName", al.name as "agentName", 'at' as 'rawType' FROM agent_transaction at
@@ -661,10 +663,11 @@ admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
     sortType = req.query.sortType;
   try {
     connect = await database.connection.getConnection();
+    const type = transactionType ? `${transactionType} AND deleted <> 1 `: 'service_balance';
     
     let whereClause = `agent_id = ${agentId}`;
     if(transactionType) {
-      whereClause += ` AND type = '${transactionType}'`;
+      whereClause += ` AND type = '${type}'`;
     } else {
       whereClause += ` AND type IN ('tirgo_balance', 'subscription')`;
     } 
@@ -738,7 +741,7 @@ admin.get("/all-agents-tirgo-balance-transactions", async (req, res) => {
     if(!transactionType || transactionType == 'subscription') {
       let whereClause = 'st.agent_id IS NOT NULL'
       if(driverId) {
-        whereClause += ` AND userid = ${driverId}`
+        whereClause += ` AND userid = ${driverId} AND deleted <> 1`;
       }
       [subs] = await connect.query(
         `SELECT st.*, al.name as "agentName", ul.name as "driverName", 'subscription' as "type" FROM subscription_transaction st
@@ -749,7 +752,7 @@ admin.get("/all-agents-tirgo-balance-transactions", async (req, res) => {
       );
   
       [sub] = await connect.query(
-        `SELECT Count(id) as count FROM subscription_transaction`,
+        `SELECT Count(id) as count FROM subscription_transaction Where deleted <> 1`,
         []
       );
     }
@@ -793,9 +796,10 @@ admin.get("/sumOfDriversSubcription/:agent_id", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      `  SELECT   amount  FROM   subscription_transaction   WHERE  agent_id = ?`,
+      `SELECT  amount  FROM subscription_transaction WHERE  agent_id = ? and deleted = 0`,
       [agent_id]
     );
+    console.log(rows)
     const total_sum = rows.reduce(
       (accumulator, secure) => accumulator + +Number(secure.amount),
       0
@@ -1289,9 +1293,11 @@ admin.post("/addUser", async (req, res) => {
           const [agentBalance] = await connect.query(
             `SELECT 
             COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'tirgo_balance'), 0) - 
-            COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'subscription'), 0) AS tirgoBalance
+            COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'subscription' AND deleted = 0), 0)+
+            COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'subscription' AND deleted = 1), 0)
+             AS tirgoBalance
           `,
-            [data.agent_id, data.agent_id]
+            [data.agent_id, data.agent_id, data.agent_id]
           );
           if (agentBalance.length) {
             if (subscription[0].duration === 1) {
@@ -2981,7 +2987,7 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "SELECT id, phone, name, to_subscription FROM users_list where id = ? ",
+      "SELECT id, phone, name, subscription_id, from_subscription, to_subscription FROM users_list where id = ? ",
       [driverId]
     );
     if (rows.length > 0) {
@@ -3382,9 +3388,11 @@ admin.post("/addUserByAgent", async (req, res) => {
         const [agentBalance] = await connect.query(
           `SELECT 
           COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'tirgo_balance'), 0) - 
-          COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'subscription'), 0) AS tirgoBalance
+          COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'subscription' AND deleted = 0), 0)+
+          COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'subscription' AND deleted = 1), 0)
+           AS tirgoBalance
           `,
-          [agent_id, agent_id]
+          [agent_id, agent_id, agent_id]
         );
         if (agentBalance.length) {
           if (subscription[0].duration === 1) {
@@ -4747,31 +4755,34 @@ admin.post("/remove-subscription-agent", async (req, res) => {
         const [subscription] = await connect.query(
           "SELECT * FROM subscription where id = ? ",
           [subscription_id]
-        );
+        )
         if (subscription[0].duration === 1) {
           let paymentValue = 80000;
           const [select_agent_transactions] = await connect.query(
-            "SELECT * FROM agent_transaction WHERE agent_id = ? AND amount = ? AND type = 'subscription'",
+            "SELECT * FROM agent_transaction WHERE agent_id = ? AND amount = ? AND type = 'subscription' AND deleted <> 1",
             [agent_id, paymentValue]
           );
+          console.log(select_agent_transactions)
           const [select_subscription_transaction] = await connect.query(
             "SELECT * FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? AND  agent_id = ?",
             [user_id, subscription_id, phone, paymentValue, agent_id]
           );
+          console.log(select_subscription_transaction)
           if (
             select_agent_transactions.length > 0 &&
             select_subscription_transaction.length > 0
           ) {
-            const agent_transactions = await connect.query(
-              "DELETE FROM agent_transaction WHERE agent_id = ? AND amount = ? AND type = 'subscription'",
-              [agent_id, paymentValue]
+            const insertResult = await connect.query(
+              "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, created_at = ?, type = 'subscription', deleted = 1",
+              [agent_id, paymentValue, new Date()]
             );
-            if (agent_transactions) {
+            if (insertResult) {
               const subscription_transaction = await connect.query(
-                "DELETE FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? AND  agent_id = ?",
+                "UPDATE subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, agent_id = ?, deleted = 1 LIMIT 1",
                 [user_id, subscription_id, phone, paymentValue, agent_id]
               );
-              if (subscription_transaction) {
+
+              if (subscription_transaction.length > 0) {
                 const [edit] = await connect.query(
                   "UPDATE users_list SET subscription_id = NULL, from_subscription = NULL, to_subscription = NULL WHERE id = ?",
                   [user_id]
@@ -4780,12 +4791,12 @@ admin.post("/remove-subscription-agent", async (req, res) => {
                 appData.status = true;
                 res.status(200).json(appData);
               } else {
-                appData.error = "Транзакция подписки не удалена";
+                appData.error = "не могу добавить транзакцию подписки";
                 appData.status = false;
                 res.status(400).json(appData);
               }
             } else {
-              appData.error = "Транзакция агента не удалена";
+              appData.error = "не могу добавить транзакцию подписки";
               appData.status = false;
               res.status(400).json(appData);
             }
@@ -4797,7 +4808,7 @@ admin.post("/remove-subscription-agent", async (req, res) => {
         } else if (subscription[0].duration === 3) {
           let paymentValue = 180000;
           const [select_agent_transactions] = await connect.query(
-            "SELECT * FROM agent_transaction WHERE agent_id = ? AND amount = ? AND type = 'subscription'",
+            "SELECT * FROM agent_transaction WHERE agent_id = ? AND amount = ? AND type = 'subscription' AND deleted <> 1",
             [agent_id, paymentValue]
           );
           const [select_subscription_transaction] = await connect.query(
@@ -4808,16 +4819,17 @@ admin.post("/remove-subscription-agent", async (req, res) => {
             select_agent_transactions.length > 0 &&
             select_subscription_transaction.length > 0
           ) {
-            const agent_transactions = await connect.query(
-              "DELETE FROM agent_transaction WHERE agent_id = ? AND amount = ? AND type = 'subscription'",
-              [agent_id, paymentValue]
+            const insertResult = await connect.query(
+              "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, created_at = ?, type = 'subscription', deleted = 1",
+              [agent_id, paymentValue, new Date()]
             );
-            if (agent_transactions) {
+            if (insertResult) {
               const subscription_transaction = await connect.query(
-                "DELETE FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? AND  agent_id = ?",
+                "UPDATE subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, agent_id = ?, deleted = 1 LIMIT 1",
                 [user_id, subscription_id, phone, paymentValue, agent_id]
               );
-              if (subscription_transaction) {
+
+              if (subscription_transaction.length > 0) {
                 const [edit] = await connect.query(
                   "UPDATE users_list SET subscription_id = NULL, from_subscription = NULL, to_subscription = NULL WHERE id = ?",
                   [user_id]
@@ -4826,12 +4838,12 @@ admin.post("/remove-subscription-agent", async (req, res) => {
                 appData.status = true;
                 res.status(200).json(appData);
               } else {
-                appData.error = "Транзакция подписки не удалена";
+                appData.error = "не могу добавить транзакцию подписки";
                 appData.status = false;
                 res.status(400).json(appData);
               }
             } else {
-              appData.error = "Транзакция агента не удалена";
+              appData.error = "не могу добавить транзакцию подписки";
               appData.status = false;
               res.status(400).json(appData);
             }
@@ -4843,7 +4855,7 @@ admin.post("/remove-subscription-agent", async (req, res) => {
         } else if (subscription[0].duration === 12) {
           let paymentValue = 570000;
           const [select_agent_transactions] = await connect.query(
-            "SELECT * FROM agent_transaction WHERE agent_id = ? AND amount = ? AND type = 'subscription'",
+            "SELECT * FROM agent_transaction WHERE agent_id = ? AND amount = ? AND type = 'subscription' AND deleted <> 1",
             [agent_id, paymentValue]
           );
           const [select_subscription_transaction] = await connect.query(
@@ -4854,16 +4866,17 @@ admin.post("/remove-subscription-agent", async (req, res) => {
             select_agent_transactions.length > 0 &&
             select_subscription_transaction.length > 0
           ) {
-            const agent_transactions = await connect.query(
-              "DELETE FROM agent_transaction WHERE agent_id = ? AND amount = ? AND type = 'subscription'",
-              [agent_id, paymentValue]
+            const insertResult = await connect.query(
+              "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, created_at = ?, type = 'subscription', deleted = 1",
+              [agent_id, paymentValue, new Date()]
             );
-            if (agent_transactions) {
+            if (insertResult) {
               const subscription_transaction = await connect.query(
-                "DELETE FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? AND  agent_id = ?",
+                "UPDATE subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, agent_id = ?, deleted = 1 LIMIT 1",
                 [user_id, subscription_id, phone, paymentValue, agent_id]
               );
-              if (subscription_transaction) {
+
+              if (subscription_transaction.length > 0) {
                 const [edit] = await connect.query(
                   "UPDATE users_list SET subscription_id = NULL, from_subscription = NULL, to_subscription = NULL WHERE id = ?",
                   [user_id]
@@ -4872,12 +4885,12 @@ admin.post("/remove-subscription-agent", async (req, res) => {
                 appData.status = true;
                 res.status(200).json(appData);
               } else {
-                appData.error = "Транзакция подписки не удалена";
+                appData.error = "не могу добавить транзакцию подписки";
                 appData.status = false;
                 res.status(400).json(appData);
               }
             } else {
-              appData.error = "Транзакция агента не удалена";
+              appData.error = "не могу добавить транзакцию подписки";
               appData.status = false;
               res.status(400).json(appData);
             }
@@ -4894,18 +4907,17 @@ admin.post("/remove-subscription-agent", async (req, res) => {
         );
         if (subscription[0].duration === 1) {
           let paymentValue = 80000;
-        console.log("Подписка не найдена");
           const [select_subscription_transaction] = await connect.query(
-            "SELECT * FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? ",
+            "SELECT * FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? AND  agent_id = NULL",
             [user_id, subscription_id, phone, paymentValue]
           );
-          console.log(select_subscription_transaction);
           if (select_subscription_transaction.length > 0) {
             const subscription_transaction = await connect.query(
-              "DELETE FROM subscription_transaction WHERE   userid = ? AND subscription_id = ? AND phone = ? AND amount = ?",
-              [user_id, subscription_id, phone, paymentValue]
+              "UPDATE subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, agent_id = ?, deleted = 1 LIMIT 1",
+              [user_id, subscription_id, phone, paymentValue, agent_id]
             );
-            if (subscription_transaction) {
+
+            if (subscription_transaction.length > 0) {
               const [edit] = await connect.query(
                 "UPDATE users_list SET subscription_id = NULL, from_subscription = NULL, to_subscription = NULL WHERE id = ?",
                 [user_id]
@@ -4914,27 +4926,27 @@ admin.post("/remove-subscription-agent", async (req, res) => {
               appData.status = true;
               res.status(200).json(appData);
             } else {
-              appData.error = "Транзакция подписки не удалена";
+              appData.error = "не могу добавить транзакцию подписки";
               appData.status = false;
               res.status(400).json(appData);
             }
           }else{
-            appData.error = "Транзакция подписки не удалена";
+            appData.error = "ТТранзакция подписки не найдена";
             appData.status = false;
             res.status(400).json(appData);
           }
         } else if (subscription[0].duration === 3) {
           let paymentValue = 180000;
           const [select_subscription_transaction] = await connect.query(
-            "SELECT * FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? ",
+            "SELECT * FROM subscription_transaction WHERE  userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ?  AND  agent_id = NULL",
             [user_id, subscription_id, phone, paymentValue, agent_id]
           );
           if (select_subscription_transaction.length > 0) {
             const subscription_transaction = await connect.query(
-              "DELETE FROM subscription_transaction WHERE   userid = ? AND subscription_id = ? AND phone = ? AND amount = ?",
-              [user_id, subscription_id, phone, paymentValue]
+              "UPDATE subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, agent_id = ?, deleted = 1 LIMIT 1",
+              [user_id, subscription_id, phone, paymentValue, agent_id]
             );
-            if (subscription_transaction) {
+            if (subscription_transaction.length > 0) {
               const [edit] = await connect.query(
                 "UPDATE users_list SET subscription_id = NULL, from_subscription = NULL, to_subscription = NULL WHERE id = ?",
                 [user_id]
@@ -4943,27 +4955,27 @@ admin.post("/remove-subscription-agent", async (req, res) => {
               appData.status = true;
               res.status(200).json(appData);
             } else {
-              appData.error = "Транзакция подписки не удалена";
+              appData.error = "не могу добавить транзакцию подписки";
               appData.status = false;
               res.status(400).json(appData);
             }
           }else{
-            appData.error = "Транзакция подписки не удалена";
+            appData.error = "ТТранзакция подписки не найдена";
             appData.status = false;
             res.status(400).json(appData);
           }
         } else if (subscription[0].duration === 12) {
           let paymentValue = 570000;
           const [select_subscription_transaction] = await connect.query(
-            "SELECT * FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? ",
+            "SELECT * FROM subscription_transaction WHERE   userid = ? AND  subscription_id = ? AND  phone = ? AND  amount = ? AND  agent_id = NULL ",
             [user_id, subscription_id, phone, paymentValue, agent_id]
           );
           if (select_subscription_transaction.length > 0) {
             const subscription_transaction = await connect.query(
-              "DELETE FROM subscription_transaction WHERE   userid = ? AND subscription_id = ? AND phone = ? AND amount = ?",
-              [user_id, subscription_id, phone, paymentValue]
+              "UPDATE subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, agent_id = ?, deleted = 1 LIMIT 1",
+              [user_id, subscription_id, phone, paymentValue, agent_id]
             );
-            if (subscription_transaction) {
+            if (subscription_transaction.length > 0) {
               const [edit] = await connect.query(
                 "UPDATE users_list SET subscription_id = NULL, from_subscription = NULL, to_subscription = NULL WHERE id = ?",
                 [user_id]
@@ -4972,12 +4984,12 @@ admin.post("/remove-subscription-agent", async (req, res) => {
               appData.status = true;
               res.status(200).json(appData);
             } else {
-              appData.error = "Транзакция подписки не удалена";
+              appData.error = "не могу добавить транзакцию подписки";
               appData.status = false;
               res.status(400).json(appData);
             }
           }else{
-            appData.error = "Транзакция подписки не удалена";
+            appData.error = "ТТранзакция подписки не найдена";
             appData.status = false;
             res.status(400).json(appData);
           }
