@@ -741,7 +741,7 @@ admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
         `SELECT at.*, al.name as "agentName", adl.name as "adminName" FROM agent_transaction  at
         LEFT JOIN users_list al on al.id = at.agent_id
         LEFT JOIN users_list adl on adl.id = at.admin_id
-        WHERE type = 'tirgo_balance' AND  agent_id = ${agentId} ORDER BY ${ sortByDate ? 'created_at' : 'id' } ${sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?;`,
+        WHERE type = 'tirgo_balance' AND at.agent_id = ${agentId} ORDER BY ${ sortByDate ? 'created_at' : 'id' } ${sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?;`,
         [+from, +limit]
       );
 
