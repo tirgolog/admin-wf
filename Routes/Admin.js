@@ -664,62 +664,63 @@ admin.get("/agent-service-transactions", async (req, res) => {
   }
 });
 
-admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
-  let connect,
-    appData = { status: false },
-    agentId = req.query.agentId,
-    from = req.query.from,
-    limit = req.query.limit,
-    transactionType = req.query.transactionType,
-    driverId = req.query.driverId,    
-    sortByDate = req.query.sortByDate == 'true',  //true or false
-    sortType = req.query.sortType;
-  try {
-    connect = await database.connection.getConnection();
+// admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
+//   let connect,
+//     appData = { status: false },
+//     agentId = req.query.agentId,
+//     from = req.query.from,
+//     limit = req.query.limit,
+//     transactionType = req.query.transactionType,
+//     driverId = req.query.driverId,    
+//     sortByDate = req.query.sortByDate == 'true',  //true or false
+//     sortType = req.query.sortType;
+//   try {
+//     connect = await database.connection.getConnection();
     
-    let whereClause = `agent_id = ${agentId}`;
-    if(transactionType) {
-      whereClause += ` AND type = '${transactionType}'`;
-    } else {
-      whereClause += ` AND type IN ('tirgo_balance', 'subscription')`;
-    } 
-    if(driverId) {
-      whereClause = ` AND driver_id = '${driverId}'`;
-    }
-    const [rows] = await connect.query(
-      `SELECT * FROM agent_transaction WHERE ${whereClause} ORDER BY ${ sortByDate ? 'created_at' : 'id' } ${sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?;`,
-      [+from, +limit]
-    );
-    const [row] = await connect.query(
-      `SELECT Count(id) as count FROM agent_transaction WHERE ${whereClause}`,
-      [agentId]
-    );
-    rows.forEach((el) => {
-      el.type = el.type == 'subscription' ? 'Подписка' : 'Пополнение баланса';
-    })
-    if (rows.length) {
-      appData.status = true;
-      appData.data = { content: rows, from, limit, totalCount: row[0].count };
-    }
-    res.status(200).json(appData);
-  } catch (e) {
-    console.log(e)
-    appData.error = e.message;
-    res.status(400).json(appData);
-  } finally {
-    if (connect) {
-      connect.release();
-    }
-  }
-});
+//     let whereClause = `agent_id = ${agentId}`;
+//     if(transactionType) {
+//       whereClause += ` AND type = '${transactionType}'`;
+//     } else {
+//       whereClause += ` AND type IN ('tirgo_balance', 'subscription')`;
+//     } 
+//     if(driverId) {
+//       whereClause = ` AND driver_id = '${driverId}'`;
+//     }
+//     const [rows] = await connect.query(
+//       `SELECT * FROM agent_transaction WHERE ${whereClause} ORDER BY ${ sortByDate ? 'created_at' : 'id' } ${sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?;`,
+//       [+from, +limit]
+//     );
+//     const [row] = await connect.query(
+//       `SELECT Count(id) as count FROM agent_transaction WHERE ${whereClause}`,
+//       [agentId]
+//     );
+//     rows.forEach((el) => {
+//       el.type = el.type == 'subscription' ? 'Подписка' : 'Пополнение баланса';
+//     })
+//     if (rows.length) {
+//       appData.status = true;
+//       appData.data = { content: rows, from, limit, totalCount: row[0].count };
+//     }
+//     res.status(200).json(appData);
+//   } catch (e) {
+//     console.log(e)
+//     appData.error = e.message;
+//     res.status(400).json(appData);
+//   } finally {
+//     if (connect) {
+//       connect.release();
+//     }
+//   }
+// });
 
-admin.get("/all-agents-tirgo-balance-transactions", async (req, res) => {
+admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
   let connect,
     appData = { status: false },
     from = req.query.from,
     limit = req.query.limit,
     transactionType = req.query.transactionType,
     driverId = req.query.driverId,
+    agentId = req.query.agentId,
     rows = [],
     subs = [],
     row = [],
@@ -740,18 +741,18 @@ admin.get("/all-agents-tirgo-balance-transactions", async (req, res) => {
         `SELECT at.*, al.name as "agentName", adl.name as "adminName" FROM agent_transaction  at
         LEFT JOIN users_list al on al.id = at.agent_id
         LEFT JOIN users_list adl on adl.id = at.admin_id
-        WHERE type = 'tirgo_balance' ORDER BY ${ sortByDate ? 'created_at' : 'id' } ${sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?;`,
+        WHERE type = 'tirgo_balance' AND  agent_id = ${agentId} ORDER BY ${ sortByDate ? 'created_at' : 'id' } ${sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?;`,
         [+from, +limit]
       );
 
       [row] = await connect.query(
-        `SELECT Count(id) as count FROM agent_transaction where type = 'tirgo_balance'`,
+        `SELECT Count(id) as count FROM agent_transaction where type = 'tirgo_balance' AND  agent_id = ${agentId}`,
         []
       );
     }
 
     if(!transactionType || transactionType == 'subscription') {
-      let whereClause = 'st.agent_id IS NOT NULL'
+      let whereClause = `st.agent_id = ${agentId}`
       if(driverId) {
         whereClause += ` AND userid = ${driverId}`
       }
@@ -764,7 +765,7 @@ admin.get("/all-agents-tirgo-balance-transactions", async (req, res) => {
       );
   
       [sub] = await connect.query(
-        `SELECT Count(id) as count FROM subscription_transaction`,
+        `SELECT Count(id) as count FROM subscription_transaction where agent_id = ${agentId}`,
         []
       );
     }
