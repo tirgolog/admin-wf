@@ -611,7 +611,13 @@ admin.get("/agent-service-transactions", async (req, res) => {
         );
 
       }
-      const data = ([...balanceRows, ...rows, ...alphaRows].sort((a, b) => b.created_at < a.created_at).splice(0, limit)).map((el) => {
+      const data = ([...balanceRows, ...rows, ...alphaRows].sort((a, b) => {
+        if(sortType.toString().toLowerCase() == 'asc') {
+          return a.created_at - b.created_at
+        } else {
+          return b.created_at - a.created_at
+        }
+      }).splice(0, limit)).map((el) => {
         if (el.rawType == 'at') {
           console.log(el.type)
           return {
@@ -779,7 +785,13 @@ admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
       );
     }
 
-    const data = [...rows, ...subs].sort((a, b) => b.created_at - a.created_at).splice(0, limit).map((el) => {
+    const data = [...rows, ...subs].sort((a, b) => {
+      if(sortType.toString().toLowerCase() == 'asc') {
+        return a.created_at - b.created_at
+      } else {
+        return b.created_at - a.created_at
+      }
+    }).splice(0, limit).map((el) => {
       return {
         id: el.id,
         driverId: el.userid,
