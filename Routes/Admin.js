@@ -3850,6 +3850,101 @@ admin.post("/addDriverServices", async (req, res) => {
   }
 });
 
+admin.post("/agent/add-services", async (req, res) => {
+  let connect,
+    appData = { status: false },
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);;
+  const { user_id, phone, services } = req.body;
+  try {
+    if (!services) {
+      appData.error = "Необходимо оформить подписку";
+      return res.status(400).json(appData);
+    }
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      "SELECT * FROM users_contacts WHERE text = ? AND verify = 1",
+      [phone]
+    );
+    if (rows.length < 1) {
+      appData.error = " Не найден Пользователь";
+      appData.status = false;
+      res.status(400).json(appData);
+    } else {
+    
+      const [agent] = await connect.query(
+        `SELECT 
+        COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'service_balance'), 0) - 
+        COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE agent_id = ? AND is_agent = true), 0) - 
+        COALESCE((SELECT SUM(price_uzs) FROM services_transaction where created_by_id = ? AND status <> 4), 0) AS serviceBalance      
+      `,
+        [userInfo.id, userInfo.id, userInfo.id]
+      );
+
+      let balance = agent[0].serviceBalance;
+      if (balance >= totalAmount) {
+        const [editUser] = await connect.query(
+          "UPDATE users_list SET is_service = 1  WHERE id = ?",
+          [user_id]
+        );
+        if (editUser.affectedRows > 0) {
+          const insertValues = await Promise.all(
+            services.map(async (service) => {
+              try {
+                const [result] = await connect.query(
+                  "SELECT * FROM services WHERE id = ?",
+                  [service.service_id]
+                );
+                if (result.length === 0) {
+                  throw new Error(
+                    `Service with ID ${service.service_id} not found.`
+                  );
+                }
+                return [
+                  user_id,
+                  service.service_id,
+                  result[0].name,
+                  service.price_uzs,
+                  service.price_kzs,
+                  service.rate,
+                  0,
+                  userInfo.id,
+                  true
+                ];
+              } catch (error) {
+                console.error("Error occurred while fetching service:", error);
+              }
+            })
+          );
+          const sql =
+            "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, created_by_id, is_agent) VALUES ?";
+          const [result] = await connect.query(sql, [insertValues]);
+          if (result.affectedRows > 0) {
+            appData.status = true;
+            socket.updateAllMessages("update-alpha-balance", "1");
+            res.status(200).json(appData);
+          }
+        } else {
+          appData.error = "Пользователь не может обновить";
+          appData.status = false;
+          res.status(400).json(appData);
+        }
+      } else {
+        appData.error = "Недостаточно средств на балансе";
+        appData.status = false;
+        res.status(400).json(appData);
+      }
+    }
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+
 admin.get("/alpha-payment/:userid", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
