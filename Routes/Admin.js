@@ -3879,7 +3879,10 @@ admin.post("/agent/add-services", async (req, res) => {
       `,
         [userInfo.id, userInfo.id, userInfo.id]
       );
-
+      const totalAmount = services.reduce(
+        (accumulator, secure) => accumulator + Number(secure.price_uzs),
+        0
+      );
       let balance = agent[0].serviceBalance;
       if (balance >= totalAmount) {
         const [editUser] = await connect.query(
