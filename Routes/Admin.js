@@ -847,16 +847,16 @@ admin.get("/agent-services/transations-total-amount", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      `  SELECT   amount  FROM   services_transaction   WHERE  created_by_id = ?`,
+      `SELECT SUM(amount) as "totalAmount" FROM services_transaction WHERE created_by_id = ?`,
       [agentId]
     );
-    const totalAmount = rows.reduce(
-      (accumulator, secure) => accumulator + +Number(secure.amount),
-      0
+    const [alphaRows] = await connect.query(
+      `SELECT SUM(amount) as "totalAmount" FROM alpha_payment WHERE agent_id = ?`,
+      [agentId]
     );
     if (rows.length) {
       appData.status = true;
-      appData.data = { totalAmount };
+      appData.data = { totalAmount: +rows[0].totalAmount + +alphaRows[0].totalAmount };
     }
     res.status(200).json(appData);
   } catch (e) {
