@@ -403,130 +403,131 @@ admin.get("/getAgentBalanse/:agent_id", async (req, res) => {
   }
 });
 
+// admin.get("/agent-service-transactions", async (req, res) => {
+//   let connect,
+//     appData = { status: false },
+//     agentId = req.query.agentId,
+//     transactionType = req.query.transactionType,
+//     serviceId = req.query.serviceId,
+//     sortByDate = req.query.sortByDate,  //true or false
+//     sortType = req.query.sortType,
+//     from = req.query.from,
+//     limit = req.query.limit,
+//     rows = [],
+//     row = [],
+//     balanceRows = [],
+//     balanceRow = [],
+//     alphaRows = [],
+//     alphaRow = [];
+
+//   try {
+//     connect = await database.connection.getConnection();
+
+//     // Construct the WHERE clause for optional filters
+//     if (!from) {
+//       from = 0;
+//     }
+//     if (!limit) {
+//       limit = 10;
+//     }
+//     let sortClause = "ORDER BY id DESC";
+//     if (sortByDate) {
+//       sortClause = `ORDER BY created_at ${sortType}`;
+//     }
+//     if (!transactionType || transactionType == 'service') {
+//       let whereClause = "created_by_id = ? AND status <> 4";
+//       // Query for service transactions
+//       [rows] = await connect.query(
+//         `SELECT *, 'st' as 'rawType' FROM services_transaction st 
+//         LEFT JOIN services s on s.id = st.service_id
+//         WHERE st.created_by_id = ? AND st.status <> 4 AND s.id = ? ${sortClause} LIMIT ?, ?`,
+//         [agentId, serviceId, +from, +limit]
+//       );
+//       [row] = await connect.query(
+//         `SELECT Count(id) as count FROM services_transaction where ${whereClause}`,
+//         [agentId]
+//       );
+
+//     } 
+//     if (!transactionType || transactionType !== 'service') {
+//       // Construct the WHERE clause for optional filters
+//       const type = transactionType ? transactionType : 'service_balance';
+//       let balanceWhereClause = `agent_id = ${agentId} AND type = '${type}'`;
+//       [balanceRows] = await connect.query(
+//         `SELECT *, 'at' as 'rawType' FROM agent_transaction WHERE ${balanceWhereClause} ${sortClause} LIMIT ?, ?`,
+//         [+from, +limit]
+//       );
+//       [balanceRow] = await connect.query(
+//         `SELECT Count(id) as count FROM agent_transaction WHERE ${balanceWhereClause}`,
+//         []
+//       );
+
+//       if(type == 'service_balance') {
+//         [alphaRows] = await connect.query(
+//           `SELECT *, 'alpha' as "rawType" FROM alpha_payment WHERE agent_id = ? ${sortClause} LIMIT ?, ?`,
+//           [agentId, +from, +limit]
+//         );
+
+//         [alphaRow] = await connect.query(
+//           `SELECT Count(id) as count FROM alpha_payment WHERE agent_id = ?`,
+//           [agentId]
+//           );
+//         }
+//       }
+       
+//     const data = ([...rows, ...balanceRows, ...alphaRows].sort((a, b) => b.created_at < a.created_at).splice(0, limit)).map((el) => {
+//       if (el.rawType == 'at') {
+//         return {
+//           id: el.id,
+//           agent_id: el.agent_id,
+//           amount: el.amount,
+//           created_at: el.created_at,
+//           type: el.type == 'subscription' ? 'Подписка' : 'Пополнение баланса',
+//         }
+//       } else if(el.rawType == 'alpha') {
+//         return {
+//           id: el.id,
+//           agent_id: el.agent_id,
+//           amount: el.amount,
+//           created_at: el.created_at,
+//           type: 'Пополнение баланса',
+//         }
+//       } else {
+//         return {
+//           id: el.id,
+//           agent_id: el.created_by_id,
+//           amount: el.amount,
+//           created_at: el.created_at,
+//           type: el.service_name,
+//           driver_id: el.userid,
+//           status: el.status
+//         }
+//       }
+//     });
+
+//     if (data.length) {
+//       appData.status = true;
+//       appData.data = { content: data, from, limit, totalCount: row[0]?.count + balanceRow[0]?.count + alphaRow[0]?.count };
+//     }
+//     res.status(200).json(appData);
+//   } catch (e) {
+//     console.log(e)
+//     appData.error = e.message;
+//     res.status(400).json(appData);
+//   } finally {
+//     if (connect) {
+//       connect.release();
+//     }
+//   }
+// });
+
 admin.get("/agent-service-transactions", async (req, res) => {
   let connect,
     appData = { status: false },
-    agentId = req.query.agentId,
-    transactionType = req.query.transactionType,
-    serviceId = req.query.serviceId,
-    sortByDate = req.query.sortByDate,  //true or false
-    sortType = req.query.sortType,
-    from = req.query.from,
-    limit = req.query.limit,
-    rows = [],
-    row = [],
-    balanceRows = [],
-    balanceRow = [],
-    alphaRows = [],
-    alphaRow = [];
-
-  try {
-    connect = await database.connection.getConnection();
-
-    // Construct the WHERE clause for optional filters
-    if (!from) {
-      from = 0;
-    }
-    if (!limit) {
-      limit = 10;
-    }
-    let sortClause = "ORDER BY id DESC";
-    if (sortByDate) {
-      sortClause = `ORDER BY created_at ${sortType}`;
-    }
-    if (!transactionType || transactionType == 'service') {
-      let whereClause = "created_by_id = ? AND status <> 4";
-      // Query for service transactions
-      [rows] = await connect.query(
-        `SELECT *, 'st' as 'rawType' FROM services_transaction st 
-        LEFT JOIN services s on s.id = st.service_id
-        WHERE st.created_by_id = ? AND st.status <> 4 AND s.id = ? ${sortClause} LIMIT ?, ?`,
-        [agentId, serviceId, +from, +limit]
-      );
-      [row] = await connect.query(
-        `SELECT Count(id) as count FROM services_transaction where ${whereClause}`,
-        [agentId]
-      );
-
-    } 
-    if (!transactionType || transactionType !== 'service') {
-      // Construct the WHERE clause for optional filters
-      const type = transactionType ? transactionType : 'service_balance';
-      let balanceWhereClause = `agent_id = ${agentId} AND type = '${type}'`;
-      [balanceRows] = await connect.query(
-        `SELECT *, 'at' as 'rawType' FROM agent_transaction WHERE ${balanceWhereClause} ${sortClause} LIMIT ?, ?`,
-        [+from, +limit]
-      );
-      [balanceRow] = await connect.query(
-        `SELECT Count(id) as count FROM agent_transaction WHERE ${balanceWhereClause}`,
-        []
-      );
-
-      if(type == 'service_balance') {
-        [alphaRows] = await connect.query(
-          `SELECT *, 'alpha' as "rawType" FROM alpha_payment WHERE agent_id = ? ${sortClause} LIMIT ?, ?`,
-          [agentId, +from, +limit]
-        );
-
-        [alphaRow] = await connect.query(
-          `SELECT Count(id) as count FROM alpha_payment WHERE agent_id = ?`,
-          [agentId]
-          );
-        }
-      }
-       
-    const data = ([...rows, ...balanceRows, ...alphaRows].sort((a, b) => b.created_at < a.created_at).splice(0, limit)).map((el) => {
-      if (el.rawType == 'at') {
-        return {
-          id: el.id,
-          agent_id: el.agent_id,
-          amount: el.amount,
-          created_at: el.created_at,
-          type: el.type == 'subscription' ? 'Подписка' : 'Пополнение баланса',
-        }
-      } else if(el.rawType == 'alpha') {
-        return {
-          id: el.id,
-          agent_id: el.agent_id,
-          amount: el.amount,
-          created_at: el.created_at,
-          type: 'Пополнение баланса',
-        }
-      } else {
-        return {
-          id: el.id,
-          agent_id: el.created_by_id,
-          amount: el.amount,
-          created_at: el.created_at,
-          type: el.service_name,
-          driver_id: el.userid,
-          status: el.status
-        }
-      }
-    });
-
-    if (data.length) {
-      appData.status = true;
-      appData.data = { content: data, from, limit, totalCount: row[0]?.count + balanceRow[0]?.count + alphaRow[0]?.count };
-    }
-    res.status(200).json(appData);
-  } catch (e) {
-    console.log(e)
-    appData.error = e.message;
-    res.status(400).json(appData);
-  } finally {
-    if (connect) {
-      connect.release();
-    }
-  }
-});
-
-admin.get("/all-agents-service-transactions", async (req, res) => {
-  let connect,
-    appData = { status: false },
     from = req.query.from,
     transactionType = req.query.transactionType,
-    driverId = req.query.driverId,    
+    driverId = req.query.driverId, 
+    agentId = req.query.agentId,    
     sortByDate = req.query.sortByDate == 'true',  //true or false
     sortType = req.query.sortType,
     limit = req.query.limit,
@@ -544,10 +545,11 @@ admin.get("/all-agents-service-transactions", async (req, res) => {
     }
   try {
 
-    connect = await database.connection.getConnection();
+    if(agentId) {
+      connect = await database.connection.getConnection();
    
     if(!transactionType || transactionType == 'service') {
-      let rowWhereClause = 'st.status <> 4';
+      let rowWhereClause = `st.created_by_id = ${agentId} AND st.status <> 4`;
       if(driverId) {
         rowWhereClause += ` AND userid = ${driverId}`
       }
@@ -560,14 +562,14 @@ admin.get("/all-agents-service-transactions", async (req, res) => {
       );
   
       [row] = await connect.query(
-        `SELECT Count(id) as count FROM services_transaction where status <> 4`,
+        `SELECT Count(id) as count FROM services_transaction where created_by_id = ${agentId} AND status <> 4`,
         []
       );
     }
 
     if(!transactionType || transactionType !== 'service') {
       const type = transactionType ? transactionType : 'service_balance';
-       let rowWhereClause = `type = '${type}'`;
+       let rowWhereClause = `at.agent_id = ${agentId} AND type = '${type}'`;
       [balanceRows] = await connect.query(
         `SELECT *, adl.name as "adminName", al.name as "agentName", 'at' as 'rawType' FROM agent_transaction at
         LEFT JOIN users_list al on al.id = at.agent_id
@@ -576,7 +578,7 @@ admin.get("/all-agents-service-transactions", async (req, res) => {
         [+from, +limit]
       );
       [balanceRow] = await connect.query(
-        `SELECT Count(id) as count FROM agent_transaction where type = 'service_balance'`,
+        `SELECT Count(id) as count FROM agent_transaction where agent_id = ${agentId} AND type = 'service_balance'`,
         []
       );
 
@@ -585,16 +587,15 @@ admin.get("/all-agents-service-transactions", async (req, res) => {
           `SELECT *, 'alpha' as "rawType", al.name as "agentName", d.name as "driverName" FROM alpha_payment ap 
           LEFT JOIN users_list al on al.id = ap.agent_id
           LEFT JOIN users_list d on d.id = ap.userid
-          WHERE is_agent = true LIMIT ?, ?`,
+          WHERE ap.agent_id = ${agentId} AND is_agent = true LIMIT ?, ?`,
           [+from, +limit]
         );
 
         [alphaRow] = await connect.query(
-          `SELECT Count(id) as count FROM alpha_payment WHERE is_agent = true`,
+          `SELECT Count(id) as count FROM alpha_payment WHERE agent_id = ${agentId} AND is_agent = true`,
           );
         }
     }
-
     const data = ([...balanceRows, ...rows, ...alphaRows].sort((a, b) => b.created_at < a.created_at).splice(0, limit)).map((el) => {
       if (el.rawType == 'at') {
         return {
@@ -641,6 +642,10 @@ admin.get("/all-agents-service-transactions", async (req, res) => {
       appData.data = { content: data, from, limit, totalCount: row[0]?.count + balanceRow[0]?.count + alphaRow[0]?.count };
     }
     res.status(200).json(appData);
+    } else {
+      appData.error = 'Agent id is required';
+      res.status(400).json(appData);
+    }
   } catch (e) {
     appData.error = e.message;
     res.status(400).json(appData);
