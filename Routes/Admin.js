@@ -684,7 +684,7 @@ admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
       whereClause += ` AND type IN ('tirgo_balance', 'subscription')`;
     } 
     if(driverId) {
-      whereClause = ` AND driver_id = '${driverId}')`;
+      whereClause = ` AND driver_id = '${driverId}'`;
     }
     const [rows] = await connect.query(
       `SELECT * FROM agent_transaction WHERE ${whereClause} ORDER BY ${ sortByDate ? 'created_at' : 'id' } ${sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?;`,
