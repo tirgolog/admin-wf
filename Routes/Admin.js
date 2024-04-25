@@ -3707,6 +3707,7 @@ admin.post("/services", async (req, res) => {
     price_uzs = req.body.price_uzs,
     price_kzs = req.body.price_kzs,
     rate = req.body.rate,
+    withoutSubscription = req.body.withoutSubscription,
     appData = { status: false };
   try {
     if (!name || !price_uzs || !price_kzs || !rate || !code) {
@@ -3723,8 +3724,8 @@ admin.post("/services", async (req, res) => {
       res.status(400).json(appData);
     } else {
       const [subscription] = await connect.query(
-        "INSERT INTO services SET name = ?, code = ?, price_uzs = ?, price_kzs = ?, rate = ?",
-        [name, code, price_uzs, price_kzs, rate]
+        "INSERT INTO services SET name = ?, code = ?, price_uzs = ?, price_kzs = ?, rate = ?, without_subscription = ?",
+        [name, code, price_uzs, price_kzs, rate, withoutSubscription]
       );
       appData.status = true;
       appData.data = subscription;
