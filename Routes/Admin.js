@@ -554,7 +554,15 @@ admin.get("/agent-service-transactions", async (req, res) => {
         rowWhereClause += ` AND userid = ${driverId}`
       }
       [rows] = await connect.query(
-        `SELECT *, 'st' as 'rawType', al.name as "agentName", adl.name as "driverName" FROM services_transaction st
+        `SELECT 
+        st.id,
+        st.created_by_id,
+        st.amount,
+        st.created_at,
+        st.service_name,
+        st.userid,
+        st.status,
+        'st' as 'rawType', al.name as "agentName", adl.name as "driverName" FROM services_transaction st
         LEFT JOIN users_list al on al.id = st.created_by_id AND al.user_type = 4
         LEFT JOIN users_list adl on adl.id = st.userid AND adl.user_type = 1
         where ${rowWhereClause} ORDER BY ${ sortByDate ? 'st.created_at'  : 'st.id'} ${ sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?`,
