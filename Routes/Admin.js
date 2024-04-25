@@ -859,7 +859,7 @@ admin.get("/agent-services/transations-total-amount", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      `SELECT SUM(amount) as "totalAmount" FROM services_transaction WHERE created_by_id = ?`,
+      `SELECT SUM(amount) as "totalAmount" FROM services_transaction WHERE created_by_id = ? status <> 4`,
       [agentId]
     );
     const [alphaRows] = await connect.query(
