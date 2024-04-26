@@ -3754,7 +3754,7 @@ admin.get("/services", async (req, res) => {
     price_kzs, 
     rate, 
     code, 
-    without_subscription, 
+    without_subscription
     FROM services`);
     if (subscription.length) {
       appData.status = true;
