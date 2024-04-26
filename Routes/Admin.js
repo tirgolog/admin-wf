@@ -4025,7 +4025,7 @@ admin.get("/alpha-payment/:userid", async (req, res) => {
 admin.post("/services-transaction", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
-  const { from, limit, id, userType, driverId, serviceName, fromDate, toDate } = req.body;
+  const { from, limit, id, userType, driverId, serviceName, fromDate, toDate, sortByDate, sortType } = req.body;
   try {
     connect = await database.connection.getConnection();
 
@@ -4097,7 +4097,11 @@ admin.post("/services-transaction", async (req, res) => {
       query += " WHERE " + queryConditions.join(" AND ");
     }
 
-    query += " ORDER BY st.id DESC LIMIT ?, ?";
+    if(sortByDate) {
+      query += ` ORDER BY st.created_at ${sortType} LIMIT ?, ?`;
+    } else {
+      query += ` ORDER BY st.id DESC LIMIT ?, ?`;
+    }
 
     queryParams.push(from, limit);
 
