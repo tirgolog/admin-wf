@@ -4022,10 +4022,10 @@ admin.get("/alpha-payment/:userid", async (req, res) => {
   }
 });
 
-admin.post("/services-transaction", async (req, res) => {
+admin.get("/services-transaction", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
-  const { from, limit, id, userType, driverId, serviceName, fromDate, toDate, sortByDate, sortType } = req.body;
+  const { from, limit, id, userType, driverId, serviceId, fromDate, toDate, sortByDate, sortType } = req.query;
   try {
     connect = await database.connection.getConnection();
 
@@ -4037,8 +4037,13 @@ admin.post("/services-transaction", async (req, res) => {
       queryParams.push(id);
     }
 
-    if (userType) {
-      queryConditions.push("ul.user_type = ?");
+    if (userType == '3') {
+      queryConditions.push("adl.user_type = ?");
+      queryParams.push(userType);
+    }
+
+    if (userType == '4') {
+      queryConditions.push("al.user_type = ?");
       queryParams.push(userType);
     }
 
@@ -4047,9 +4052,9 @@ admin.post("/services-transaction", async (req, res) => {
       queryParams.push(driverId);
     }
 
-    if (serviceName) {
-      queryConditions.push("s.name = ?");
-      queryParams.push(serviceName);
+    if (serviceId) {
+      queryConditions.push("s.id = ?");
+      queryParams.push(serviceId);
     }
 
     if (fromDate) {
