@@ -3653,14 +3653,14 @@ admin.put("/services/:id", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const { id } = req.params;
-    const { name, code, price_uzs, price_kzs, rate } = req.body;
-    if (!id || !name || !code || !price_uzs || !price_kzs || !rate) {
+    const { name, code, price_uzs, price_kzs, rate, withoutSubscription } = req.body;
+    if (!id || !name || !code || !price_uzs || !price_kzs || !rate || !withoutSubscription) {
       appData.error = "All fields are required";
       return res.status(400).json(appData);
     }
     const [rows] = await connect.query(
-      `UPDATE services SET name = ? , price_uzs = ?, price_kzs = ?, rate = ?, code = ? WHERE id = ?`,
-      [name, price_uzs, price_kzs, rate, code, id]
+      `UPDATE services SET name = ? , price_uzs = ?, price_kzs = ?, rate = ?, code = ?, without_subscription = ? WHERE id = ?`,
+      [name, price_uzs, price_kzs, rate, code, withoutSubscription, id]
     );
     if (rows.affectedRows > 0) {
       appData.status = true;
@@ -3746,7 +3746,16 @@ admin.get("/services", async (req, res) => {
     appData = { status: false, timestamp: new Date().getTime() };
   try {
     connect = await database.connection.getConnection();
-    const [subscription] = await connect.query("SELECT * FROM services");
+    const [subscription] = await connect.query(`
+    SELECT 
+    id, 
+    name, 
+    price_uzs, 
+    price_kzs, 
+    rate, 
+    code, 
+    without_subscription, 
+    FROM services`);
     if (subscription.length) {
       appData.status = true;
       appData.data = subscription;
