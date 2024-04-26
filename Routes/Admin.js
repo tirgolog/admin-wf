@@ -4025,12 +4025,44 @@ admin.get("/alpha-payment/:userid", async (req, res) => {
 admin.post("/services-transaction", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
-  const { from, limit } = req.body;
+  const { from, limit, id, userType, driverId, serviceName, fromDate, toDate, sortByDate, sortType } = req.body;
   try {
     connect = await database.connection.getConnection();
 
-    const [services_transaction] = await connect.query(
-      ` SELECT 
+    let queryParams = [];
+    let queryConditions = [];
+
+    if (id) {
+      queryConditions.push("st.id = ?");
+      queryParams.push(id);
+    }
+
+    if (userType) {
+      queryConditions.push("ul.user_type = ?");
+      queryParams.push(userType);
+    }
+
+    if (driverId) {
+      queryConditions.push("st.userid = ?");
+      queryParams.push(driverId);
+    }
+
+    if (serviceName) {
+      queryConditions.push("s.name = ?");
+      queryParams.push(serviceName);
+    }
+
+    if (fromDate) {
+      queryConditions.push("st.created_at >= ?");
+      queryParams.push(fromDate);
+    }
+
+    if (toDate) {
+      queryConditions.push("st.created_at <= ?");
+      queryParams.push(toDate);
+    }
+
+    let query = `SELECT 
       st.id,
       st.userid as "driverId",
       ul.name as "driverName",
@@ -4059,12 +4091,22 @@ admin.post("/services-transaction", async (req, res) => {
       LEFT JOIN users_list ul ON ul.id = st.userid
       LEFT JOIN users_list al ON al.id = st.created_by_id AND al.user_type = 4
       LEFT JOIN users_list adl ON adl.id = st.created_by_id AND adl.user_type = 3
-      LEFT JOIN services s ON s.id = st.service_id
-      ORDER BY st.id DESC
-      LIMIT ?, ?;
-    `,
-      [from, limit]
-    );
+      LEFT JOIN services s ON s.id = st.service_id`;
+
+    if (queryConditions.length > 0) {
+      query += " WHERE " + queryConditions.join(" AND ");
+    }
+
+    if(sortByDate) {
+      query += ` ORDER BY st.created_at ${sortType} LIMIT ?, ?`;
+    } else {
+      query += ` ORDER BY st.id DESC LIMIT ?, ?`;
+    }
+
+    queryParams.push(from, limit);
+
+    const [services_transaction] = await connect.query(query, queryParams);
+
     if (services_transaction.length) {
       appData.status = true;
       appData.data = services_transaction;
@@ -4083,6 +4125,7 @@ admin.post("/services-transaction", async (req, res) => {
     }
   }
 });
+
 
 admin.post("/services-transaction/user", async (req, res) => {
   let connect,
