@@ -4083,6 +4083,7 @@ admin.get("/services-transaction", async (req, res) => {
       s.name as "serviceName",
       s.code as "serviceCode",
       s.id as "serviceId",
+      s.without_subscription,
       st.price_uzs,
       st.price_kzs,
       st.amount,
@@ -4156,6 +4157,7 @@ admin.post("/services-transaction/user", async (req, res) => {
       s.name as "serviceName",
       s.code as "serviceCode",
       s.id as "serviceId",
+      s.without_subscription,
       st.price_uzs,
       st.price_kzs,
       st.amount,
@@ -4825,7 +4827,6 @@ admin.post("/driver-group/add-services", async (req, res) => {
       }
     }
   } catch (e) {
-    console.log(e)
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
