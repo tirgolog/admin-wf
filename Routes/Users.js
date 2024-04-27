@@ -4893,6 +4893,7 @@ users.post("/services-transaction/user", async (req, res) => {
      ) AS name,
       price_uzs,
       price_kzs,
+      without_subscription,
       rate,
       status,
       createAt
@@ -4963,8 +4964,9 @@ users.post("/addDriverServices", async (req, res) => {
         (accumulator, secure) => accumulator + Number(secure.price_uzs),
         0
       );
-
+      console.log(totalAmount, "totalAmount");
       let balance = totalPaymentAmount - totalPaymentAmountTransaction;
+      console.log(balance, "balance");
       if (balance >= totalAmount) {
         const [editUser] = await connect.query(
           "UPDATE users_list SET is_service = 1  WHERE id = ?",
@@ -4972,6 +4974,7 @@ users.post("/addDriverServices", async (req, res) => {
         );
         if (editUser.affectedRows > 0) {
           const insertValues = await Promise.all(services.map(async (service) => {
+            console.log(service, "service");
             try {
               const [result] = await connect.query(
                 "SELECT * FROM services WHERE id = ?",
@@ -4987,13 +4990,14 @@ users.post("/addDriverServices", async (req, res) => {
                 service.price_uzs,
                 service.price_kzs,
                 service.rate,
-                0
+                0,
+                service.without_subscription? service.without_subscription : 0,
               ];
             } catch (error) {
               console.error("Error occurred while fetching service:", error);
             }
           }));
-          const sql = 'INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status) VALUES ?';
+          const sql = 'INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, without_subscription) VALUES ?';
           const [result] = await connect.query(sql, [insertValues]);
           if (result.affectedRows > 0) {
             appData.status = true;
@@ -5034,6 +5038,7 @@ users.post("/services-transaction/user/days", async (req, res) => {
       (select name from services where services.id = services_transaction.service_id) as name,
       price_uzs,
       price_kzs,
+      without_subscription,
       rate,
       status,
       createAt
