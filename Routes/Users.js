@@ -208,7 +208,7 @@ users.post("/prepareClickPay", async function (req, res) {
 });
 
 users.post("/alphaCompleteClickPay", async function (req, res) {
-  let connect,  
+  let connect,
     merchant_prepare_id = "",
     data = [],
     appData = { status: false };
@@ -682,7 +682,7 @@ users.post("/login", async (req, res) => {
     if (phone === "998935421324" || phone === "9988888888") {
       code = "00000";
     }
-    if(!isTelegram) {
+    if (!isTelegram) {
       if (phone.substr(0, 3) === "998") {
         send_sms_res = await sendSmsPlayMobile(phone, code, country_code);
         console.log("send_sms_res", send_sms_res);
@@ -733,9 +733,9 @@ users.post("/login", async (req, res) => {
     );
     if (rows.length > 0) {
 
-      if(isTelegram) {
+      if (isTelegram) {
         await sendBotMessageToUser(rows[0]?.tg_chat_id, code)
-        send_sms_res ="waiting"
+        send_sms_res = "waiting"
       }
 
       if (send_sms_res === "waiting") {
@@ -750,27 +750,27 @@ users.post("/login", async (req, res) => {
     } else {
 
       // if (send_sms_res === "waiting") {
-        const [notVerified] = await connect.query(
-          "SELECT * FROM users_contacts WHERE text = ? AND user_type = 1 AND verify = 0",
-          [phone]
+      const [notVerified] = await connect.query(
+        "SELECT * FROM users_contacts WHERE text = ? AND user_type = 1 AND verify = 0",
+        [phone]
+      );
+      if (notVerified.length > 0) {
+        await connect.query(
+          "UPDATE users_contacts SET verify_code = ?, is_tg = ? WHERE text = ? AND user_type = 1",
+          [code, isTelegram, phone]
         );
-        if (notVerified.length > 0) {
-          await connect.query(
-            "UPDATE users_contacts SET verify_code = ?, is_tg = ? WHERE text = ? AND user_type = 1",
-            [code, isTelegram, phone]
-          );
-          appData.status = true;
-        } else {
-          const [insert] = await connect.query(
-            "INSERT INTO users_list SET verify_code=?,phone=?,user_type = 1",
-            [code, phone]
-          );
-          await connect.query(
-            "INSERT INTO users_contacts SET is_tg = ?, verify_code=?,text=?,user_type = 1,user_id = ?",
-            [isTelegram, code, phone, insert.insertId]
-          );
-          appData.status = true;
-        }
+        appData.status = true;
+      } else {
+        const [insert] = await connect.query(
+          "INSERT INTO users_list SET verify_code=?,phone=?,user_type = 1",
+          [code, phone]
+        );
+        await connect.query(
+          "INSERT INTO users_contacts SET is_tg = ?, verify_code=?,text=?,user_type = 1,user_id = ?",
+          [isTelegram, code, phone, insert.insertId]
+        );
+        appData.status = true;
+      }
       // } else {
       //   appData.error = "Не удалось отправить SMS";
       // }
@@ -874,50 +874,50 @@ users.post("/loginClient", async (req, res) => {
     if (phone === "998935421324" || phone === "9988888888") {
       code = "00000";
     }
-    if(!isTelegram) {
-    if (phone.substr(0, 3) === "998") {
-      send_sms_res = await sendSmsPlayMobile(phone, code, country_code);
-      //await sendSms(phone,code,country_code)
-    } else if (phone.substr(0, 3) === "992") {
-      send_sms_res = await sendSmsOson(phone, code);
-      console.log("send_sms_res", send_sms_res);
-      //send_sms_res = await sendSms(phone,code,country_code)
-    } else if (phone.substr(0, 2) === "79") {
-      let options = {
-        method: "GET",
-        uri:
-          "http://api.iqsms.ru/messages/v2/send/?phone=" +
-          phone +
-          "&text=Confirmation code " +
-          code,
-        json: false,
-        headers: {
-          Authorization:
-            "Basic " + Buffer.from("fxkKt7iR:fTsODP6m").toString("base64"),
-        },
-      };
-      console.log("code Russian", code);
-      await rp(options);
-      send_sms_res = "waiting";
-    } else {
-      sendpulse.init(
-        API_USER_ID,
-        API_SECRET,
-        TOKEN_STORAGE,
-        async function (res) {
-          sendpulse.smsSend(
-            function (data) {
-              console.log(data, "senpulse");
-            },
-            "TIRGO",
-            ["+" + phone],
-            "Confirmation code " + code
-          );
-        }
-      );
-      send_sms_res = "waiting";
+    if (!isTelegram) {
+      if (phone.substr(0, 3) === "998") {
+        send_sms_res = await sendSmsPlayMobile(phone, code, country_code);
+        //await sendSms(phone,code,country_code)
+      } else if (phone.substr(0, 3) === "992") {
+        send_sms_res = await sendSmsOson(phone, code);
+        console.log("send_sms_res", send_sms_res);
+        //send_sms_res = await sendSms(phone,code,country_code)
+      } else if (phone.substr(0, 2) === "79") {
+        let options = {
+          method: "GET",
+          uri:
+            "http://api.iqsms.ru/messages/v2/send/?phone=" +
+            phone +
+            "&text=Confirmation code " +
+            code,
+          json: false,
+          headers: {
+            Authorization:
+              "Basic " + Buffer.from("fxkKt7iR:fTsODP6m").toString("base64"),
+          },
+        };
+        console.log("code Russian", code);
+        await rp(options);
+        send_sms_res = "waiting";
+      } else {
+        sendpulse.init(
+          API_USER_ID,
+          API_SECRET,
+          TOKEN_STORAGE,
+          async function (res) {
+            sendpulse.smsSend(
+              function (data) {
+                console.log(data, "senpulse");
+              },
+              "TIRGO",
+              ["+" + phone],
+              "Confirmation code " + code
+            );
+          }
+        );
+        send_sms_res = "waiting";
+      }
     }
-  }
 
     const [rows] = await connect.query(
       "SELECT * FROM users_contacts WHERE text = ? AND user_type = 2",
@@ -925,7 +925,7 @@ users.post("/loginClient", async (req, res) => {
     );
     if (rows.length > 0) {
 
-      if(isTelegram) {
+      if (isTelegram) {
         await sendBotMessageToUser(rows[0]?.tg_chat_id, code)
         send_sms_res = "waiting";
       }
@@ -4941,33 +4941,15 @@ users.post("/addDriverServices", async (req, res) => {
       res.status(400).json(appData);
     } else {
       const [paymentUser] = await connect.query(
-        "SELECT * FROM alpha_payment where  userid = ? ",
-        [user_id]
+        `SELECT 
+        COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE userid = ? AND is_agent = false), 0) - 
+        COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false), 0)
+        AS balance;`,
+        [userid, userid]
       );
 
-      const totalPaymentAmount = paymentUser.reduce(
-        (accumulator, secure) => accumulator + Number(secure.amount),
-        0
-      );
-
-      const [paymentTransaction] = await connect.query(
-        "SELECT * FROM services_transaction where  userid = ? ",
-        [user_id]
-      );
-
-      const totalPaymentAmountTransaction = paymentTransaction.reduce(
-        (accumulator, secure) => accumulator + Number(secure.price_uzs),
-        0
-      );
-
-      const totalAmount = services.reduce(
-        (accumulator, secure) => accumulator + Number(secure.price_uzs),
-        0
-      );
-      console.log(totalAmount, "totalAmount");
-      let balance = totalPaymentAmount - totalPaymentAmountTransaction;
-      console.log(balance, "balance");
-      if (balance >= totalAmount) {
+      console.log(paymentUser[0]?.balance, "balance");
+      if (paymentUser[0]?.balance >= totalAmount) {
         const [editUser] = await connect.query(
           "UPDATE users_list SET is_service = 1  WHERE id = ?",
           [user_id]
@@ -4991,7 +4973,7 @@ users.post("/addDriverServices", async (req, res) => {
                 service.price_kzs,
                 service.rate,
                 0,
-                service.without_subscription? service.without_subscription : 0,
+                service.without_subscription ? service.without_subscription : 0,
               ];
             } catch (error) {
               console.error("Error occurred while fetching service:", error);
@@ -5083,29 +5065,14 @@ users.post("/services-transaction/user/balanse", async (req, res) => {
       res.status(400).json(appData);
     } else {
       const [paymentUser] = await connect.query(
-        "SELECT * FROM alpha_payment where  userid = ? ",
-        [userid]
+        `SELECT 
+        COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE userid = ? AND is_agent = false), 0) - 
+        COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false), 0)
+        AS balance;`,
+        [userid, userid]
       );
-
-      const totalPaymentAmount = paymentUser.reduce(
-        (accumulator, secure) => accumulator + Number(secure.amount),
-        0
-      );
-
-
-      const [paymentTransaction] = await connect.query(
-        "SELECT * FROM services_transaction where  userid = ? ",
-        [userid]
-      );
-
-      const totalPaymentAmountTransaction = paymentTransaction.reduce(
-        (accumulator, secure) => accumulator + Number(secure.price_uzs),
-        0
-      );
-
-      let balance = totalPaymentAmount - totalPaymentAmountTransaction;
       appData.status = true;
-      appData.data = { balance: balance };
+      appData.data = { balance: paymentUser[0]?.balance };
       res.status(200).json(appData);
     }
   } catch (e) {
