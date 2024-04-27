@@ -3654,7 +3654,7 @@ admin.put("/services/:id", async (req, res) => {
     connect = await database.connection.getConnection();
     const { id } = req.params;
     const { name, code, price_uzs, price_kzs, rate, withoutSubscription } = req.body;
-    if (!id || !name || !code || !price_uzs || !price_kzs || !rate || !withoutSubscription) {
+    if (!id || !name || !code || !price_uzs || !price_kzs || !rate ) {
       appData.error = "All fields are required";
       return res.status(400).json(appData);
     }
@@ -3716,19 +3716,19 @@ admin.post("/services", async (req, res) => {
     }
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "SELECT * FROM services where name = ?, code = ?",
+      "SELECT * FROM services WHERE name = ? AND code = ?",
       [name, code]
     );
     if (rows.length > 0) {
       appData.error = "если уже есть услуги.";
       res.status(400).json(appData);
     } else {
-      const [subscription] = await connect.query(
+    const [services] = await connect.query(
         "INSERT INTO services SET name = ?, code = ?, price_uzs = ?, price_kzs = ?, rate = ?, without_subscription = ?",
         [name, code, price_uzs, price_kzs, rate, withoutSubscription]
-      );
+     );
       appData.status = true;
-      appData.data = subscription;
+      appData.data = services;
       res.status(200).json(appData);
     }
   } catch (e) {
