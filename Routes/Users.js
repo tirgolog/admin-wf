@@ -4943,9 +4943,14 @@ users.post("/addDriverServices", async (req, res) => {
       const [paymentUser] = await connect.query(
         `SELECT 
         COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE userid = ? AND is_agent = false), 0) - 
-        COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false), 0)
+        COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false AND status <> 4), 0)
         AS balance;`,
         [userid, userid]
+      );
+
+      const totalAmount = services.reduce(
+        (accumulator, secure) => accumulator + Number(secure.price_uzs),
+        0
       );
 
       console.log(paymentUser[0]?.balance, "balance");
@@ -5067,7 +5072,7 @@ users.post("/services-transaction/user/balanse", async (req, res) => {
       const [paymentUser] = await connect.query(
         `SELECT 
         COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE userid = ? AND is_agent = false), 0) - 
-        COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false), 0)
+        COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false AND status <> 4), 0)
         AS balance;`,
         [userid, userid]
       );
