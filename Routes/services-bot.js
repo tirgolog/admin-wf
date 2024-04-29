@@ -8,6 +8,7 @@ bot.command("start", onCommandStart);
 
 // Handle incoming messages
 bot.on('message', async (ctx) => {
+  console.log(ctx.message)
   const message = ctx.message;
 
   // Check if the message contains contact information
@@ -139,3 +140,77 @@ async function onServicesClick(ctx) {
       }
   }
 }
+
+async function saveMessageToDatabase (data) {
+  const connection = await database.connection.getConnection();
+
+  const res = await connection.query(`
+  INSERT INTO service_bot_message set 
+    message_type = ?,
+    message = ?,
+    message_sender_type = ?,
+    bot_message_id = ?,
+    sender_user_id = ?,
+    receiver_user_id = ?,
+    sender_bot_chat_id = ?,
+    receiver_bot_chat_id = ?
+  `, [
+      data.messageType, 
+      data.message, 
+      data.senderType, 
+      data.messageId, 
+      data.senderUserId,
+      data.receiverUserId,
+      data.senderBotId,
+      data.receiverBotId
+    ]);
+}
+
+  `CREATE TABLE service_bot_message (
+    id SERIAL PRIMARY KEY,
+    message_type VARCHAR,
+    message TEXT,
+    message_sender_type VARCHAR,
+    bot_message_id int,
+    sender_user_id int,
+    receiver_user_id int,
+    sender_bot_chat_id int,
+    receiver_bot_chat_id int
+  );`
+
+`{
+  message_id: 259,
+  from: {
+    id: 1689259996,
+    is_bot: false,
+    first_name: 'Fazliddin',
+    last_name: 'Norkhujayev',
+    username: 'nfaxriddinovich',
+    language_code: 'en'
+  },
+  chat: {
+    id: 1689259996,
+    first_name: 'Fazliddin',
+    last_name: 'Norkhujayev',
+    username: 'nfaxriddinovich',
+    type: 'private'
+  },
+  date: 1714378398,
+  document: {
+    file_name: 'carriers.xlsx',
+    mime_type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    file_id: 'BQACAgIAAxkBAAIBA2YvVp5Q4TcwelRr77h8lfaXhMn5AAJnTwACYYB5SX5mpWZMY9z0NAQ',
+    file_unique_id: 'AgADZ08AAmGAeUk',
+    file_size: 17118
+  },
+  photo: [
+    {
+      file_id: 'AgACAgIAAxkBAAP-Zi9V-hH_BwO5U4pkkThXmNc2gDsAAiPYMRthgHlJT76ubkOGHUgBAAMCAANzAAM0BA',
+      file_unique_id: 'AQADI9gxG2GAeUl4',
+      file_size: 1318,
+      width: 90,
+      height: 90
+    }
+  ],
+  text: 'asd'
+}`
