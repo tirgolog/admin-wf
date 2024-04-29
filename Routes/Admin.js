@@ -3023,63 +3023,15 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
       [driverId]
     );
     if (rows.length > 0) {
-      const [withdrawalsProccess] = await connect.query(
-        `SELECT amount from driver_withdrawal where driver_id = ? and status = 0`,
-        [rows[0]?.id]
-      );
-      const [withdrawals] = await connect.query(
-        `SELECT amount from driver_withdrawal where driver_id = ?`,
-        [rows[0]?.id]
-      );
-      const [frozenBalance] = await connect.query(
-        `SELECT amount from secure_transaction where dirverid = ? and status <> 2`,
-        [rows[0]?.id]
-      );
-      const [activeBalance] = await connect.query(
-        `SELECT amount from secure_transaction where dirverid = ? and status = 2`,
-        [rows[0]?.id]
-      );
-      const [subscriptionPayment] = await connect.query(
-        `SELECT id, amount from subscription_transaction where userid = ? and  COALESCE(agent_id, admin_id) IS NULL `,
-        [rows[0]?.id]
-      );
-      const [payments] = await connect.query(
-        "SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",
-        [rows[0].id]
-      );
-      const totalWithdrawalAmountProcess = withdrawalsProccess.reduce(
-        (accumulator, secure) => accumulator + +Number(secure.amount),
-        0
-      );
-      const totalWithdrawalAmount = withdrawals.reduce(
-        (accumulator, secure) => accumulator + +Number(secure.amount),
-        0
-      );
-      const totalFrozenAmount = frozenBalance.reduce(
-        (accumulator, secure) => accumulator + +Number(secure.amount),
-        0
-      );
-      const totalActiveAmount = activeBalance.reduce(
-        (accumulator, secure) => accumulator + +Number(secure.amount),
-        0
-      );
-      const totalPayments = payments.reduce(
-        (accumulator, secure) => accumulator + +Number(secure.amount),
-        0
-      );
-      const totalSubscriptionPayment = subscriptionPayment.reduce(
-        (accumulator, subPay) => {
-          return accumulator + Number(subPay.amount);
-        },
-        0
+      const [paymentUser] = await connect.query(
+        `SELECT 
+        COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE userid = ? AND is_agent = false), 0) - 
+        COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false), 0)
+        AS balance;`,
+        [driverId, driverId]
       );
       appData.data = rows[0];
-      appData.data.balance =
-        totalActiveAmount +
-        (totalPayments - totalSubscriptionPayment) -
-        totalWithdrawalAmount;
-      appData.data.balance_in_proccess = totalWithdrawalAmountProcess;
-      appData.data.balance_off = totalFrozenAmount ? totalFrozenAmount : 0;
+      appData.data.balance = paymentUser[0].balance;
       appData.status = true;
       res.status(200).json(appData);
     } else {
