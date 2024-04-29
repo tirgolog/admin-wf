@@ -3031,7 +3031,7 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
         [driverId, driverId]
       );
       appData.data = rows[0];
-      appData.data.balance = paymentUser[0].balance;
+      appData.data.balance = paymentUser[0]?.balance;
       appData.status = true;
       res.status(200).json(appData);
     } else {
