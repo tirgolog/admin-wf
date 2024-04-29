@@ -309,7 +309,8 @@ admin.post("/agent-service/add-to-driver", async (req, res) => {
                   service.price_kzs,
                   service.rate,
                   0,
-                  userInfo.id
+                  userInfo.id,
+                  true
                 ];
               } catch (error) {
                 console.error("Error occurred while fetching service:", error);
@@ -317,7 +318,7 @@ admin.post("/agent-service/add-to-driver", async (req, res) => {
             })
           );
           const sql =
-            "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, created_by_id) VALUES ?";
+            "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, created_by_id, is_agent) VALUES ?";
           const [result] = await connect.query(sql, [insertValues]);
           if (result.affectedRows > 0) {
             appData.status = true;
