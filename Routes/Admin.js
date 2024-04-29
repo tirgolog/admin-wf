@@ -3026,7 +3026,7 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
       const [paymentUser] = await connect.query(
         `SELECT 
         COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE userid = ? AND is_agent = false), 0) - 
-        COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false), 0)
+        COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false AND status <> 4), 0)
         AS balance;`,
         [driverId, driverId]
       );
@@ -3749,22 +3749,11 @@ admin.post("/addDriverServices", async (req, res) => {
       res.status(400).json(appData);
     } else {
       const [paymentUser] = await connect.query(
-        "SELECT * FROM alpha_payment where  userid = ? ",
-        [user_id]
-      );
-      const totalPaymentAmount = paymentUser.reduce(
-        (accumulator, secure) => accumulator + Number(secure.amount),
-        0
-      );
-
-      const [paymentTransaction] = await connect.query(
-        "SELECT * FROM services_transaction where  userid = ? AND status <> 2 ",
-        [user_id]
-      );
-
-      const totalPaymentAmountTransaction = paymentTransaction.reduce(
-        (accumulator, secure) => accumulator + Number(secure.price_uzs),
-        0
+        `SELECT 
+        COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE userid = ? AND is_agent = false), 0) - 
+        COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false AND status <> 4), 0)
+        AS balance;`,
+        [userid, userid]
       );
 
       const totalAmount = services.reduce(
@@ -3772,8 +3761,7 @@ admin.post("/addDriverServices", async (req, res) => {
         0
       );
 
-      let balance = totalPaymentAmount - totalPaymentAmountTransaction;
-      if (balance >= totalAmount) {
+      if (paymentUser[0]?.balance >= totalAmount) {
         const [editUser] = await connect.query(
           "UPDATE users_list SET is_service = 1  WHERE id = ?",
           [user_id]
