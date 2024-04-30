@@ -5228,7 +5228,7 @@ try {
   if(rows.length) {
     appData.status = true;
     appData.data = rows;
-    res.status(400).json(appData)
+    res.status(200).json(appData)
   }
 } catch(err) {
   console.log(err)
@@ -5248,6 +5248,7 @@ admin.get("/messages/by-bot-user", async (req, res) => {
   from = req.query.from,
   limit = req.query.limit;
 try {
+  console.log(userId)
   connect = await database.connection.getConnection();
   if(!from) {
     from = 0;
@@ -5278,6 +5279,9 @@ try {
       appData.status = true;
       appData.data = rows;
       res.status(200).json(appData)
+    } else {
+      res.error = 'No data'
+      res.status(400).json(appData)
     }
   }
 } catch(err) {
