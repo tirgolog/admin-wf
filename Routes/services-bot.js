@@ -8,8 +8,37 @@ bot.command("start", onCommandStart);
 
 // Handle incoming messages
 bot.on('message', async (ctx) => {
-  console.log(ctx.message)
+  const connecttion = await database.connection.getConnection();
   const message = ctx.message;
+
+  const [botUser] = await connecttion.query(`
+  SELECT user_id FROM services_bot_users WHERE chat_id = ${message.from?.id}`);
+  
+  
+  let data = {
+    messageId: message.message_id,
+    senderType: 'user',
+    senderUserId: botUser[0]?.user_id,
+    senderBotId: message.from?.id
+  };
+
+  // data.receiverUserId,
+  // data.receiverBotId
+
+  if(message.text) {
+    data.messageType = 'text';
+    data.message = message.text;
+  } else if(data.document) {
+    data.messageType = 'document';
+    data.message = 'document'
+
+  } else if(data.photo) {
+    data.messageType = 'photo';
+    data.message = 'photo'
+
+  }
+  const res = await saveMessageToDatabase(data);
+  console.log(res)
 
   // Check if the message contains contact information
   if (message.contact) {
@@ -65,26 +94,25 @@ async function onContactReceived(ctx) {
     await ctx.reply(`Thank you, ${chatFirstName}! We've received your contact information.`);
 
 
-    const user = await connection.query(`
+    const [user] = await connection.query(`
       SELECT * FROM users_contacts WHERE text = ?
     `, [phoneNumber]);
 
-    const userChat = await connection.query(`
+    const [userChat] = await connection.query(`
       SELECT * FROM services_bot_users WHERE phone_number = ?
     `, [phoneNumber]);
 
     let res;
     if(!userChat.length) {
       res = await connection.query(`
-        INSERT INTO services_bot_users set first_name = ?, last_name = ?, phone_number = ?, tg_username = ?, chat_id = ?
-        `, [chatFirstName, chatLastName, phoneNumber, username, chatId]);
+        INSERT INTO services_bot_users set first_name = ?, last_name = ?, phone_number = ?, tg_username = ?, chat_id = ?, user_id = ?
+        `, [chatFirstName, chatLastName, phoneNumber, username, chatId, user[0]?.user_id]);
     } else {
       res = await connection.query(
-        "UPDATE services_bot_users set first_name = ?, last_name = ?, phone_number = ?, tg_username = ?, chat_id = ?",
-        [chatFirstName, chatLastName, phoneNumber, username, chatId]
+        "UPDATE services_bot_users set first_name = ?, last_name = ?, phone_number = ?, tg_username = ?, chat_id = ?, user_id = ?",
+        [chatFirstName, chatLastName, phoneNumber, username, chatId, user[0]?.user_id]
       );
     }
-
     // Send a notification to the user
     if (res) {
       if(user[0]) {
@@ -144,7 +172,7 @@ async function onServicesClick(ctx) {
 async function saveMessageToDatabase (data) {
   const connection = await database.connection.getConnection();
 
-  const res = await connection.query(`
+  return await connection.query(`
   INSERT INTO service_bot_message set 
     message_type = ?,
     message = ?,
@@ -166,51 +194,57 @@ async function saveMessageToDatabase (data) {
     ]);
 }
 
-  `CREATE TABLE service_bot_message (
-    id SERIAL PRIMARY KEY,
-    message_type VARCHAR,
-    message TEXT,
-    message_sender_type VARCHAR,
-    bot_message_id int,
-    sender_user_id int,
-    receiver_user_id int,
-    sender_bot_chat_id int,
-    receiver_bot_chat_id int
-  );`
+async function sendServiceBotMessageToUser(chatId, text) {
+ return await bot.api.sendMessage(chatId, 'Код для логин: ' + text);
+}
 
-`{
-  message_id: 259,
-  from: {
-    id: 1689259996,
-    is_bot: false,
-    first_name: 'Fazliddin',
-    last_name: 'Norkhujayev',
-    username: 'nfaxriddinovich',
-    language_code: 'en'
-  },
-  chat: {
-    id: 1689259996,
-    first_name: 'Fazliddin',
-    last_name: 'Norkhujayev',
-    username: 'nfaxriddinovich',
-    type: 'private'
-  },
-  date: 1714378398,
-  document: {
-    file_name: 'carriers.xlsx',
-    mime_type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    file_id: 'BQACAgIAAxkBAAIBA2YvVp5Q4TcwelRr77h8lfaXhMn5AAJnTwACYYB5SX5mpWZMY9z0NAQ',
-    file_unique_id: 'AgADZ08AAmGAeUk',
-    file_size: 17118
-  },
-  photo: [
-    {
-      file_id: 'AgACAgIAAxkBAAP-Zi9V-hH_BwO5U4pkkThXmNc2gDsAAiPYMRthgHlJT76ubkOGHUgBAAMCAANzAAM0BA',
-      file_unique_id: 'AQADI9gxG2GAeUl4',
-      file_size: 1318,
-      width: 90,
-      height: 90
-    }
-  ],
-  text: 'asd'
-}`
+module.exports = {sendServiceBotMessageToUser};
+
+//   `CREATE TABLE service_bot_message (
+//     id SERIAL PRIMARY KEY,
+//     message_type VARCHAR,
+//     message TEXT,
+//     message_sender_type VARCHAR,
+//     bot_message_id int,
+//     sender_user_id int,
+//     receiver_user_id int,
+//     sender_bot_chat_id int,
+//     receiver_bot_chat_id int
+//   );`
+
+// `{
+//   message_id: 259,
+//   from: {
+//     id: 1689259996,
+//     is_bot: false,
+//     first_name: 'Fazliddin',
+//     last_name: 'Norkhujayev',
+//     username: 'nfaxriddinovich',
+//     language_code: 'en'
+//   },
+//   chat: {
+//     id: 1689259996,
+//     first_name: 'Fazliddin',
+//     last_name: 'Norkhujayev',
+//     username: 'nfaxriddinovich',
+//     type: 'private'
+//   },
+//   date: 1714378398,
+//   document: {
+//     file_name: 'carriers.xlsx',
+//     mime_type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+//     file_id: 'BQACAgIAAxkBAAIBA2YvVp5Q4TcwelRr77h8lfaXhMn5AAJnTwACYYB5SX5mpWZMY9z0NAQ',
+//     file_unique_id: 'AgADZ08AAmGAeUk',
+//     file_size: 17118
+//   },
+//   photo: [
+//     {
+//       file_id: 'AgACAgIAAxkBAAP-Zi9V-hH_BwO5U4pkkThXmNc2gDsAAiPYMRthgHlJT76ubkOGHUgBAAMCAANzAAM0BA',
+//       file_unique_id: 'AQADI9gxG2GAeUl4',
+//       file_size: 1318,
+//       width: 90,
+//       height: 90
+//     }
+//   ],
+//   text: 'asd'
+// }`

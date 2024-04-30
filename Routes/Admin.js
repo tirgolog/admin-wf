@@ -12,6 +12,7 @@ const socket = require("../Modules/Socket");
 const { userInfo } = require("os");
 const amqp = require("amqplib");
 const axios = require("axios");
+const { sendServiceBotMessageToUser } = require("./services-bot");
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
@@ -5129,6 +5130,165 @@ admin.post("/remove-subscription-agent", async (req, res) => {
       connect.release();
     }
   }
+});
+
+admin.post("/message/bot-user", async (req, res) => {
+  let appData = { status: false };
+  let connect;
+  let { 
+    messageType,
+    message,
+    receiverUserId,
+  } = req.body;
+    
+  let userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+  try {
+    connect = await database.connection.getConnection();
+    
+    const [botUser] = await connect.query(`
+    SELECT user_id, chat_id FROM services_bot_users WHERE user_id = ${receiverUserId}`);
+    // senderBotId,
+    if(!botUser.length) {
+      appData.error = 'User not registered in bot'
+      appData.status = false;
+      res.status(400).json(appData);
+    } else {
+      let receiverBotId = botUser[0]?.chat_id;
+      const senderType = 'admin';
+      const senderUserId = userInfo.id;
+  
+      const insertResult = await connect.query(`
+      INSERT INTO service_bot_message set 
+        message_type = ?,
+        message = ?,
+        message_sender_type = ?,
+        sender_user_id = ?,
+        receiver_user_id = ?,
+        receiver_bot_chat_id = ?
+      `, [
+          messageType, 
+          message, 
+          senderType, 
+          senderUserId,
+          receiverUserId,
+          receiverBotId
+        ]);
+        if(insertResult[0].affectedRows) {
+          const botRes = await sendServiceBotMessageToUser(receiverBotId, 'Hello there')
+          if(botRes) {
+            const [edit] = await connect.query(
+              "UPDATE service_bot_message SET bot_message_id = ? WHERE id = ?",
+              [botRes.message_id, insertResult[0].insertId]
+            );
+          }
+
+        appData.data = insertResult;
+        appData.status = true;
+        res.status(200).json(appData);
+        }else {
+          appData.status = false;
+          res.status(400).json(appData);
+        }
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/messages/bot-users", async (req, res) => {
+  let connect,
+  appData = { status: false };
+try {
+  connect = await database.connection.getConnection();
+
+  const [rows] = await connect.query(`
+    SELECT 
+      sbu.id,
+      sbu.first_name firstName,
+      sbu.last_name lastName,
+      sbu.phone_number phoneNumber,
+      sbu.tg_username tgUsername,
+      sbu.user_id userId,
+      sbu.is_read isRead,
+      sbu.unread_count unReadCount,
+       (SELECT created_at from service_bot_message 
+        WHERE sender_user_id = ul.id OR receiver_user_id = ul.id 
+        ORDER BY created_at DESC LIMIT 1) as lastMessageDate
+    FROM services_bot_users sbu
+    LEFT JOIN users_list ul on ul.id = sbu.user_id
+    ORDER BY lastMessageDate DESC;
+  `);
+
+  if(rows.length) {
+    appData.status = true;
+    appData.data = rows;
+    res.status(400).json(appData)
+  }
+} catch(err) {
+  console.log(err)
+  appData.error = err.message;
+  res.status(400).json(appData)
+} finally {
+  if (connect) {
+    connect.release();
+  }
+}
+});
+
+admin.get("/messages/by-bot-user", async (req, res) => {
+  let connect,
+  appData = { status: false },
+  userId = req.query.userId,
+  from = req.query.from,
+  limit = req.query.limit;
+try {
+  connect = await database.connection.getConnection();
+  if(!from) {
+    from = 0;
+  }
+  if(!limit) {
+    limit = 10;
+  }
+  if(!userId || isNaN(+userId)) {
+    appData.error = 'UserId is required';
+    res.status(400).json(appData)
+  } else {
+    const [rows] = await connect.query(`
+      SELECT 
+      id,
+      message_type messageType,
+      message,
+      message_sender_type messageSenderType,
+      bot_message_id botMessageId,
+      sender_user_id senderUserId,
+      receiver_user_id receiverUserId,
+      created_at createdAt
+      FROM service_bot_message
+      WHERE sender_user_id = ${userId} OR receiver_user_id = ${userId}
+      ORDER BY created_at DESC LIMIT ${from}, ${limit}
+    `);
+  
+    if(rows.length) {
+      appData.status = true;
+      appData.data = rows;
+      res.status(200).json(appData)
+    }
+  }
+} catch(err) {
+  console.log(err)
+  appData.error = err.message;
+  res.status(400).json(appData)
+} finally {
+  if (connect) {
+    connect.release();
+  }
+}
 });
 
 
