@@ -1388,11 +1388,26 @@ users.get("/checkSession", async function (req, res) {
       //     (totalPayments - totalSubscriptionPayment) -
       //     totalWithdrawalAmount
       // );
+
+    const [result] = await connect.query(`
+    SELECT 
+        (COALESCE(
+          (SELECT SUM(amount) FROM driver_group_transaction WHERE driver_group_id = ${rows[0]?.driver_group_id} AND type = 'Пополнение'), 0) -
+        COALESCE(
+          (SELECT SUM(amount) FROM driver_group_transaction WHERE driver_group_id = ${rows[0]?.driver_group_id} AND type = 'Вывод'), 0)) -
+
+        (COALESCE(
+          (SELECT SUM(amount) FROM subscription_transaction WHERE group_id = ${rows[0]?.driver_group_id}), 0) +
+        COALESCE(
+          (SELECT SUM(price_uzs) FROM services_transaction WHERE group_id = ${rows[0]?.driver_group_id}), 0)) as balance;
+    `);
+
       appData.user = rows[0];
       appData.user.transport = transport[0];
       appData.user.driver_verification = verification[0]?.verified;
       // console.log(appData.user.driver_verification, "driver_verification");
       appData.user.send_verification = verification[0]?.send_verification;
+      appData.user.groupBalance = result[0]?.balance;
       appData.user.balance =
         totalActiveAmount +
         (totalPayments - totalSubscriptionPayment) -
@@ -4685,7 +4700,8 @@ users.get("/checksubscription/:userid", async (req, res) => {
 
 users.post("/addDriverSubscription", async (req, res) => {
   let connect,
-    appData = { status: false };
+    appData = { status: false },
+    balance;
   const { user_id, subscription_id, phone } = req.body;
   try {
     connect = await database.connection.getConnection();
@@ -4725,52 +4741,85 @@ users.post("/addDriverSubscription", async (req, res) => {
           if (subscription[0].duration == 12) {
             valueofPayment = 570000;
           }
-          const [withdrawals] = await connect.query(
-            `SELECT * from driver_withdrawal where driver_id = ?`,
-            [user_id]
-          );
-          const [activeBalance] = await connect.query(
-            `SELECT * from secure_transaction where dirverid = ? and status = 2`,
-            [user_id]
-          );
-          const [payments] = await connect.query(
-            "SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",
-            [user_id]
-          );
-          const [subscriptionPayment] = await connect.query(
-            `SELECT id, amount
-            FROM subscription_transaction
-            WHERE userid = ? 
-            AND agent_id = 0 
-            AND (admin_id <> 0 OR admin_id IS NULL)`,
-            [user_id]
-          );
-          const totalWithdrawalAmount = withdrawals.reduce(
-            (accumulator, secure) => accumulator + Number(secure.amount),
-            0
-          );
 
-          const totalActiveAmount = activeBalance.reduce(
-            (accumulator, secure) => accumulator + Number(secure.amount),
-            0
-          );
-          const totalPayments = payments.reduce(
-            (accumulator, secure) => accumulator + Number(secure.amount),
-            0
-          );
+          if(rows[0]?.driver_group_id) {
 
-          const totalSubscriptionPayment = subscriptionPayment.reduce(
-            (accumulator, subPay) => {
-              return accumulator + Number(subPay.amount);
-            },
-            0
-          );
+            const [result] = await connect.query(`
+            SELECT 
+                (COALESCE(
+                  (SELECT SUM(amount) FROM driver_group_transaction WHERE driver_group_id = ${rows[0]?.driver_group_id} AND type = 'Пополнение'), 0) -
+                COALESCE(
+                  (SELECT SUM(amount) FROM driver_group_transaction WHERE driver_group_id = ${rows[0]?.driver_group_id} AND type = 'Вывод'), 0)) -
+        
+                (COALESCE(
+                  (SELECT SUM(amount) FROM subscription_transaction WHERE group_id = ${rows[0]?.driver_group_id}), 0) +
+                COALESCE(
+                  (SELECT SUM(price_uzs) FROM services_transaction WHERE group_id = ${rows[0]?.driver_group_id}), 0)) as balance;
+            `);
+            balance = result[0]?.balance;
+          } else {
+            const [result] = await connect.query(`
+            SELECT 
+                COALESCE(
+                  (SELECT SUM(amount) from secure_transaction where dirverid = ${user_id} and status = 2), 0) +
+  
+                COALESCE(
+                  (SELECT SUM(amount) FROM payment WHERE userid = ${user_id} and status = 1 and date_cancel_time IS NULL), 0) -
+  
+                COALESCE(
+                  (SELECT SUM(amount) FROM subscription_transaction WHERE userid = ${user_id} AND agent_id = 0 AND (admin_id <> 0 OR admin_id IS NULL)), 0) -
+  
+                COALESCE(
+                  (SELECT SUM(amount) from driver_withdrawal where driver_id = ${user_id}) , 
+                  0) as balance;
+            `);
+            balance = result[0]?.balance;
+          }
 
+          // const [activeBalance] = await connect.query(
+          //   `SELECT * from secure_transaction where dirverid = ? and status = 2`,
+          //   [user_id]
+          // );
+          // const [payments] = await connect.query(
+          //   "SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",
+          //   [user_id]
+          // );
+          // const [subscriptionPayment] = await connect.query(
+          //   `SELECT id, amount
+          //   FROM subscription_transaction
+          //   WHERE userid = ? 
+          //   AND agent_id = 0 
+          //   AND (admin_id <> 0 OR admin_id IS NULL)`,
+          //   [user_id]
+          // );
 
-          let balance =
-            totalActiveAmount +
-            (totalPayments - totalSubscriptionPayment) -
-            totalWithdrawalAmount;
+          // const [withdrawals] = await connect.query(
+          //   `SELECT * from driver_withdrawal where driver_id = ?`,
+          //   [user_id]
+          // );
+
+          // const totalWithdrawalAmount = withdrawals.reduce(
+          //   (accumulator, secure) => accumulator + Number(secure.amount),
+          //   0
+          // );
+
+          // const totalActiveAmount = activeBalance.reduce(
+          //   (accumulator, secure) => accumulator + Number(secure.amount),
+          //   0
+          // );
+          // const totalPayments = payments.reduce(
+          //   (accumulator, secure) => accumulator + Number(secure.amount),
+          //   0
+          // );
+
+          // const totalSubscriptionPayment = subscriptionPayment.reduce(
+          //   (accumulator, subPay) => {
+          //     return accumulator + Number(subPay.amount);
+          //   },
+          //   0
+          // );
+          // let balance = totalActiveAmount + (totalPayments - totalSubscriptionPayment) - totalWithdrawalAmount;
+
           if (Number(balance) >= Number(valueofPayment)) {
             let nextMonth = new Date(
               new Date().setMonth(
@@ -4782,13 +4831,24 @@ users.post("/addDriverSubscription", async (req, res) => {
               [subscription_id, new Date(), nextMonth, user_id]
             );
             if (userUpdate.affectedRows == 1) {
-              const subscription_transaction = await connect.query(
-                "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?",
-                [user_id, subscription_id, phone, valueofPayment]
-              );
-              if (subscription_transaction.length > 0) {
-                appData.status = true;
-                res.status(200).json(appData);
+              if(rows[0]?.driver_group_id) {
+                const subscription_transaction = await connect.query(
+                  "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, group_id = ?, is_group = ?",
+                  [user_id, subscription_id, phone, valueofPayment, rows[0]?.driver_group_id, true]
+                );
+                if (subscription_transaction.length > 0) {
+                  appData.status = true;
+                  res.status(200).json(appData);
+                }
+              } else {
+                const subscription_transaction = await connect.query(
+                  "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?",
+                  [user_id, subscription_id, phone, valueofPayment]
+                );
+                if (subscription_transaction.length > 0) {
+                  appData.status = true;
+                  res.status(200).json(appData);
+                }
               }
             } else {
               appData.error = "Невозможно обновить данные пользователя";
@@ -4923,6 +4983,7 @@ users.post("/services-transaction/user", async (req, res) => {
 
 users.post("/addDriverServices", async (req, res) => {
   let connect,
+    balance,
     appData = { status: false };
   const { user_id, phone, services } = req.body;
   try {
@@ -4940,21 +5001,45 @@ users.post("/addDriverServices", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
-      const [paymentUser] = await connect.query(
-        `SELECT 
-        COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE userid = ? AND is_agent = false), 0) - 
-        COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false AND status <> 4), 0)
-        AS balance;`,
-        [userid, userid]
-      );
-
+    
       const totalAmount = services.reduce(
         (accumulator, secure) => accumulator + Number(secure.price_uzs),
         0
       );
 
-      console.log(paymentUser[0]?.balance, "balance");
-      if (paymentUser[0]?.balance >= totalAmount) {
+      const [user] = await connect.query(
+        "SELECT * FROM users_list WHERE id = ?",
+        [user_id]
+      );
+
+      if(user[0]?.driver_group_id) {
+
+        const [result] = await connect.query(`
+        SELECT 
+            (COALESCE(
+              (SELECT SUM(amount) FROM driver_group_transaction WHERE driver_group_id = ${user[0]?.driver_group_id} AND type = 'Пополнение'), 0) -
+            COALESCE(
+              (SELECT SUM(amount) FROM driver_group_transaction WHERE driver_group_id = ${user[0]?.driver_group_id} AND type = 'Вывод'), 0)) -
+    
+            (COALESCE(
+              (SELECT SUM(amount) FROM subscription_transaction WHERE group_id = ${user[0]?.driver_group_id}), 0) +
+            COALESCE(
+              (SELECT SUM(price_uzs) FROM services_transaction WHERE group_id = ${user[0]?.driver_group_id}), 0)) as balance;
+        `);
+        balance = result[0]?.balance;
+      } else {
+        const [paymentUser] = await connect.query(
+          `SELECT 
+          COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE userid = ? AND is_agent = false), 0) - 
+          COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false AND status <> 4), 0)
+          AS balance;`,
+          [userid, userid]
+        );
+        balance = paymentUser[0]?.balance;
+      }
+
+
+      if (balance >= totalAmount) {
         const [editUser] = await connect.query(
           "UPDATE users_list SET is_service = 1  WHERE id = ?",
           [user_id]
@@ -4970,6 +5055,20 @@ users.post("/addDriverServices", async (req, res) => {
               if (result.length === 0) {
                 throw new Error(`Service with ID ${service.services_id} not found.`);
               }
+              if(user[0]?.driver_group_id) { 
+                return [
+                  user_id,
+                  service.services_id,
+                  result[0].name,
+                  service.price_uzs,
+                  service.price_kzs,
+                  service.rate,
+                  0,
+                  service.without_subscription ? service.without_subscription : 0,
+                  user[0]?.driver_group_id,
+                  true
+                ];
+              } else {
               return [
                 user_id,
                 service.services_id,
@@ -4980,11 +5079,17 @@ users.post("/addDriverServices", async (req, res) => {
                 0,
                 service.without_subscription ? service.without_subscription : 0,
               ];
+            }
             } catch (error) {
               console.error("Error occurred while fetching service:", error);
             }
           }));
-          const sql = 'INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, without_subscription) VALUES ?';
+          let sql;
+          if(user[0]?.driver_group_id) {
+            sql = 'INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, without_subscription, group_id, is_group) VALUES ?';
+          } else {
+            sql = 'INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, without_subscription) VALUES ?';
+          }
           const [result] = await connect.query(sql, [insertValues]);
           if (result.affectedRows > 0) {
             appData.status = true;
