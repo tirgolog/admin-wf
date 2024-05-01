@@ -1328,7 +1328,7 @@ users.get("/checkSession", async function (req, res) {
       const [subscriptionPayment] = await connect.query(
         `SELECT id, amount
          FROM subscription_transaction
-         WHERE userid = ?   AND COALESCE(agent_id, admin_id) IS NULL
+         WHERE userid = ? AND deleted = 0 AND COALESCE(agent_id, admin_id) IS NULL
         `,
         [rows[0]?.id]
       );
@@ -1397,7 +1397,7 @@ users.get("/checkSession", async function (req, res) {
           (SELECT SUM(amount) FROM driver_group_transaction WHERE driver_group_id = ${rows[0]?.driver_group_id} AND type = 'Вывод'), 0)) -
 
         (COALESCE(
-          (SELECT SUM(amount) FROM subscription_transaction WHERE group_id = ${rows[0]?.driver_group_id}), 0) +
+          (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND group_id = ${rows[0]?.driver_group_id}), 0) +
         COALESCE(
           (SELECT SUM(price_uzs) FROM services_transaction WHERE group_id = ${rows[0]?.driver_group_id}), 0)) as balance;
     `);
@@ -2218,7 +2218,7 @@ users.post("/finish-merchant-cargo", async (req, res) => {
       const [subscriptionPayment] = await connect.query(
         `SELECT id, amount
     FROM subscription_transaction
-    WHERE userid = ? 
+    WHERE userid = ? AND deleted = 0
    AND COALESCE(agent_id, admin_id) IS NULL`,
         [orders_accepted[0]?.user_id]
       );
@@ -4296,7 +4296,7 @@ users.post("/driver-balance/withdraw", async (req, res) => {
       const [subscriptionPayment] = await connect.query(
         `SELECT id, amount
     FROM subscription_transaction
-    WHERE userid = ? 
+    WHERE userid = ? AND deleted = 0
    AND COALESCE(agent_id, admin_id) IS NULL`,
         [user.id]
       );
@@ -4458,6 +4458,7 @@ users.get("/driver/withdrawals", async (req, res) => {
           `SELECT id, amount
           FROM subscription_transaction
           WHERE userid = ? 
+          AND deleted = 0
           AND agent_id = 0 
           AND (admin_id <> 0 OR admin_id IS NULL)`,
           [el.driver_id]
@@ -4545,7 +4546,7 @@ users.patch("/verify-withdrawal/verify/:id", async (req, res) => {
       const [subscriptionPayment] = await connect.query(
         `SELECT id, amount
          FROM subscription_transaction
-         WHERE userid = ?  AND COALESCE(agent_id, admin_id) IS NULL`,
+         WHERE userid = ? AND deleted = 0 AND COALESCE(agent_id, admin_id) IS NULL`,
         [withdrawal[0].driver_id]
       );
       const [payments] = await connect.query(
@@ -4752,7 +4753,7 @@ users.post("/addDriverSubscription", async (req, res) => {
                   (SELECT SUM(amount) FROM driver_group_transaction WHERE driver_group_id = ${rows[0]?.driver_group_id} AND type = 'Вывод'), 0)) -
         
                 (COALESCE(
-                  (SELECT SUM(amount) FROM subscription_transaction WHERE group_id = ${rows[0]?.driver_group_id}), 0) +
+                  (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND group_id = ${rows[0]?.driver_group_id}), 0) +
                 COALESCE(
                   (SELECT SUM(price_uzs) FROM services_transaction WHERE group_id = ${rows[0]?.driver_group_id}), 0)) as balance;
             `);
@@ -4767,7 +4768,7 @@ users.post("/addDriverSubscription", async (req, res) => {
                   (SELECT SUM(amount) FROM payment WHERE userid = ${user_id} and status = 1 and date_cancel_time IS NULL), 0) -
   
                 COALESCE(
-                  (SELECT SUM(amount) FROM subscription_transaction WHERE userid = ${user_id} AND agent_id = 0 AND (admin_id <> 0 OR admin_id IS NULL)), 0) -
+                  (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND userid = ${user_id} AND agent_id = 0 AND (admin_id <> 0 OR admin_id IS NULL)), 0) -
   
                 COALESCE(
                   (SELECT SUM(amount) from driver_withdrawal where driver_id = ${user_id}) , 
@@ -5022,7 +5023,7 @@ users.post("/addDriverServices", async (req, res) => {
               (SELECT SUM(amount) FROM driver_group_transaction WHERE driver_group_id = ${user[0]?.driver_group_id} AND type = 'Вывод'), 0)) -
     
             (COALESCE(
-              (SELECT SUM(amount) FROM subscription_transaction WHERE group_id = ${user[0]?.driver_group_id}), 0) +
+              (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND group_id = ${user[0]?.driver_group_id}), 0) +
             COALESCE(
               (SELECT SUM(price_uzs) FROM services_transaction WHERE group_id = ${user[0]?.driver_group_id}), 0)) as balance;
         `);
