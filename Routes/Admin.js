@@ -3393,7 +3393,7 @@ admin.post("/addUserByAgent", async (req, res) => {
                 );
                 const subscription_transaction = await connect.query(
                   "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, agent_id = ?, agent_trans_id = ?",
-                  [user_id, subscription_id, phone, paymentValue, agent_id, insertResult.insertId]
+                  [user_id, subscription_id, phone, paymentValue, agent_id, insertResult[0]?.insertId]
                 );
 
                 if (subscription_transaction.length > 0) {
