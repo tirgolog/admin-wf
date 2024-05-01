@@ -4506,13 +4506,13 @@ admin.post("/add-driver-to-group", async (req, res) => {
     const [query] = await connect.query(`
       SELECT id from driver_group where id = ${groupId};
     `);
-    if (query[0].id) {
+    if (query[0]?.id) {
 
       const [user] = await connect.query(`
       SELECT id from users_list where id = ${userId};
     `);
 
-      if (user[0].id) {
+      if (user[0]?.id) {
         const [row] = await connect.query(
           `UPDATE users_list SET driver_group_id = ${groupId} WHERE id = ${userId}`
         );
@@ -4535,6 +4535,52 @@ admin.post("/add-driver-to-group", async (req, res) => {
       res.status(400).json(appData);
     }
 
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.post("/remove-driver-from-group", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  const { userId } = req.body;
+  try {
+    connect = await database.connection.getConnection();
+
+      const [user] = await connect.query(`
+      SELECT id, driver_group_id from users_list where id = ${userId};
+    `);
+
+      if (user[0]?.id) {
+        if(!user[0]?.driver_group_id) {
+          appData.status = false;
+          appData.error = 'Драйвер не добавлен ни в одну группу';
+          res.status(400).json(appData);
+        } else {
+          const [row] = await connect.query(
+            `UPDATE users_list SET driver_group_id = null WHERE id = ${userId}`
+          );
+  
+          if (row.affectedRows) {
+            appData.status = true;
+            res.status(200).json(appData);
+          }
+          else {
+            appData.status = false;
+            res.status(400).json(appData);
+          }
+        }
+      } else {
+        appData.error = 'Драйвер не найден';
+        appData.status = false;
+        res.status(400).json(appData);
+      }
   } catch (e) {
     console.log(e);
     appData.error = e.message;
