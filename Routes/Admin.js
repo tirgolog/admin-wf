@@ -139,8 +139,8 @@ admin.put("/changeAgentBalance", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const insertResult = await connect.query(
-      "INSERT INTO agent_transaction SET admin_id = ?, agent_id = ?, amount = ?, created_at = ?, type = 'tirgo_balance'",
-      [userInfo.id, agent_id, agent_balance, new Date()]
+      "INSERT INTO agent_transaction SET admin_id = ?, agent_id = ?, amount = ?, type = 'tirgo_balance'",
+      [userInfo.id, agent_id, agent_balance]
     );
 
     // SELECT at.*, u_admin.name AS admin_name, u_agent.name AS agent_name
@@ -177,7 +177,7 @@ admin.post("/agent-service/add-balance", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const insertResult = await connect.query(
-      "INSERT INTO agent_transaction SET admin_id = ?, agent_id = ?, amount = ?, created_at = ?, type = 'service_balance'",
+      "INSERT INTO agent_transaction SET admin_id = ?, agent_id = ?, amount = ?, type = 'service_balance'",
       [userInfo.id, agentId, amount, new Date()]
     );
 
@@ -1339,8 +1339,8 @@ admin.post("/addUser", async (req, res) => {
                 Number(agentBalance[0].tirgoBalance) >= Number(paymentValue)
               ) {
                 const insertResult = await connect.query(
-                  "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, created_at = ?, type = 'subscription'",
-                  [data.agent_id, paymentValue, new Date()]
+                  "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, type = 'subscription'",
+                  [data.agent_id, paymentValue]
                 );
                 if (insertResult) {
                   let nextthreeMonth = new Date(
@@ -1404,8 +1404,8 @@ admin.post("/addUser", async (req, res) => {
                 Number(agentBalance[0].tirgoBalance) >= Number(paymentValue)
               ) {
                 const insertResult = await connect.query(
-                  "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, created_at = ?, type = 'subscription'",
-                  [data.agent_id, paymentValue, new Date()]
+                  "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, type = 'subscription'",
+                  [data.agent_id, paymentValue]
                 );
                 if (insertResult) {
                   let nextthreeMonth = new Date(
@@ -1469,8 +1469,8 @@ admin.post("/addUser", async (req, res) => {
                 Number(agentBalance[0].tirgoBalance) >= Number(paymentValue)
               ) {
                 const insertResult = await connect.query(
-                  "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, created_at = ?, type = 'subscription'",
-                  [data.agent_id, paymentValue, new Date()]
+                  "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, type = 'subscription'",
+                  [data.agent_id, paymentValue]
                 );
                 if (insertResult) {
                   let nextthreeMonth = new Date(
@@ -3382,8 +3382,8 @@ admin.post("/addUserByAgent", async (req, res) => {
             let paymentValue = 80000;
             if (Number(agentBalance[0].tirgoBalance) >= Number(paymentValue)) {
               const insertResult = await connect.query(
-                "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, created_at = ?, type = 'subscription'",
-                [agent_id, paymentValue, new Date()]
+                "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, type = 'subscription'",
+                [agent_id, paymentValue]
               );
               if (insertResult) {
                 let nextthreeMonth = new Date(
@@ -3423,8 +3423,8 @@ admin.post("/addUserByAgent", async (req, res) => {
             let paymentValue = 180000;
             if (Number(agentBalance[0].tirgoBalance) >= Number(paymentValue)) {
               const insertResult = await connect.query(
-                "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, created_at = ?, type = 'subscription'",
-                [agent_id, paymentValue, new Date()]
+                "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, type = 'subscription'",
+                [agent_id, paymentValue]
               );
               if (insertResult) {
                 let nextthreeMonth = new Date(
@@ -3463,8 +3463,8 @@ admin.post("/addUserByAgent", async (req, res) => {
             let paymentValue = 570000;
             if (Number(agentBalance[0].tirgoBalance) >= Number(paymentValue)) {
               const insertResult = await connect.query(
-                "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, created_at = ?, type = 'subscription'",
-                [agent_id, paymentValue, new Date()]
+                "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, type = 'subscription'",
+                [agent_id, paymentValue]
               );
               if (insertResult) {
                 let nextthreeMonth = new Date(
@@ -4916,6 +4916,11 @@ admin.post("/remove-driver-subscription", async (req, res) => {
   let userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   userInfo.id = 6197
 try {
+  if(!user_id) {
+    appData.status = false;
+    appData.error = 'user_id id required';
+    res.status(400).json(appData)
+  } else {
   connect = await database.connection.getConnection();
   await connect.beginTransaction();
   const [user] = await connect.query(`SELECT to_subscription from users_list WHERE id = ${user_id}`);
@@ -4938,21 +4943,40 @@ try {
         const [agentTrans] = await connect.query(`SELECT id, agent_id from agent_transaction WHERE id = ${subTrans[0].agent_trans_id}`);
         if(agentTrans.length) {
           const [response] = await connect.query(`UPDATE agent_transaction set deleted = true, deleted_by = ${userInfo.id} WHERE id = ${subTrans[0].agent_trans_id}`);
+          console.log('response', response.affectedRows)
           if(response.affectedRows) {
             const [response] = await connect.query(`UPDATE subscription_transaction set deleted = true, deleted_by = ${userInfo.id} WHERE id = ${subTrans[0].id}`);
-            await connect.query(`UPDATE users_list set to_subscription = null, from_subscription = null WHERE id = ${user_id}`);
+            console.log('response2', response.affectedRows)
+            if(!response.affectedRows) {
+              throw new Error()
+            }
+            const [uRes] = await connect.query(`UPDATE users_list set to_subscription = null, from_subscription = null WHERE id = ${user_id}`);
+            console.log('uRes', uRes.affectedRows)
+            if(!uRes.affectedRows) {
+              throw new Error()
+            }
             appData.status = true;
             res.status(200).json(appData)
           }
         }
       } else {
-        await connect.query(`UPDATE subscription_transaction set deleted = true, deleted_by = ${userInfo.id} WHERE id = ${subTrans[0].id}`);
+        const [sRes] = await connect.query(`UPDATE subscription_transaction set deleted = true, deleted_by = ${userInfo.id} WHERE id = ${subTrans[0].id}`);
+        console.log('sRes', sRes.affectedRows)
+        if(!sRes.affectedRows) {
+          throw new Error()
+        }
+        const [usRes] = await connect.query(`UPDATE users_list set to_subscription = null, from_subscription = null WHERE id = ${user_id}`);
+        console.log('usRes', usRes.affectedRows)
+        if(!usRes.affectedRows) {
+          throw new Error()
+        }
         appData.status = true;
         res.status(200).json(appData)
       }
     }
   }
   await connect.commit();
+  }
 } catch(err) {
   console.log(err)
   await connect.rollback();
