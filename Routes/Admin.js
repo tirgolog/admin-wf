@@ -769,7 +769,7 @@ admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
     }
 
     if (!transactionType || transactionType == 'subscription') {
-      let whereClause = `st.agent_id = ${agentId}`
+      let whereClause = `st.deleted = 0 AND st.agent_id = ${agentId}`
       if (driverId) {
         whereClause += ` AND userid = ${driverId}`
       }
@@ -782,7 +782,7 @@ admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
       );
 
       [sub] = await connect.query(
-        `SELECT Count(id) as count FROM subscription_transaction where agent_id = ${agentId}`,
+        `SELECT Count(id) as count FROM subscription_transaction where deleted = 0 AND agent_id = ${agentId}`,
         []
       );
     }
@@ -4362,7 +4362,7 @@ admin.get("/driver-group/transactions", async (req, res) => {
     const [subTransactions] = await connect.query(
       `SELECT *, ul.id as "driverId", ul.name as "driverName" from subscription_transaction st 
       LEFT JOIN users_list ul on ul.id = st.userid
-      where is_group = true AND group_id = ${groupId}`
+      where is_group = true AND group_id = ${groupId} AND deleted = 0`
     );
 
     const [serviceTransactions] = await connect.query(
@@ -4923,7 +4923,7 @@ try {
       appData.error = 'У водителя нет подписки'
       res.status(400).json(appData)
     } else {
-      const [subTrans] = await connect.query(`SELECT id, agent_id, agent_trans_id from subscription_transaction WHERE userid = ${user_id} ORDER BY created_at DESC LIMIT 1`);
+      const [subTrans] = await connect.query(`SELECT id, agent_id, agent_trans_id from subscription_transaction WHERE deleted = 0 AND userid = ${user_id} ORDER BY created_at DESC LIMIT 1`);
       if(!subTrans.length) {
         appData.status = false;
         appData.error = 'Internal error'
@@ -5172,7 +5172,7 @@ admin.get("/excel/agent-tirgo-balance-transactions", async (req, res) => {
     }
 
     if (!transactionType || transactionType == "subscription") {
-      let whereClause = `st.agent_id = ${agentId}`;
+      let whereClause = `st.deleted = 0 AND st.agent_id = ${agentId}`;
       if (driverId) {
         whereClause += ` AND userid = ${driverId}`;
       }
@@ -5186,7 +5186,7 @@ admin.get("/excel/agent-tirgo-balance-transactions", async (req, res) => {
       );
 
       [sub] = await connect.query(
-        `SELECT Count(id) as count FROM subscription_transaction where agent_id = ${agentId}`,
+        `SELECT Count(id) as count FROM subscription_transaction where deleted = 0 AND agent_id = ${agentId}`,
         []
       );
     }
