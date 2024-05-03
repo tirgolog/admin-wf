@@ -3385,7 +3385,7 @@ admin.post("/addUserByAgent", async (req, res) => {
                 "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, type = 'subscription'",
                 [agent_id, paymentValue]
               );
-              if (insertResult) {
+              if (insertResult.affectedRows) {
                 let nextthreeMonth = new Date(
                   new Date().setMonth(
                     new Date().getMonth() + subscription[0].duration
@@ -3426,7 +3426,7 @@ admin.post("/addUserByAgent", async (req, res) => {
                 "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, type = 'subscription'",
                 [agent_id, paymentValue]
               );
-              if (insertResult) {
+              if (insertResult.affectedRows) {
                 let nextthreeMonth = new Date(
                   new Date().setMonth(
                     new Date().getMonth() + subscription[0].duration
@@ -3466,7 +3466,7 @@ admin.post("/addUserByAgent", async (req, res) => {
                 "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, type = 'subscription'",
                 [agent_id, paymentValue]
               );
-              if (insertResult) {
+              if (insertResult.affectedRows) {
                 let nextthreeMonth = new Date(
                   new Date().setMonth(
                     new Date().getMonth() + subscription[0].duration
