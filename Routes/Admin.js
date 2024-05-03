@@ -3832,6 +3832,7 @@ admin.post("/agent/add-services", async (req, res) => {
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);;
   const { user_id, phone, services } = req.body;
   try {
+    connect = await database.connection.getConnection();
     if(!services[0]?.without_subscription) {
       const [user] = await connect.query(
         "SELECT * FROM users_list WHERE to_subscription >= CURDATE() AND id = ?",
