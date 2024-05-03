@@ -20,7 +20,7 @@ const upload = multer({
     fileSize: 50 * 1024 * 1024, // 50 MB
   },
 });
-
+const XLSX = require("xlsx");
 //Beeline
 // const minioClient = new Minio.Client({
 //   endPoint: "185.183.243.223",
@@ -5142,5 +5142,503 @@ try {
 }
 });
 
+
+admin.get("/excel/agent-tirgo-balance-transactions", async (req, res) => {
+  let connect,
+    appData = { status: false },
+    transactionType = req.query.transactionType,
+    driverId = req.query.driverId,
+    agentId = req.query.agentId,
+    rows = [],
+    subs = [],
+    sortByDate = req.query.sortByDate == "true",
+    sortType = req.query.sortType;
+  try {
+    connect = await database.connection.getConnection();
+    if ((!transactionType || transactionType == "tirgo_balance") && !driverId) {
+      [rows] = await connect.query(
+        `SELECT at.*, al.name as "Agent", adl.name as "Admin" FROM agent_transaction  at
+      LEFT JOIN users_list al on al.id = at.agent_id
+      LEFT JOIN users_list adl on adl.id = at.admin_id
+      WHERE type = 'tirgo_balance' AND at.agent_id = ${agentId} ORDER BY ${
+          sortByDate ? "created_at" : "id"
+        } ${sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"} ;`
+      );
+
+      [row] = await connect.query(
+        `SELECT Count(id) as count FROM agent_transaction where type = 'tirgo_balance' AND  agent_id = ${agentId}`,
+        []
+      );
+    }
+
+    if (!transactionType || transactionType == "subscription") {
+      let whereClause = `st.agent_id = ${agentId}`;
+      if (driverId) {
+        whereClause += ` AND userid = ${driverId}`;
+      }
+      [subs] = await connect.query(
+        `SELECT st.*, al.name as "Agent", ul.name as "DriverName", 'subscription' as "Type" FROM subscription_transaction st
+      LEFT JOIN users_list ul on ul.id = st.userid
+      LEFT JOIN users_list al on al.id = st.agent_id
+      WHERE ${whereClause} ORDER BY ${sortByDate ? "created_at" : "id"} ${
+          sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
+        } ;`
+      );
+
+      [sub] = await connect.query(
+        `SELECT Count(id) as count FROM subscription_transaction where agent_id = ${agentId}`,
+        []
+      );
+    }
+
+    const data = [...rows, ...subs]
+      .sort((a, b) => {
+        if (sortType.toString().toLowerCase() == "asc") {
+          return new Date(a.created_at) - new Date(b.created_at);
+        } else {
+          return new Date(b.created_at) - new Date(a.created_at);
+        }
+      })
+      .map((el) => {
+        return {
+          id: el.id,
+          driverId: el.userid,
+          driverName: el.DriverName,
+          createdAt: new Date(el.created_at).toLocaleString("ru-RU", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+          }),
+          type: el.Type == "subscription" ? "Подписка" : "Пополнение баланса",
+          amount: el.amount,
+          adminName: el.Admin,
+        };
+      });
+
+    if (data.length) {
+      const ws = XLSX.utils.json_to_sheet(data);
+      ws['!cols'] = [
+        { wch: 30 }, 
+        { wch: 15 }, 
+        { wch: 10 }, 
+        { wch: 10 }, 
+        { wch: 10 }, 
+        { wch: 30 }, 
+        { wch: 15 }, 
+      ];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+      ws["A1"] = { v: "Админ", t: "s" };
+      ws["B1"] = { v: "Тип", t: "s" };
+      ws["C1"] = { v: "Сумма", t: "s" };
+      ws["D1"] = { v: "Сумма", t: "s" };
+      ws["E1"] = { v: "DriverId", t: "s" };
+      ws["F1"] = { v: "Имя драйвера", t: "s" };
+      ws["G1"] = { v: "Дата", t: "s" };
+      
+      data.forEach((item, index) => {
+        ws[`A${index + 2}`] = { v: item.adminName ? item.adminName : "", t: "s" };
+        ws[`B${index + 2}`] = { v: item.type ? item.type : "", t: "s" };
+        ws[`C${index + 2}`] = {
+          v: item.type !== "Подписка" ? item.amount : "",
+          t: "n",
+        };
+        ws[`D${index + 2}`] = {
+          v: item.type === "Подписка" ? item.amount : "",
+          t: "n",
+        };
+        ws[`E${index + 2}`] = { v: item.driverId, t: "n" };
+        ws[`F${index + 2}`] = { v: item.driverName, t: "s" };
+        ws[`G${index + 2}`] = { v: item.createdAt, t: "s" };
+      });
+      // XLSX.writeFile(wb, "./uploads/agent-tirgo-balance-transactions.xlsx");
+      // res.download("./uploads/agent-tirgo-balance-transactions.xlsx");  
+      const wopts = { bookType:'xlsx', bookSST:false, type:'array' };
+      const wbout = XLSX.write(wb,wopts);
+    
+      const blob = new Blob([wbout], {type:'application/octet-stream'});
+      res.setHeader('Content-Disposition', 'attachment; filename=services-transaction.xlsx');
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.end(Buffer.from(wbout));
+    }
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/excel/agent-service-transactions", async (req, res) => {
+  let connect,
+    appData = { status: false },
+    transactionType = req.query.transactionType,
+    driverId = req.query.driverId,
+    agentId = req.query.agentId,
+    sortByDate = req.query.sortByDate == "true",
+    sortType = req.query.sortType,
+    serviceId = req.query.serviceId,
+    rows = [],
+    balanceRows = [],
+    alphaRows = []
+  try {
+    if (agentId) {
+      connect = await database.connection.getConnection();
+      if (!transactionType || transactionType == "service") {
+        let rowWhereClause = `st.created_by_id = ${agentId} AND st.status <> 4`;
+        if (transactionType == "service" && serviceId) {
+          rowWhereClause += ` AND s.id = ${serviceId}`;
+        }
+        if (driverId) {
+          rowWhereClause += ` AND st.userid = ${driverId}`;
+        }
+        [rows] = await connect.query(
+          `SELECT 
+          st.id,
+          st.created_by_id,
+          st.amount,
+          st.created_at,
+          st.service_name,
+          st.userid,
+          st.status,
+          'st' as 'rawType', al.name as "agentName", adl.name as "driverName" FROM services_transaction st
+          LEFT JOIN users_list al on al.id = st.created_by_id AND al.user_type = 4
+          LEFT JOIN users_list adl on adl.id = st.userid AND adl.user_type = 1
+          LEFT JOIN services s on s.id = st.service_id
+          where ${rowWhereClause} ORDER BY ${
+            sortByDate ? "st.created_at" : "st.id"
+          } ${
+            sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
+          } `,
+        );
+        [row] = await connect.query(
+          `SELECT Count(id) as count FROM services_transaction where created_by_id = ${agentId} AND status <> 4`,
+          []
+        );
+      }
+
+      if (!transactionType || transactionType == "service_balance") {
+        if (!driverId) {
+          [balanceRows] = await connect.query(
+            `SELECT *, adl.name as "adminName", al.name as "agentName", 'at' as 'rawType' FROM agent_transaction at
+          LEFT JOIN users_list al on al.id = at.agent_id
+          LEFT JOIN users_list adl on adl.id = at.admin_id
+          WHERE at.agent_id = ${agentId} AND type = 'service_balance' ORDER BY ${
+              sortByDate ? "at.created_at" : "at.id"
+            } ${
+              sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
+            } `,
+          );
+
+          [balanceRow] = await connect.query(
+            `SELECT Count(id) as count FROM agent_transaction where agent_id = ${agentId} AND type = 'service_balance'`,
+            []
+          );
+        }
+
+        let alphaWhereClause = `ap.agent_id = ${agentId} AND is_agent = true`;
+        if (driverId) {
+          alphaWhereClause += ` AND ap.userid = ${driverId}`;
+        }
+        [alphaRows] = await connect.query(
+          `SELECT *, 'alpha' as "rawType", al.name as "agentName", d.name as "driverName" FROM alpha_payment ap 
+          LEFT JOIN users_list al on al.id = ap.agent_id
+          LEFT JOIN users_list d on d.id = ap.userid
+          WHERE ${alphaWhereClause} `,
+        );
+        [alphaRow] = await connect.query(
+          `SELECT Count(id) as count FROM alpha_payment WHERE agent_id = ${agentId} AND is_agent = true`
+        );
+      }
+      const data = [...balanceRows, ...rows, ...alphaRows]
+        .sort((a, b) => {
+          if (sortType.toString().toLowerCase() == "asc") {
+            return a.created_at - b.created_at;
+          } else {
+            return b.created_at - a.created_at;
+          }
+        })
+        .map((el) => {
+          if (el.rawType == "at") {
+            return {
+              id: el.id,
+              amount: el.amount,
+              created_at: new Date(el.created_at).toLocaleString("ru-RU", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit"
+              }),
+              type:
+                el.type == "subscription" ? "Подписка" : "Пополнение баланса",
+              adminName: el.adminName,
+              driverId: el.userid,
+              driverName: el.driverName,
+            };
+          } else if (el.rawType == "alpha") {
+            return {
+              id: el.id,
+              amount: el.amount,
+              created_at: new Date(el.created_at).toLocaleString("ru-RU", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit"
+              }),
+              type: "Пополнение баланса",
+              driverName: el.driverName,
+              driverId: el.userid,
+            };
+          } else {
+            return {
+              id: el.id,
+              amount: el.amount,
+              created_at: new Date(el.created_at).toLocaleString("ru-RU", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit"
+              }),
+              type: el.service_name,
+              driverId: el.userid,
+              driverName: el.driverName,
+            };
+          }
+        });
+
+      if (data.length) {
+        const ws = XLSX.utils.json_to_sheet(data);
+        ws['!cols'] = [
+          { wch: 30 }, 
+          { wch: 65 }, 
+          { wch: 10 }, 
+          { wch: 10 }, 
+          { wch: 10 }, 
+          { wch: 30 }, 
+          { wch: 15 }, 
+        ];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+        ws["A1"] = { v: "Админ", t: "s" };
+        ws["B1"] = { v: "Тип", t: "s" };
+        ws["C1"] = { v: "Сумма", t: "s" };
+        ws["D1"] = { v: "Сумма", t: "s" };
+        ws["E1"] = { v: "DriverId", t: "s" };
+        ws["F1"] = { v: "Имя драйвера", t: "s" };
+        ws["G1"] = { v: "Дата", t: "s" };
+        data.forEach((item, index) => {
+          ws[`A${index + 2}`] = { v: item.adminName ? item.adminName : "", t: "s" };
+          ws[`B${index + 2}`] = { v: item.type ? item.type : "", t: "s" };
+          ws[`C${index + 2}`] = {
+            v: item.type === "Пополнение баланса"&&item.amount!=null ? item.amount : "",
+            t: "n",
+          };
+          ws[`D${index + 2}`] = {
+            v: item.type !== "Пополнение баланса" &&item.amount!=null ? item.amount : "",
+            t: "n",
+          };
+          ws[`E${index + 2}`] = { v: item.driverId, t: "n" };
+          ws[`F${index + 2}`] = { v: item.driverName, t: "s" };
+          ws[`G${index + 2}`] = { v: item.created_at, t: "s" };
+        });
+        // XLSX.writeFile(wb, "./uploads/agent-service-transactions.xlsx");
+        // res.download("./uploads/agent-service-transactions.xlsx");  
+        const wopts = { bookType:'xlsx', bookSST:false, type:'array' };
+        const wbout = XLSX.write(wb,wopts);
+      
+        const blob = new Blob([wbout], {type:'application/octet-stream'});
+        res.setHeader('Content-Disposition', 'attachment; filename=services-transaction.xlsx');
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.end(Buffer.from(wbout));
+      }
+      res.status(200).json(appData);
+    } else {
+      appData.error = "Agent id is required";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/excel/services-transaction", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  const {
+    id,
+    userType,
+    driverId,
+    serviceId,
+    fromDate,
+    toDate,
+    sortByDate,
+    sortType,
+  } = req.query;
+  try {
+    connect = await database.connection.getConnection();
+
+    let queryParams = [];
+    let queryConditions = [];
+
+    if (id) {
+      queryConditions.push("st.id = ?");
+      queryParams.push(id);
+    }
+
+    if (userType == "3") {
+      queryConditions.push("adl.user_type = ?");
+      queryParams.push(userType);
+    }
+
+    if (userType == "4") {
+      queryConditions.push("al.user_type = ?");
+      queryParams.push(userType);
+    }
+
+    if (driverId) {
+      queryConditions.push("st.userid = ?");
+      queryParams.push(driverId);
+    }
+
+    if (serviceId) {
+      queryConditions.push("s.id = ?");
+      queryParams.push(serviceId);
+    }
+
+    if (fromDate) {
+      queryConditions.push("st.created_at >= ?");
+      queryParams.push(fromDate);
+    }
+
+    if (toDate) {
+      queryConditions.push("st.created_at <= ?");
+      queryParams.push(toDate);
+    }
+
+    let query = `SELECT 
+      st.userid as "driverId",
+      s.name as "serviceName",
+      CASE 
+      WHEN st.amount = 0 OR st.amount IS NULL THEN st.price_uzs
+      ELSE st.amount
+      END AS "amount",
+      st.rate,
+      st.status as "statusId",
+      st.created_at as "createdAt",
+      al.name as "agentName",
+      adl.name as "adminName"
+      FROM services_transaction st
+      LEFT JOIN users_list ul ON ul.id = st.userid
+      LEFT JOIN users_list al ON al.id = st.created_by_id AND al.user_type = 4
+      LEFT JOIN users_list adl ON adl.id = st.created_by_id AND adl.user_type = 3
+      LEFT JOIN services s ON s.id = st.service_id`;
+
+    if (queryConditions.length > 0) {
+      query += " WHERE " + queryConditions.join(" AND ");
+    }
+
+    if (sortByDate) {
+      query += ` ORDER BY st.created_at ${sortType} `;
+    } else {
+      query += ` ORDER BY st.id DESC `;
+    }
+
+
+    const [services_transaction] = await connect.query(query, queryParams);
+
+    if (services_transaction.length) {
+
+      const ws = XLSX.utils.json_to_sheet(services_transaction);
+      ws['!cols'] = [
+        { wch: 30 }, 
+        { wch: 15 }, 
+        { wch: 10 }, 
+        { wch: 10 }, 
+        { wch: 10 }, 
+        { wch: 30 }, 
+        { wch: 15 }, 
+        { wch: 15 }, 
+      ];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+      ws["A1"] = { v: "Наименование услуги", t: "s" };
+      ws["B1"] = { v: "DriverID", t: "s" };
+      ws["C1"] = { v: "Сумма", t: "s" };
+      ws["D1"] = { v: "Ставка", t: "s" };
+      ws["E1"] = { v: "Agent", t: "s" };
+      ws["F1"] = { v: "Админ", t: "s" };
+      ws["G1"] = { v: "Статус", t: "s" };
+      ws["H1"] = { v: "Дата", t: "s" };
+      
+      services_transaction.forEach((item, index) => {
+        ws[`A${index + 2}`] = { v: item.serviceName ? item.serviceName : "", t: "s" };
+        ws[`B${index + 2}`] = { v: item.driverId ? item.driverId : "", t: "s" };
+        ws[`C${index + 2}`] = {
+          v: item.amount !== 0 ? item.amount : "Free",
+          t: "n",
+        };
+        ws[`D${index + 2}`] = { v: item.rate, t: "n" };
+        ws[`E${index + 2}`] = { v: item.agentName&&item.agentName!=="null" ? item.agentName : "", t: "s" };
+        ws[`F${index + 2}`] = { v: item.adminName&&item.adminName!=="null" ? item.adminName : "", t: "s" };
+        ws[`G${index + 2}`] = { v: statusCheck(item.statusId), t: "s" };
+        ws[`H${index + 2}`] = { v: new Date(item.createdAt).toLocaleString("ru-RU", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+          }), t: "s" };
+      });
+      const wopts = { bookType:'xlsx', bookSST:false, type:'array' };
+      const wbout = XLSX.write(wb,wopts);
+    
+      const blob = new Blob([wbout], {type:'application/octet-stream'});
+      res.setHeader('Content-Disposition', 'attachment; filename=services-transaction.xlsx');
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.end(Buffer.from(wbout));
+    } else {
+      appData.error = "Транзакция не найдена";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+const statusCheck=(params)=> {
+  switch (params) {
+    case 0:
+      return "В ожидании ";
+    case 1:
+      return "Оцененный";
+    case 2:
+      return "В работе";
+    case 3:
+      return "Выполнен";
+    case 4:
+      return "Отменен";
+    default:
+      return null;
+  }
+}
 
 module.exports = admin;
