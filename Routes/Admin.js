@@ -3831,15 +3831,17 @@ admin.post("/agent/add-services", async (req, res) => {
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);;
   const { user_id, phone, services } = req.body;
   try {
-    const [user] = await connect.query(
-      "SELECT * FROM users_list WHERE to_subscription >= CURDATE() AND id = ?",
-      [userId]
-    );
-    if (!user.length) {
-      appData.error = "Необходимо оформить подписку";
-      return res.status(400).json(appData);
-    }
-    connect = await database.connection.getConnection();
+    if(!services[0]?.without_subscription) {
+      const [user] = await connect.query(
+        "SELECT * FROM users_list WHERE to_subscription >= CURDATE() AND id = ?",
+        [userId]
+      );
+      if (!user.length) {
+        appData.error = "Необходимо оформить подписку";
+        return res.status(400).json(appData);
+      }
+    } else {
+      connect = await database.connection.getConnection();
     const [rows] = await connect.query(
       "SELECT * FROM users_contacts WHERE text = ? AND verify = 1",
       [phone]
@@ -3849,21 +3851,6 @@ admin.post("/agent/add-services", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
-
-      const [agent] = await connect.query(
-        `SELECT 
-        COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE deleted = 0 AND agent_id = ? AND type = 'service_balance'), 0) - 
-        COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE agent_id = ? AND is_agent = true), 0) - 
-        COALESCE((SELECT SUM(price_uzs) FROM services_transaction where created_by_id = ? AND status <> 4), 0) AS serviceBalance      
-      `,
-        [userInfo.id, userInfo.id, userInfo.id]
-      );
-      const totalAmount = services.reduce(
-        (accumulator, secure) => accumulator + Number(secure.price_uzs),
-        0
-      );
-      let balance = agent[0].serviceBalance;
-      if (balance >= totalAmount) {
         const [editUser] = await connect.query(
           "UPDATE users_list SET is_service = 1  WHERE id = ?",
           [user_id]
@@ -3910,12 +3897,9 @@ admin.post("/agent/add-services", async (req, res) => {
           appData.status = false;
           res.status(400).json(appData);
         }
-      } else {
-        appData.error = "Недостаточно средств на балансе";
-        appData.status = false;
-        res.status(400).json(appData);
-      }
     }
+    }
+    
   } catch (e) {
     appData.error = e.message;
     res.status(400).json(appData);
