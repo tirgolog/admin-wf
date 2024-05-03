@@ -3381,10 +3381,11 @@ admin.post("/addUserByAgent", async (req, res) => {
           if (subscription[0].duration === 1) {
             let paymentValue = 80000;
             if (Number(agentBalance[0].tirgoBalance) >= Number(paymentValue)) {
-              const insertResult = await connect.query(
+              const [insertResult] = await connect.query(
                 "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, type = 'subscription'",
                 [agent_id, paymentValue]
               );
+              console.log(insertResult,insertResult.affectedRows)
               if (insertResult.affectedRows) {
                 let nextthreeMonth = new Date(
                   new Date().setMonth(
@@ -3393,7 +3394,7 @@ admin.post("/addUserByAgent", async (req, res) => {
                 );
                 const subscription_transaction = await connect.query(
                   "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, agent_id = ?, agent_trans_id = ?",
-                  [user_id, subscription_id, phone, paymentValue, agent_id, insertResult[0]?.insertId]
+                  [user_id, subscription_id, phone, paymentValue, agent_id, insertResult?.insertId]
                 );
 
                 if (subscription_transaction.length > 0) {
@@ -3422,7 +3423,7 @@ admin.post("/addUserByAgent", async (req, res) => {
           } else if (subscription[0].duration === 3) {
             let paymentValue = 180000;
             if (Number(agentBalance[0].tirgoBalance) >= Number(paymentValue)) {
-              const insertResult = await connect.query(
+              const [insertResult] = await connect.query(
                 "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, type = 'subscription'",
                 [agent_id, paymentValue]
               );
@@ -3433,8 +3434,8 @@ admin.post("/addUserByAgent", async (req, res) => {
                   )
                 );
                 const subscription_transaction = await connect.query(
-                  "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, agent_id = ?",
-                  [user_id, subscription_id, phone, paymentValue, agent_id]
+                  "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, agent_id = ?, agent_trans_id = ?",
+                  [user_id, subscription_id, phone, paymentValue, agent_id, insertResult?.insertId]
                 );
                 if (subscription_transaction.length > 0) {
                   const [edit] = await connect.query(
@@ -3462,7 +3463,7 @@ admin.post("/addUserByAgent", async (req, res) => {
           } else if (subscription[0].duration === 12) {
             let paymentValue = 570000;
             if (Number(agentBalance[0].tirgoBalance) >= Number(paymentValue)) {
-              const insertResult = await connect.query(
+              const [insertResult] = await connect.query(
                 "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, type = 'subscription'",
                 [agent_id, paymentValue]
               );
@@ -3473,8 +3474,8 @@ admin.post("/addUserByAgent", async (req, res) => {
                   )
                 );
                 const subscription_transaction = await connect.query(
-                  "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, agent_id = ?",
-                  [user_id, subscription_id, phone, paymentValue, agent_id]
+                  "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, agent_id = ?, agent_trans_id = ?",
+                  [user_id, subscription_id, phone, paymentValue, agent_id, insertResult?.insertId]
                 );
                 if (subscription_transaction.length > 0) {
                   const [edit] = await connect.query(
