@@ -20,7 +20,7 @@ const upload = multer({
     fileSize: 50 * 1024 * 1024, // 50 MB
   },
 });
-
+const XLSX = require("xlsx");
 //Beeline
 // const minioClient = new Minio.Client({
 //   endPoint: "185.183.243.223",
@@ -215,7 +215,8 @@ admin.post("/agent/add-balance-to-driver", async (req, res) => {
 
   try {
     connect = await database.connection.getConnection();
-    const [insertResult] = await connect.query(`
+    const [insertResult] = await connect.query(
+      `
      INSERT INTO alpha_payment SET userid = ?, date_timestamp = ?, amount = ?, agent_id = ?, is_agent = true`,
       [driverId, new Date(), amount, agentId]
     );
@@ -311,7 +312,7 @@ admin.post("/agent-service/add-to-driver", async (req, res) => {
                   service.rate,
                   0,
                   userInfo.id,
-                  true
+                  true,
                 ];
               } catch (error) {
                 console.error("Error occurred while fetching service:", error);
@@ -372,7 +373,6 @@ admin.get("/getAgent/:agent_id", async (req, res) => {
   }
 });
 
-
 admin.get("/getAgentBalanse/:agent_id", async (req, res) => {
   let connect,
     appData = { status: false },
@@ -395,7 +395,7 @@ admin.get("/getAgentBalanse/:agent_id", async (req, res) => {
     }
     res.status(200).json(appData);
   } catch (e) {
-    console.log(e)
+    console.log(e);
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
@@ -440,7 +440,7 @@ admin.get("/getAgentBalanse/:agent_id", async (req, res) => {
 //       let whereClause = "created_by_id = ? AND status <> 4";
 //       // Query for service transactions
 //       [rows] = await connect.query(
-//         `SELECT *, 'st' as 'rawType' FROM services_transaction st 
+//         `SELECT *, 'st' as 'rawType' FROM services_transaction st
 //         LEFT JOIN services s on s.id = st.service_id
 //         WHERE st.created_by_id = ? AND st.status <> 4 AND s.id = ? ${sortClause} LIMIT ?, ?`,
 //         [agentId, serviceId, +from, +limit]
@@ -450,7 +450,7 @@ admin.get("/getAgentBalanse/:agent_id", async (req, res) => {
 //         [agentId]
 //       );
 
-//     } 
+//     }
 //     if (!transactionType || transactionType !== 'service') {
 //       // Construct the WHERE clause for optional filters
 //       const type = transactionType ? transactionType : 'service_balance';
@@ -530,7 +530,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
     transactionType = req.query.transactionType,
     driverId = req.query.driverId,
     agentId = req.query.agentId,
-    sortByDate = req.query.sortByDate == 'true',  //true or false
+    sortByDate = req.query.sortByDate == "true", //true or false
     sortType = req.query.sortType,
     limit = req.query.limit,
     serviceId = req.query.serviceId,
@@ -547,20 +547,19 @@ admin.get("/agent-service-transactions", async (req, res) => {
     from = 0;
   }
   try {
-
     if (agentId) {
       connect = await database.connection.getConnection();
 
-      if (!transactionType || transactionType == 'service') {
-          let rowWhereClause = `st.created_by_id = ${agentId} AND st.status <> 4`;
-          if(transactionType == 'service' && serviceId) {
-            rowWhereClause += ` AND s.id = ${serviceId}`
-          }
-          if (driverId) {
-            rowWhereClause += ` AND st.userid = ${driverId}`
-          }
-          [rows] = await connect.query(
-            `SELECT 
+      if (!transactionType || transactionType == "service") {
+        let rowWhereClause = `st.created_by_id = ${agentId} AND st.status <> 4`;
+        if (transactionType == "service" && serviceId) {
+          rowWhereClause += ` AND s.id = ${serviceId}`;
+        }
+        if (driverId) {
+          rowWhereClause += ` AND st.userid = ${driverId}`;
+        }
+        [rows] = await connect.query(
+          `SELECT 
           st.id,
           st.created_by_id,
           st.amount,
@@ -572,22 +571,30 @@ admin.get("/agent-service-transactions", async (req, res) => {
           LEFT JOIN users_list al on al.id = st.created_by_id AND al.user_type = 4
           LEFT JOIN users_list adl on adl.id = st.userid AND adl.user_type = 1
           LEFT JOIN services s on s.id = st.service_id
-          where ${rowWhereClause} ORDER BY ${sortByDate ? 'st.created_at' : 'st.id'} ${sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?`,
-            [+from, +limit]
-          );
-          [row] = await connect.query(
-            `SELECT Count(id) as count FROM services_transaction where created_by_id = ${agentId} AND status <> 4`,
-            []
-          );
-      } 
+          where ${rowWhereClause} ORDER BY ${
+            sortByDate ? "st.created_at" : "st.id"
+          } ${
+            sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
+          } LIMIT ?, ?`,
+          [+from, +limit]
+        );
+        [row] = await connect.query(
+          `SELECT Count(id) as count FROM services_transaction where created_by_id = ${agentId} AND status <> 4`,
+          []
+        );
+      }
 
-      if (!transactionType || transactionType == 'service_balance') {
+      if (!transactionType || transactionType == "service_balance") {
         if (!driverId) {
           [balanceRows] = await connect.query(
             `SELECT *, adl.name as "adminName", al.name as "agentName", 'at' as 'rawType' FROM agent_transaction at
           LEFT JOIN users_list al on al.id = at.agent_id
           LEFT JOIN users_list adl on adl.id = at.admin_id
-          WHERE at.agent_id = ${agentId} AND type = 'service_balance' ORDER BY ${sortByDate ? 'at.created_at' : 'at.id'} ${sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?`,
+          WHERE at.agent_id = ${agentId} AND type = 'service_balance' ORDER BY ${
+              sortByDate ? "at.created_at" : "at.id"
+            } ${
+              sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
+            } LIMIT ?, ?`,
             [+from, +limit]
           );
 
@@ -597,9 +604,9 @@ admin.get("/agent-service-transactions", async (req, res) => {
           );
         }
 
-        let alphaWhereClause = `ap.agent_id = ${agentId} AND is_agent = true`
+        let alphaWhereClause = `ap.agent_id = ${agentId} AND is_agent = true`;
         if (driverId) {
-          alphaWhereClause += ` AND ap.userid = ${driverId}`
+          alphaWhereClause += ` AND ap.userid = ${driverId}`;
         }
         [alphaRows] = await connect.query(
           `SELECT *, 'alpha' as "rawType", al.name as "agentName", d.name as "driverName" FROM alpha_payment ap 
@@ -609,69 +616,76 @@ admin.get("/agent-service-transactions", async (req, res) => {
           [+from, +limit]
         );
         [alphaRow] = await connect.query(
-          `SELECT Count(id) as count FROM alpha_payment WHERE agent_id = ${agentId} AND is_agent = true`,
+          `SELECT Count(id) as count FROM alpha_payment WHERE agent_id = ${agentId} AND is_agent = true`
         );
-
       }
-      const data = ([...balanceRows, ...rows, ...alphaRows].sort((a, b) => {
-        if(sortType.toString().toLowerCase() == 'asc') {
-          return a.created_at - b.created_at
-        } else {
-          return b.created_at - a.created_at
-        }
-      }).splice(0, limit)).map((el) => {
-        if (el.rawType == 'at') {
-          console.log(el.type)
-          return {
-            id: el.id,
-            agent_id: el.agent_id,
-            agentName: el.agentName,
-            amount: el.amount,
-            created_at: el.created_at,
-            type: el.type == 'subscription' ? 'Подписка' : 'Пополнение баланса',
-            adminId: el.admin_id,
-            adminName: el.adminName
+      const data = [...balanceRows, ...rows, ...alphaRows]
+        .sort((a, b) => {
+          if (sortType.toString().toLowerCase() == "asc") {
+            return a.created_at - b.created_at;
+          } else {
+            return b.created_at - a.created_at;
           }
-        } else if (el.rawType == 'alpha') {
-          return {
-            id: el.id,
-            agent_id: el.agent_id,
-            amount: el.amount,
-            created_at: el.created_at,
-            type: 'Пополнение баланса',
-            agentName: el.agentName,
-            agentId: el.agent_id,
-            driverName: el.driverName,
-            driverId: el.userid
+        })
+        .splice(0, limit)
+        .map((el) => {
+          if (el.rawType == "at") {
+            console.log(el.type);
+            return {
+              id: el.id,
+              agent_id: el.agent_id,
+              agentName: el.agentName,
+              amount: el.amount,
+              created_at: el.created_at,
+              type:
+                el.type == "subscription" ? "Подписка" : "Пополнение баланса",
+              adminId: el.admin_id,
+              adminName: el.adminName,
+            };
+          } else if (el.rawType == "alpha") {
+            return {
+              id: el.id,
+              agent_id: el.agent_id,
+              amount: el.amount,
+              created_at: el.created_at,
+              type: "Пополнение баланса",
+              agentName: el.agentName,
+              agentId: el.agent_id,
+              driverName: el.driverName,
+              driverId: el.userid,
+            };
+          } else {
+            return {
+              id: el.id,
+              agentId: el.created_by_id,
+              agentName: el.agentName,
+              amount: el.amount,
+              created_at: el.created_at,
+              type: el.service_name,
+              driverId: el.userid,
+              driverName: el.driverName,
+              adminId: el.admin_id,
+              status: el.status,
+            };
           }
-        } else {
-          return {
-            id: el.id,
-            agentId: el.created_by_id,
-            agentName: el.agentName,
-            amount: el.amount,
-            created_at: el.created_at,
-            type: el.service_name,
-            driverId: el.userid,
-            driverName: el.driverName,
-            adminId: el.admin_id,
-            status: el.status
-          }
-        }
-      });
-
+        });
 
       if (data.length) {
         appData.status = true;
-        appData.data = { content: data, from, limit, totalCount: row[0]?.count + balanceRow[0]?.count + alphaRow[0]?.count };
+        appData.data = {
+          content: data,
+          from,
+          limit,
+          totalCount: row[0]?.count + balanceRow[0]?.count + alphaRow[0]?.count,
+        };
       }
       res.status(200).json(appData);
     } else {
-      appData.error = 'Agent id is required';
+      appData.error = "Agent id is required";
       res.status(400).json(appData);
     }
   } catch (e) {
-    console.log(e)
+    console.log(e);
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
@@ -688,7 +702,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
 //     from = req.query.from,
 //     limit = req.query.limit,
 //     transactionType = req.query.transactionType,
-//     driverId = req.query.driverId,    
+//     driverId = req.query.driverId,
 //     sortByDate = req.query.sortByDate == 'true',  //true or false
 //     sortType = req.query.sortType;
 //   try {
@@ -699,7 +713,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
 //       whereClause += ` AND type = '${transactionType}'`;
 //     } else {
 //       whereClause += ` AND type IN ('tirgo_balance', 'subscription')`;
-//     } 
+//     }
 //     if(driverId) {
 //       whereClause = ` AND driver_id = '${driverId}'`;
 //     }
@@ -742,7 +756,7 @@ admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
     subs = [],
     row = [],
     sub = [],
-    sortByDate = req.query.sortByDate == 'true',  //true or false
+    sortByDate = req.query.sortByDate == "true", //true or false
     sortType = req.query.sortType;
   try {
     if (!from) {
@@ -753,12 +767,16 @@ admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
     }
     connect = await database.connection.getConnection();
 
-    if ((!transactionType || transactionType == 'tirgo_balance') && !driverId) {
+    if ((!transactionType || transactionType == "tirgo_balance") && !driverId) {
       [rows] = await connect.query(
         `SELECT at.*, al.name as "agentName", adl.name as "adminName" FROM agent_transaction  at
         LEFT JOIN users_list al on al.id = at.agent_id
         LEFT JOIN users_list adl on adl.id = at.admin_id
-        WHERE type = 'tirgo_balance' AND at.agent_id = ${agentId} ORDER BY ${sortByDate ? 'created_at' : 'id'} ${sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?;`,
+        WHERE type = 'tirgo_balance' AND at.agent_id = ${agentId} ORDER BY ${
+          sortByDate ? "created_at" : "id"
+        } ${
+          sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
+        } LIMIT ?, ?;`,
         [+from, +limit]
       );
 
@@ -768,16 +786,18 @@ admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
       );
     }
 
-    if (!transactionType || transactionType == 'subscription') {
-      let whereClause = `st.agent_id = ${agentId}`
+    if (!transactionType || transactionType == "subscription") {
+      let whereClause = `st.agent_id = ${agentId}`;
       if (driverId) {
-        whereClause += ` AND userid = ${driverId}`
+        whereClause += ` AND userid = ${driverId}`;
       }
       [subs] = await connect.query(
         `SELECT st.*, al.name as "agentName", ul.name as "driverName", 'subscription' as "type" FROM subscription_transaction st
         LEFT JOIN users_list ul on ul.id = st.userid
         LEFT JOIN users_list al on al.id = st.agent_id
-        WHERE ${whereClause} ORDER BY ${sortByDate ? 'created_at' : 'id'} ${sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?;`,
+        WHERE ${whereClause} ORDER BY ${sortByDate ? "created_at" : "id"} ${
+          sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
+        } LIMIT ?, ?;`,
         [+from, +limit]
       );
 
@@ -787,32 +807,40 @@ admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
       );
     }
 
-    const data = [...rows, ...subs].sort((a, b) => {
-      if(sortType.toString().toLowerCase() == 'asc') {
-        return a.created_at - b.created_at
-      } else {
-        return b.created_at - a.created_at
-      }
-    }).splice(0, limit).map((el) => {
-      return {
-        id: el.id,
-        driverId: el.userid,
-        driverName: el.driverName,
-        agentName: el.agentName,
-        agentId: el.agent_id,
-        phone: el.phone,
-        createdAt: el.created_at,
-        type: el.type == 'subscription' ? 'Подписка' : 'Пополнение баланса',
-        amount: el.amount,
-        subscription_id: el.subscription_id,
-        adminId: el.admin_id,
-        adminName: el.adminName
-      }
-    });
+    const data = [...rows, ...subs]
+      .sort((a, b) => {
+        if (sortType.toString().toLowerCase() == "asc") {
+          return a.created_at - b.created_at;
+        } else {
+          return b.created_at - a.created_at;
+        }
+      })
+      .splice(0, limit)
+      .map((el) => {
+        return {
+          id: el.id,
+          driverId: el.userid,
+          driverName: el.driverName,
+          agentName: el.agentName,
+          agentId: el.agent_id,
+          phone: el.phone,
+          createdAt: el.created_at,
+          type: el.type == "subscription" ? "Подписка" : "Пополнение баланса",
+          amount: el.amount,
+          subscription_id: el.subscription_id,
+          adminId: el.admin_id,
+          adminName: el.adminName,
+        };
+      });
 
     if (data.length) {
       appData.status = true;
-      appData.data = { content: data, from, limit, totalCount: row[0]?.count + sub[0]?.count };
+      appData.data = {
+        content: data,
+        from,
+        limit,
+        totalCount: row[0]?.count + sub[0]?.count,
+      };
     }
     res.status(200).json(appData);
   } catch (e) {
@@ -870,7 +898,9 @@ admin.get("/agent-services/transations-total-amount", async (req, res) => {
     );
     if (rows.length) {
       appData.status = true;
-      appData.data = { totalAmount: +rows[0].totalAmount + +alphaRows[0].totalAmount };
+      appData.data = {
+        totalAmount: +rows[0].totalAmount + +alphaRows[0].totalAmount,
+      };
     }
     res.status(200).json(appData);
   } catch (e) {
@@ -897,16 +927,16 @@ admin.post("/getAllUsers", async (req, res) => {
           let newUser = row;
           newUser.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-            "tirgo/clients/" +
-            row.id +
-            "/" +
-            row.avatar
+              "tirgo/clients/" +
+              row.id +
+              "/" +
+              row.avatar
           )
             ? process.env.SERVER_URL +
-            "tirgo/clients/" +
-            row.id +
-            "/" +
-            row.avatar
+              "tirgo/clients/" +
+              row.id +
+              "/" +
+              row.avatar
             : null;
           const [contacts] = await connect.query(
             "SELECT * FROM users_contacts WHERE user_id = ?",
@@ -942,16 +972,16 @@ admin.post("/getAllDrivers", async (req, res) => {
           let newUser = row;
           newUser.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-            "tirgo/drivers/" +
-            row.id +
-            "/" +
-            row.avatar
+              "tirgo/drivers/" +
+              row.id +
+              "/" +
+              row.avatar
           )
             ? process.env.SERVER_URL +
-            "tirgo/drivers/" +
-            row.id +
-            "/" +
-            row.avatar
+              "tirgo/drivers/" +
+              row.id +
+              "/" +
+              row.avatar
             : null;
           const [files] = await connect.query(
             "SELECT * FROM users_list_files WHERE user_id = ?",
@@ -962,16 +992,16 @@ admin.post("/getAllDrivers", async (req, res) => {
               let newFile = file;
               newFile.preview = fs.existsSync(
                 process.env.FILES_PATCH +
-                "tirgo/drivers/" +
-                row.id +
-                "/" +
-                file.name
+                  "tirgo/drivers/" +
+                  row.id +
+                  "/" +
+                  file.name
               )
                 ? process.env.SERVER_URL +
-                "tirgo/drivers/" +
-                row.id +
-                "/" +
-                file.name
+                  "tirgo/drivers/" +
+                  row.id +
+                  "/" +
+                  file.name
                 : null;
               return newFile;
             })
@@ -992,16 +1022,16 @@ admin.post("/getAllDrivers", async (req, res) => {
                   let docks = filetruck;
                   docks.preview = fs.existsSync(
                     process.env.FILES_PATCH +
-                    "tirgo/drivers/" +
-                    row.id +
-                    "/" +
-                    filetruck.name
+                      "tirgo/drivers/" +
+                      row.id +
+                      "/" +
+                      filetruck.name
                   )
                     ? process.env.SERVER_URL +
-                    "tirgo/drivers/" +
-                    row.id +
-                    "/" +
-                    filetruck.name
+                      "tirgo/drivers/" +
+                      row.id +
+                      "/" +
+                      filetruck.name
                     : null;
                   return docks;
                 })
@@ -1991,16 +2021,16 @@ admin.post("/getAllOrders", async (req, res) => {
               let newItemUsers = item2;
               newItemUsers.avatar = fs.existsSync(
                 process.env.FILES_PATCH +
-                "tirgo/drivers/" +
-                item2.id +
-                "/" +
-                item2.avatar
+                  "tirgo/drivers/" +
+                  item2.id +
+                  "/" +
+                  item2.avatar
               )
                 ? process.env.SERVER_URL +
-                "tirgo/drivers/" +
-                item2.id +
-                "/" +
-                item2.avatar
+                  "tirgo/drivers/" +
+                  item2.id +
+                  "/" +
+                  item2.avatar
                 : null;
               return newItemUsers;
             })
@@ -2100,16 +2130,16 @@ admin.get("/getAllMessages", async (req, res) => {
           let newItem = item;
           newItem.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-            "tirgo/drivers/" +
-            item.user_id +
-            "/" +
-            item.avatar
+              "tirgo/drivers/" +
+              item.user_id +
+              "/" +
+              item.avatar
           )
             ? process.env.SERVER_URL +
-            "tirgo/drivers/" +
-            item.user_id +
-            "/" +
-            item.avatar
+              "tirgo/drivers/" +
+              item.user_id +
+              "/" +
+              item.avatar
             : null;
           const [messages] = await connect.query(
             "SELECT * FROM chat_support WHERE user_id = ? ORDER BY id",
@@ -3607,8 +3637,9 @@ admin.put("/services/:id", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const { id } = req.params;
-    const { name, code, price_uzs, price_kzs, rate, withoutSubscription } = req.body;
-    if (!id || !name || !code || !price_uzs || !price_kzs || !rate ) {
+    const { name, code, price_uzs, price_kzs, rate, withoutSubscription } =
+      req.body;
+    if (!id || !name || !code || !price_uzs || !price_kzs || !rate) {
       appData.error = "All fields are required";
       return res.status(400).json(appData);
     }
@@ -3677,10 +3708,10 @@ admin.post("/services", async (req, res) => {
       appData.error = "если уже есть услуги.";
       res.status(400).json(appData);
     } else {
-    const [services] = await connect.query(
+      const [services] = await connect.query(
         "INSERT INTO services SET name = ?, code = ?, price_uzs = ?, price_kzs = ?, rate = ?, without_subscription = ?",
         [name, code, price_uzs, price_kzs, rate, withoutSubscription]
-     );
+      );
       appData.status = true;
       appData.data = services;
       res.status(200).json(appData);
@@ -3732,7 +3763,7 @@ admin.get("/services", async (req, res) => {
 admin.post("/addDriverServices", async (req, res) => {
   let connect,
     appData = { status: false },
-    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);;
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   const { user_id, phone, services } = req.body;
   try {
     if (!services) {
@@ -3788,7 +3819,7 @@ admin.post("/addDriverServices", async (req, res) => {
                   service.price_kzs,
                   service.rate,
                   0,
-                  userInfo.id
+                  userInfo.id,
                 ];
               } catch (error) {
                 console.error("Error occurred while fetching service:", error);
@@ -3827,7 +3858,7 @@ admin.post("/addDriverServices", async (req, res) => {
 admin.post("/agent/add-services", async (req, res) => {
   let connect,
     appData = { status: false },
-    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);;
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   const { user_id, phone, services } = req.body;
   try {
     if (!services) {
@@ -3844,7 +3875,6 @@ admin.post("/agent/add-services", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
-
       const [agent] = await connect.query(
         `SELECT 
         COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE agent_id = ? AND type = 'service_balance'), 0) - 
@@ -3885,7 +3915,7 @@ admin.post("/agent/add-services", async (req, res) => {
                   service.rate,
                   0,
                   userInfo.id,
-                  true
+                  true,
                 ];
               } catch (error) {
                 console.error("Error occurred while fetching service:", error);
@@ -3920,7 +3950,6 @@ admin.post("/agent/add-services", async (req, res) => {
     }
   }
 });
-
 
 admin.get("/alpha-payment/:userid", async (req, res) => {
   let connect,
@@ -3976,7 +4005,18 @@ admin.get("/alpha-payment/:userid", async (req, res) => {
 admin.get("/services-transaction", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
-  const { from, limit, id, userType, driverId, serviceId, fromDate, toDate, sortByDate, sortType } = req.query;
+  const {
+    from,
+    limit,
+    id,
+    userType,
+    driverId,
+    serviceId,
+    fromDate,
+    toDate,
+    sortByDate,
+    sortType,
+  } = req.query;
   try {
     connect = await database.connection.getConnection();
 
@@ -3988,12 +4028,12 @@ admin.get("/services-transaction", async (req, res) => {
       queryParams.push(id);
     }
 
-    if (userType == '3') {
+    if (userType == "3") {
       queryConditions.push("adl.user_type = ?");
       queryParams.push(userType);
     }
 
-    if (userType == '4') {
+    if (userType == "4") {
       queryConditions.push("al.user_type = ?");
       queryParams.push(userType);
     }
@@ -4054,7 +4094,7 @@ admin.get("/services-transaction", async (req, res) => {
       query += " WHERE " + queryConditions.join(" AND ");
     }
 
-    if(sortByDate) {
+    if (sortByDate) {
       query += ` ORDER BY st.created_at ${sortType} LIMIT ?, ?`;
     } else {
       query += ` ORDER BY st.id DESC LIMIT ?, ?`;
@@ -4082,7 +4122,6 @@ admin.get("/services-transaction", async (req, res) => {
     }
   }
 });
-
 
 admin.post("/services-transaction/user", async (req, res) => {
   let connect,
@@ -4310,13 +4349,12 @@ admin.get("/get-all-drivers/reference", async (req, res) => {
     if (!drivers.length) {
       res.status(204).json(appData);
     } else {
-      appData.data = drivers
+      appData.data = drivers;
       appData.status = true;
       res.status(200).json(appData);
     }
-
   } catch (e) {
-    console.log('ERROR while getting all drivers: ', e);
+    console.log("ERROR while getting all drivers: ", e);
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
@@ -4333,7 +4371,7 @@ admin.get("/driver-groups", async (req, res) => {
 
   try {
     if (!pageSize) {
-      pageSize = 10
+      pageSize = 10;
     }
     if (!pageIndex) {
       pageIndex = 0;
@@ -4342,13 +4380,15 @@ admin.get("/driver-groups", async (req, res) => {
     const [driverGroups] = await connect.query(`
       SELECT * FROM driver_group ORDER BY id DESC LIMIT ${pageIndex}, ${pageSize}; 
     `);
-    appData.data = driverGroups
-    const [rows_count] = await connect.query('SELECT count(*) as allcount FROM driver_group');
-    appData.data_count = rows_count[0].allcount
+    appData.data = driverGroups;
+    const [rows_count] = await connect.query(
+      "SELECT count(*) as allcount FROM driver_group"
+    );
+    appData.data_count = rows_count[0].allcount;
     appData.status = true;
     res.status(200).json(appData);
   } catch (e) {
-    console.log('ERROR while getting driver groups: ', e);
+    console.log("ERROR while getting driver groups: ", e);
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
@@ -4382,45 +4422,48 @@ admin.get("/driver-group/transactions", async (req, res) => {
       where is_group = true AND group_id = ${groupId}`
     );
 
-    const transactions = [...balanceTransactions.map((el) => {
-      return {
-        transactionId: el.id,
-        groupId: el.driver_group_id,
-        amount: el.amount,
-        adminId: el.admin_id,
-        createdAt: el.created_at,
-        transactionType: el.type
-      }
-    }), ...
-    subTransactions.map((el) => {
-      return {
-        transactionId: el.id,
-        groupId: el.group_id,
-        amount: el.amount,
-        driverId: el.driverId,
-        driverName: el.driverName,
-        adminId: el.admin_id,
-        createdAt: el.created_at,
-        transactionType: 'subscription'
-      }
-    }), ...serviceTransactions.map((el) => {
-      return {
-        transactionId: el.id,
-        groupId: el.group_id,
-        driverId: el.driverId,
-        driverName: el.driverName,
-        amount: el.price_uzs,
-        createdAt: el.createdAt,
-        serviceName: el.service_name,
-        transactionType: 'subscription'
-      }
-    })];
+    const transactions = [
+      ...balanceTransactions.map((el) => {
+        return {
+          transactionId: el.id,
+          groupId: el.driver_group_id,
+          amount: el.amount,
+          adminId: el.admin_id,
+          createdAt: el.created_at,
+          transactionType: el.type,
+        };
+      }),
+      ...subTransactions.map((el) => {
+        return {
+          transactionId: el.id,
+          groupId: el.group_id,
+          amount: el.amount,
+          driverId: el.driverId,
+          driverName: el.driverName,
+          adminId: el.admin_id,
+          createdAt: el.created_at,
+          transactionType: "subscription",
+        };
+      }),
+      ...serviceTransactions.map((el) => {
+        return {
+          transactionId: el.id,
+          groupId: el.group_id,
+          driverId: el.driverId,
+          driverName: el.driverName,
+          amount: el.price_uzs,
+          createdAt: el.createdAt,
+          serviceName: el.service_name,
+          transactionType: "subscription",
+        };
+      }),
+    ];
 
     appData.data = transactions;
     appData.status = true;
     res.status(200).json(appData);
   } catch (e) {
-    console.log('ERROR while getting driver groups: ', e);
+    console.log("ERROR while getting driver groups: ", e);
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
@@ -4437,14 +4480,14 @@ admin.get("/drivers-by-group", async (req, res) => {
 
   try {
     if (!pageSize) {
-      pageSize = 10
+      pageSize = 10;
     }
     if (!pageIndex) {
       pageIndex = 0;
     }
 
     if (!groupId) {
-      appData.error = 'group id is required';
+      appData.error = "group id is required";
       res.status(400).json(appData);
     }
 
@@ -4452,13 +4495,15 @@ admin.get("/drivers-by-group", async (req, res) => {
     const [driverGroups] = await connect.query(`
       SELECT * FROM users_list WHERE user_type = 1 AND driver_group_id = ${groupId}  ORDER BY id DESC LIMIT ${pageIndex}, ${pageSize}; 
     `);
-    appData.data = driverGroups
-    const [rows_count] = await connect.query(`SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND driver_group_id = ${groupId}`);
-    appData.data_count = rows_count[0].allcount
+    appData.data = driverGroups;
+    const [rows_count] = await connect.query(
+      `SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND driver_group_id = ${groupId}`
+    );
+    appData.data_count = rows_count[0].allcount;
     appData.status = true;
     res.status(200).json(appData);
   } catch (e) {
-    console.log('ERROR while getting driver groups: ', e);
+    console.log("ERROR while getting driver groups: ", e);
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
@@ -4485,7 +4530,6 @@ admin.post("/driver-group", async (req, res) => {
       appData.status = true;
       res.status(400).json(appData);
     }
-
   } catch (e) {
     console.log(e);
     appData.error = e.message;
@@ -4507,7 +4551,6 @@ admin.post("/add-driver-to-group", async (req, res) => {
       SELECT id from driver_group where id = ${groupId};
     `);
     if (query[0].id) {
-
       const [user] = await connect.query(`
       SELECT id from users_list where id = ${userId};
     `);
@@ -4520,8 +4563,7 @@ admin.post("/add-driver-to-group", async (req, res) => {
         if (row.affectedRows) {
           appData.status = true;
           res.status(200).json(appData);
-        }
-        else {
+        } else {
           appData.status = false;
           res.status(400).json(appData);
         }
@@ -4529,12 +4571,10 @@ admin.post("/add-driver-to-group", async (req, res) => {
         appData.status = false;
         res.status(400).json(appData);
       }
-
     } else {
       appData.status = false;
       res.status(400).json(appData);
     }
-
   } catch (e) {
     console.log(e);
     appData.error = e.message;
@@ -4567,16 +4607,14 @@ admin.post("/driver-group/add-subscription", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
-
       const [subscription] = await connect.query(
         "SELECT * FROM subscription where id = ? ",
         [subscriptionId]
       );
       if (!subscription.length) {
-        appData.message = 'subscription not found'
+        appData.message = "subscription not found";
         res.status(400).json(appData);
       } else {
-
         let valueofPayment;
         if (subscription[0].duration == 1) {
           valueofPayment = 80000;
@@ -4640,7 +4678,15 @@ admin.post("/driver-group/add-subscription", async (req, res) => {
           if (userUpdate.affectedRows == 1) {
             const subscription_transaction = await connect.query(
               "INSERT INTO subscription_transaction SET userid = ?, subscriptionId = ?, phone = ?, amount = ?, admin_id = ?, group_id = ?, is_group = ?",
-              [userId, subscriptionId, phone, valueofPayment, userInfo.id, groupId, true]
+              [
+                userId,
+                subscriptionId,
+                phone,
+                valueofPayment,
+                userInfo.id,
+                groupId,
+                true,
+              ]
             );
             if (subscription_transaction.length > 0) {
               appData.status = true;
@@ -4658,10 +4704,8 @@ admin.post("/driver-group/add-subscription", async (req, res) => {
         }
       }
     }
-
-  }
-  catch (e) {
-    console.log(e)
+  } catch (e) {
+    console.log(e);
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
@@ -4690,7 +4734,6 @@ admin.post("/driver-group/add-services", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
-
       const [result] = await connect.query(`
           SELECT 
               COALESCE((SELECT SUM(amount) 
@@ -4707,9 +4750,17 @@ admin.post("/driver-group/add-services", async (req, res) => {
                         WHERE group_id = ${group_id}), 0) AS totalServiceTransactions;
       `);
 
-      const { totalTopUpTransactions, totalWithdrawTransactions, totalSubTransactions, totalServiceTransactions } = result[0];
+      const {
+        totalTopUpTransactions,
+        totalWithdrawTransactions,
+        totalSubTransactions,
+        totalServiceTransactions,
+      } = result[0];
 
-      const balance = (totalTopUpTransactions - totalWithdrawTransactions) - (totalSubTransactions + totalServiceTransactions);
+      const balance =
+        totalTopUpTransactions -
+        totalWithdrawTransactions -
+        (totalSubTransactions + totalServiceTransactions);
       const totalAmount = services.reduce(
         (accumulator, secure) => accumulator + Number(secure.price_uzs),
         0
@@ -4742,7 +4793,7 @@ admin.post("/driver-group/add-services", async (req, res) => {
                   service.rate,
                   0,
                   group_id,
-                  true
+                  true,
                 ];
               } catch (error) {
                 console.error("Error occurred while fetching service:", error);
@@ -4849,7 +4900,12 @@ admin.get("/driver-group/balance", async (req, res) => {
       (accumulator, secure) => accumulator + +Number(secure.price_uzs),
       0
     );
-    appData.data = { balance: (totalTopUpTransactions - totalWithdrawTransactions) - (totalTSubransactions + totalTServiceransactions) };
+    appData.data = {
+      balance:
+        totalTopUpTransactions -
+        totalWithdrawTransactions -
+        (totalTSubransactions + totalTServiceransactions),
+    };
     appData.status = true;
     res.status(200).json(appData);
   } catch (e) {
@@ -5135,29 +5191,26 @@ admin.post("/remove-subscription-agent", async (req, res) => {
 admin.post("/message/bot-user", async (req, res) => {
   let appData = { status: false };
   let connect;
-  let { 
-    messageType,
-    message,
-    receiverUserId,
-  } = req.body;
-    
+  let { messageType, message, receiverUserId } = req.body;
+
   let userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   try {
     connect = await database.connection.getConnection();
-    
+
     const [botUser] = await connect.query(`
     SELECT user_id, chat_id FROM services_bot_users WHERE user_id = ${receiverUserId}`);
     // senderBotId,
-    if(!botUser.length) {
-      appData.error = 'User not registered in bot'
+    if (!botUser.length) {
+      appData.error = "User not registered in bot";
       appData.status = false;
       res.status(400).json(appData);
     } else {
       let receiverBotId = botUser[0]?.chat_id;
-      const senderType = 'admin';
+      const senderType = "admin";
       const senderUserId = userInfo.id;
-  
-      const insertResult = await connect.query(`
+
+      const insertResult = await connect.query(
+        `
       INSERT INTO service_bot_message set 
         message_type = ?,
         message = ?,
@@ -5165,30 +5218,35 @@ admin.post("/message/bot-user", async (req, res) => {
         sender_user_id = ?,
         receiver_user_id = ?,
         receiver_bot_chat_id = ?
-      `, [
-          messageType, 
-          message, 
-          senderType, 
+      `,
+        [
+          messageType,
+          message,
+          senderType,
           senderUserId,
           receiverUserId,
-          receiverBotId
-        ]);
-        if(insertResult[0].affectedRows) {
-          const botRes = await sendServiceBotMessageToUser(receiverBotId, 'Hello there')
-          if(botRes) {
-            const [edit] = await connect.query(
-              "UPDATE service_bot_message SET bot_message_id = ? WHERE id = ?",
-              [botRes.message_id, insertResult[0].insertId]
-            );
-          }
+          receiverBotId,
+        ]
+      );
+      if (insertResult[0].affectedRows) {
+        const botRes = await sendServiceBotMessageToUser(
+          receiverBotId,
+          "Hello there"
+        );
+        if (botRes) {
+          const [edit] = await connect.query(
+            "UPDATE service_bot_message SET bot_message_id = ? WHERE id = ?",
+            [botRes.message_id, insertResult[0].insertId]
+          );
+        }
 
         appData.data = insertResult;
         appData.status = true;
         res.status(200).json(appData);
-        }else {
-          appData.status = false;
-          res.status(400).json(appData);
-        }
+      } else {
+        appData.status = false;
+        res.status(400).json(appData);
+      }
     }
   } catch (e) {
     console.log(e);
@@ -5203,11 +5261,11 @@ admin.post("/message/bot-user", async (req, res) => {
 
 admin.get("/messages/bot-users", async (req, res) => {
   let connect,
-  appData = { status: false };
-try {
-  connect = await database.connection.getConnection();
+    appData = { status: false };
+  try {
+    connect = await database.connection.getConnection();
 
-  const [rows] = await connect.query(`
+    const [rows] = await connect.query(`
     SELECT 
       sbu.id,
       sbu.first_name firstName,
@@ -5225,42 +5283,41 @@ try {
     ORDER BY lastMessageDate DESC;
   `);
 
-  if(rows.length) {
-    appData.status = true;
-    appData.data = rows;
-    res.status(200).json(appData)
+    if (rows.length) {
+      appData.status = true;
+      appData.data = rows;
+      res.status(200).json(appData);
+    }
+  } catch (err) {
+    console.log(err);
+    appData.error = err.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
   }
-} catch(err) {
-  console.log(err)
-  appData.error = err.message;
-  res.status(400).json(appData)
-} finally {
-  if (connect) {
-    connect.release();
-  }
-}
 });
 
 admin.get("/messages/by-bot-user", async (req, res) => {
   let connect,
-  appData = { status: false },
-  userId = req.query.userId,
-  from = req.query.from,
-  limit = req.query.limit;
-try {
-  console.log(userId)
-  connect = await database.connection.getConnection();
-  if(!from) {
-    from = 0;
-  }
-  if(!limit) {
-    limit = 10;
-  }
-  if(!userId || isNaN(+userId)) {
-    appData.error = 'UserId is required';
-    res.status(400).json(appData)
-  } else {
-    const [rows] = await connect.query(`
+    appData = { status: false },
+    userId = req.query.userId,
+    from = req.query.from,
+    limit = req.query.limit;
+  try {
+    connect = await database.connection.getConnection();
+    if (!from) {
+      from = 0;
+    }
+    if (!limit) {
+      limit = 10;
+    }
+    if (!userId || isNaN(+userId)) {
+      appData.error = "UserId is required";
+      res.status(400).json(appData);
+    } else {
+      const [rows] = await connect.query(`
       SELECT 
       id,
       message_type messageType,
@@ -5274,26 +5331,523 @@ try {
       WHERE sender_user_id = ${userId} OR receiver_user_id = ${userId}
       ORDER BY created_at DESC LIMIT ${from}, ${limit}
     `);
-  
-    if(rows.length) {
-      appData.status = true;
-      appData.data = rows;
-      res.status(200).json(appData)
-    } else {
-      res.error = 'No data'
-      res.status(400).json(appData)
+
+      if (rows.length) {
+        appData.status = true;
+        appData.data = rows;
+        res.status(200).json(appData);
+      } else {
+        res.error = "No data";
+        res.status(400).json(appData);
+      }
+    }
+  } catch (err) {
+    console.log(err);
+    appData.error = err.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
     }
   }
-} catch(err) {
-  console.log(err)
-  appData.error = err.message;
-  res.status(400).json(appData)
-} finally {
-  if (connect) {
-    connect.release();
-  }
-}
 });
 
+admin.get("/excel/agent-tirgo-balance-transactions", async (req, res) => {
+  let connect,
+    appData = { status: false },
+    transactionType = req.query.transactionType,
+    driverId = req.query.driverId,
+    agentId = req.query.agentId,
+    rows = [],
+    subs = [],
+    sortByDate = req.query.sortByDate == "true",
+    sortType = req.query.sortType;
+  try {
+    connect = await database.connection.getConnection();
+    if ((!transactionType || transactionType == "tirgo_balance") && !driverId) {
+      [rows] = await connect.query(
+        `SELECT at.*, al.name as "Agent", adl.name as "Admin" FROM agent_transaction  at
+      LEFT JOIN users_list al on al.id = at.agent_id
+      LEFT JOIN users_list adl on adl.id = at.admin_id
+      WHERE type = 'tirgo_balance' AND at.agent_id = ${agentId} ORDER BY ${
+          sortByDate ? "created_at" : "id"
+        } ${sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"} ;`
+      );
+
+      [row] = await connect.query(
+        `SELECT Count(id) as count FROM agent_transaction where type = 'tirgo_balance' AND  agent_id = ${agentId}`,
+        []
+      );
+    }
+
+    if (!transactionType || transactionType == "subscription") {
+      let whereClause = `st.agent_id = ${agentId}`;
+      if (driverId) {
+        whereClause += ` AND userid = ${driverId}`;
+      }
+      [subs] = await connect.query(
+        `SELECT st.*, al.name as "Agent", ul.name as "DriverName", 'subscription' as "Type" FROM subscription_transaction st
+      LEFT JOIN users_list ul on ul.id = st.userid
+      LEFT JOIN users_list al on al.id = st.agent_id
+      WHERE ${whereClause} ORDER BY ${sortByDate ? "created_at" : "id"} ${
+          sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
+        } ;`
+      );
+
+      [sub] = await connect.query(
+        `SELECT Count(id) as count FROM subscription_transaction where agent_id = ${agentId}`,
+        []
+      );
+    }
+
+    const data = [...rows, ...subs]
+      .sort((a, b) => {
+        if (sortType.toString().toLowerCase() == "asc") {
+          return new Date(a.created_at) - new Date(b.created_at);
+        } else {
+          return new Date(b.created_at) - new Date(a.created_at);
+        }
+      })
+      .map((el) => {
+        return {
+          id: el.id,
+          driverId: el.userid,
+          driverName: el.DriverName,
+          createdAt: new Date(el.created_at).toLocaleString("ru-RU", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+          }),
+          type: el.Type == "subscription" ? "Подписка" : "Пополнение баланса",
+          amount: el.amount,
+          adminName: el.Admin,
+        };
+      });
+
+    if (data.length) {
+      const ws = XLSX.utils.json_to_sheet(data);
+      ws['!cols'] = [
+        { wch: 30 }, 
+        { wch: 15 }, 
+        { wch: 10 }, 
+        { wch: 10 }, 
+        { wch: 10 }, 
+        { wch: 30 }, 
+        { wch: 15 }, 
+      ];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+      ws["A1"] = { v: "Админ", t: "s" };
+      ws["B1"] = { v: "Тип", t: "s" };
+      ws["C1"] = { v: "Сумма", t: "s" };
+      ws["D1"] = { v: "Сумма", t: "s" };
+      ws["E1"] = { v: "DriverId", t: "s" };
+      ws["F1"] = { v: "Имя драйвера", t: "s" };
+      ws["G1"] = { v: "Дата", t: "s" };
+      
+      data.forEach((item, index) => {
+        ws[`A${index + 2}`] = { v: item.adminName ? item.adminName : "", t: "s" };
+        ws[`B${index + 2}`] = { v: item.type ? item.type : "", t: "s" };
+        ws[`C${index + 2}`] = {
+          v: item.type !== "Подписка" ? item.amount : "",
+          t: "n",
+        };
+        ws[`D${index + 2}`] = {
+          v: item.type === "Подписка" ? item.amount : "",
+          t: "n",
+        };
+        ws[`E${index + 2}`] = { v: item.driverId, t: "n" };
+        ws[`F${index + 2}`] = { v: item.driverName, t: "s" };
+        ws[`G${index + 2}`] = { v: item.createdAt, t: "s" };
+      });
+      // XLSX.writeFile(wb, "./uploads/agent-tirgo-balance-transactions.xlsx");
+      // res.download("./uploads/agent-tirgo-balance-transactions.xlsx");  
+      const wopts = { bookType:'xlsx', bookSST:false, type:'array' };
+      const wbout = XLSX.write(wb,wopts);
+    
+      const blob = new Blob([wbout], {type:'application/octet-stream'});
+      res.setHeader('Content-Disposition', 'attachment; filename=services-transaction.xlsx');
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.end(Buffer.from(wbout));
+    }
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/excel/agent-service-transactions", async (req, res) => {
+  let connect,
+    appData = { status: false },
+    transactionType = req.query.transactionType,
+    driverId = req.query.driverId,
+    agentId = req.query.agentId,
+    sortByDate = req.query.sortByDate == "true",
+    sortType = req.query.sortType,
+    serviceId = req.query.serviceId,
+    rows = [],
+    balanceRows = [],
+    alphaRows = []
+  try {
+    if (agentId) {
+      connect = await database.connection.getConnection();
+      if (!transactionType || transactionType == "service") {
+        let rowWhereClause = `st.created_by_id = ${agentId} AND st.status <> 4`;
+        if (transactionType == "service" && serviceId) {
+          rowWhereClause += ` AND s.id = ${serviceId}`;
+        }
+        if (driverId) {
+          rowWhereClause += ` AND st.userid = ${driverId}`;
+        }
+        [rows] = await connect.query(
+          `SELECT 
+          st.id,
+          st.created_by_id,
+          st.amount,
+          st.created_at,
+          st.service_name,
+          st.userid,
+          st.status,
+          'st' as 'rawType', al.name as "agentName", adl.name as "driverName" FROM services_transaction st
+          LEFT JOIN users_list al on al.id = st.created_by_id AND al.user_type = 4
+          LEFT JOIN users_list adl on adl.id = st.userid AND adl.user_type = 1
+          LEFT JOIN services s on s.id = st.service_id
+          where ${rowWhereClause} ORDER BY ${
+            sortByDate ? "st.created_at" : "st.id"
+          } ${
+            sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
+          } `,
+        );
+        [row] = await connect.query(
+          `SELECT Count(id) as count FROM services_transaction where created_by_id = ${agentId} AND status <> 4`,
+          []
+        );
+      }
+
+      if (!transactionType || transactionType == "service_balance") {
+        if (!driverId) {
+          [balanceRows] = await connect.query(
+            `SELECT *, adl.name as "adminName", al.name as "agentName", 'at' as 'rawType' FROM agent_transaction at
+          LEFT JOIN users_list al on al.id = at.agent_id
+          LEFT JOIN users_list adl on adl.id = at.admin_id
+          WHERE at.agent_id = ${agentId} AND type = 'service_balance' ORDER BY ${
+              sortByDate ? "at.created_at" : "at.id"
+            } ${
+              sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
+            } `,
+          );
+
+          [balanceRow] = await connect.query(
+            `SELECT Count(id) as count FROM agent_transaction where agent_id = ${agentId} AND type = 'service_balance'`,
+            []
+          );
+        }
+
+        let alphaWhereClause = `ap.agent_id = ${agentId} AND is_agent = true`;
+        if (driverId) {
+          alphaWhereClause += ` AND ap.userid = ${driverId}`;
+        }
+        [alphaRows] = await connect.query(
+          `SELECT *, 'alpha' as "rawType", al.name as "agentName", d.name as "driverName" FROM alpha_payment ap 
+          LEFT JOIN users_list al on al.id = ap.agent_id
+          LEFT JOIN users_list d on d.id = ap.userid
+          WHERE ${alphaWhereClause} `,
+        );
+        [alphaRow] = await connect.query(
+          `SELECT Count(id) as count FROM alpha_payment WHERE agent_id = ${agentId} AND is_agent = true`
+        );
+      }
+      const data = [...balanceRows, ...rows, ...alphaRows]
+        .sort((a, b) => {
+          if (sortType.toString().toLowerCase() == "asc") {
+            return a.created_at - b.created_at;
+          } else {
+            return b.created_at - a.created_at;
+          }
+        })
+        .map((el) => {
+          if (el.rawType == "at") {
+            return {
+              id: el.id,
+              amount: el.amount,
+              created_at: new Date(el.created_at).toLocaleString("ru-RU", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit"
+              }),
+              type:
+                el.type == "subscription" ? "Подписка" : "Пополнение баланса",
+              adminName: el.adminName,
+              driverId: el.userid,
+              driverName: el.driverName,
+            };
+          } else if (el.rawType == "alpha") {
+            return {
+              id: el.id,
+              amount: el.amount,
+              created_at: new Date(el.created_at).toLocaleString("ru-RU", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit"
+              }),
+              type: "Пополнение баланса",
+              driverName: el.driverName,
+              driverId: el.userid,
+            };
+          } else {
+            return {
+              id: el.id,
+              amount: el.amount,
+              created_at: new Date(el.created_at).toLocaleString("ru-RU", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit"
+              }),
+              type: el.service_name,
+              driverId: el.userid,
+              driverName: el.driverName,
+            };
+          }
+        });
+
+      if (data.length) {
+        const ws = XLSX.utils.json_to_sheet(data);
+        ws['!cols'] = [
+          { wch: 30 }, 
+          { wch: 65 }, 
+          { wch: 10 }, 
+          { wch: 10 }, 
+          { wch: 10 }, 
+          { wch: 30 }, 
+          { wch: 15 }, 
+        ];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+        ws["A1"] = { v: "Админ", t: "s" };
+        ws["B1"] = { v: "Тип", t: "s" };
+        ws["C1"] = { v: "Сумма", t: "s" };
+        ws["D1"] = { v: "Сумма", t: "s" };
+        ws["E1"] = { v: "DriverId", t: "s" };
+        ws["F1"] = { v: "Имя драйвера", t: "s" };
+        ws["G1"] = { v: "Дата", t: "s" };
+        data.forEach((item, index) => {
+          ws[`A${index + 2}`] = { v: item.adminName ? item.adminName : "", t: "s" };
+          ws[`B${index + 2}`] = { v: item.type ? item.type : "", t: "s" };
+          ws[`C${index + 2}`] = {
+            v: item.type === "Пополнение баланса"&&item.amount!=null ? item.amount : "",
+            t: "n",
+          };
+          ws[`D${index + 2}`] = {
+            v: item.type !== "Пополнение баланса" &&item.amount!=null ? item.amount : "",
+            t: "n",
+          };
+          ws[`E${index + 2}`] = { v: item.driverId, t: "n" };
+          ws[`F${index + 2}`] = { v: item.driverName, t: "s" };
+          ws[`G${index + 2}`] = { v: item.created_at, t: "s" };
+        });
+        // XLSX.writeFile(wb, "./uploads/agent-service-transactions.xlsx");
+        // res.download("./uploads/agent-service-transactions.xlsx");  
+        const wopts = { bookType:'xlsx', bookSST:false, type:'array' };
+        const wbout = XLSX.write(wb,wopts);
+      
+        const blob = new Blob([wbout], {type:'application/octet-stream'});
+        res.setHeader('Content-Disposition', 'attachment; filename=services-transaction.xlsx');
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.end(Buffer.from(wbout));
+      }
+      res.status(200).json(appData);
+    } else {
+      appData.error = "Agent id is required";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/excel/services-transaction", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  const {
+    id,
+    userType,
+    driverId,
+    serviceId,
+    fromDate,
+    toDate,
+    sortByDate,
+    sortType,
+  } = req.query;
+  try {
+    connect = await database.connection.getConnection();
+
+    let queryParams = [];
+    let queryConditions = [];
+
+    if (id) {
+      queryConditions.push("st.id = ?");
+      queryParams.push(id);
+    }
+
+    if (userType == "3") {
+      queryConditions.push("adl.user_type = ?");
+      queryParams.push(userType);
+    }
+
+    if (userType == "4") {
+      queryConditions.push("al.user_type = ?");
+      queryParams.push(userType);
+    }
+
+    if (driverId) {
+      queryConditions.push("st.userid = ?");
+      queryParams.push(driverId);
+    }
+
+    if (serviceId) {
+      queryConditions.push("s.id = ?");
+      queryParams.push(serviceId);
+    }
+
+    if (fromDate) {
+      queryConditions.push("st.created_at >= ?");
+      queryParams.push(fromDate);
+    }
+
+    if (toDate) {
+      queryConditions.push("st.created_at <= ?");
+      queryParams.push(toDate);
+    }
+
+    let query = `SELECT 
+      st.userid as "driverId",
+      s.name as "serviceName",
+      CASE 
+      WHEN st.amount = 0 OR st.amount IS NULL THEN st.price_uzs
+      ELSE st.amount
+      END AS "amount",
+      st.rate,
+      st.status as "statusId",
+      st.created_at as "createdAt",
+      al.name as "agentName",
+      adl.name as "adminName"
+      FROM services_transaction st
+      LEFT JOIN users_list ul ON ul.id = st.userid
+      LEFT JOIN users_list al ON al.id = st.created_by_id AND al.user_type = 4
+      LEFT JOIN users_list adl ON adl.id = st.created_by_id AND adl.user_type = 3
+      LEFT JOIN services s ON s.id = st.service_id`;
+
+    if (queryConditions.length > 0) {
+      query += " WHERE " + queryConditions.join(" AND ");
+    }
+
+    if (sortByDate) {
+      query += ` ORDER BY st.created_at ${sortType} `;
+    } else {
+      query += ` ORDER BY st.id DESC `;
+    }
+
+
+    const [services_transaction] = await connect.query(query, queryParams);
+
+    if (services_transaction.length) {
+
+      const ws = XLSX.utils.json_to_sheet(services_transaction);
+      ws['!cols'] = [
+        { wch: 30 }, 
+        { wch: 15 }, 
+        { wch: 10 }, 
+        { wch: 10 }, 
+        { wch: 10 }, 
+        { wch: 30 }, 
+        { wch: 15 }, 
+        { wch: 15 }, 
+      ];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+      ws["A1"] = { v: "Наименование услуги", t: "s" };
+      ws["B1"] = { v: "DriverID", t: "s" };
+      ws["C1"] = { v: "Сумма", t: "s" };
+      ws["D1"] = { v: "Ставка", t: "s" };
+      ws["E1"] = { v: "Agent", t: "s" };
+      ws["F1"] = { v: "Админ", t: "s" };
+      ws["G1"] = { v: "Статус", t: "s" };
+      ws["H1"] = { v: "Дата", t: "s" };
+      
+      services_transaction.forEach((item, index) => {
+        ws[`A${index + 2}`] = { v: item.serviceName ? item.serviceName : "", t: "s" };
+        ws[`B${index + 2}`] = { v: item.driverId ? item.driverId : "", t: "s" };
+        ws[`C${index + 2}`] = {
+          v: item.amount !== 0 ? item.amount : "Free",
+          t: "n",
+        };
+        ws[`D${index + 2}`] = { v: item.rate, t: "n" };
+        ws[`E${index + 2}`] = { v: item.agentName&&item.agentName!=="null" ? item.agentName : "", t: "s" };
+        ws[`F${index + 2}`] = { v: item.adminName&&item.adminName!=="null" ? item.adminName : "", t: "s" };
+        ws[`G${index + 2}`] = { v: statusCheck(item.statusId), t: "s" };
+        ws[`H${index + 2}`] = { v: new Date(item.createdAt).toLocaleString("ru-RU", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+          }), t: "s" };
+      });
+      const wopts = { bookType:'xlsx', bookSST:false, type:'array' };
+      const wbout = XLSX.write(wb,wopts);
+    
+      const blob = new Blob([wbout], {type:'application/octet-stream'});
+      res.setHeader('Content-Disposition', 'attachment; filename=services-transaction.xlsx');
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.end(Buffer.from(wbout));
+    } else {
+      appData.error = "Транзакция не найдена";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+const statusCheck=(params)=> {
+  switch (params) {
+    case 0:
+      return "В ожидании ";
+    case 1:
+      return "Оцененный";
+    case 2:
+      return "В работе";
+    case 3:
+      return "Выполнен";
+    case 4:
+      return "Отменен";
+    default:
+      return null;
+  }
+}
 
 module.exports = admin;

@@ -37,6 +37,7 @@
     "sendpulse-api": "^1.1.6",
     "sharp": "^0.31.2",
     "socket.io": "^2.1.1",
-    "socketio-jwt": "^4.5.0"
+    "socketio-jwt": "^4.5.0",
+    "xlsx": "^0.18.5"
   }
 }
