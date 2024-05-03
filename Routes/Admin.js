@@ -269,12 +269,12 @@ admin.post("/agent-service/add-to-driver", async (req, res) => {
       );
 
       const [paymentTransaction] = await connect.query(
-        "SELECT * FROM services_transaction where  userid = ? AND status <> 4 ",
+        "SELECT * FROM services_transaction where  userid = ? AND status In(2, 3) ",
         [user_id]
       );
 
       const totalPaymentAmountTransaction = paymentTransaction.reduce(
-        (accumulator, secure) => accumulator + Number(secure.price_uzs),
+        (accumulator, secure) => accumulator + Number(secure.amount),
         0
       );
 
@@ -385,7 +385,7 @@ admin.get("/getAgentBalanse/:agent_id", async (req, res) => {
       COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE deleted = 0 AND agent_id = ? AND type = 'subscription'  AND deleted = 0), 0) AS tirgoBalance,
       COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE deleted = 0 AND agent_id = ? AND type = 'service_balance'), 0) - 
       COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE agent_id = ? AND is_agent = true), 0) - 
-      COALESCE((SELECT SUM(amount) FROM services_transaction where created_by_id = ? AND status <> 4), 0) AS serviceBalance      
+      COALESCE((SELECT SUM(amount) FROM services_transaction where created_by_id = ? AND status In(2, 3)), 0) AS serviceBalance      
     `,
       [agent_id, agent_id, agent_id, agent_id, agent_id]
     );
@@ -3027,7 +3027,7 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
       const [paymentUser] = await connect.query(
         `SELECT 
         COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE userid = ? AND is_agent = false), 0) - 
-        COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false AND status <> 4), 0)
+        COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false AND status In(2, 3)), 0)
         AS balance;`,
         [driverId, driverId]
       );
@@ -3753,7 +3753,7 @@ admin.post("/addDriverServices", async (req, res) => {
       const [paymentUser] = await connect.query(
         `SELECT 
         COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE userid = ? AND is_agent = false), 0) - 
-        COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false AND status <> 4), 0)
+        COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false AND status In(2, 3)), 0)
         AS balance;`,
         [userid, userid]
       );
@@ -3933,12 +3933,12 @@ admin.get("/alpha-payment/:userid", async (req, res) => {
     );
 
     const [paymentTransaction] = await connect.query(
-      "SELECT * FROM services_transaction where  userid = ? AND status <> 4",
+      "SELECT * FROM services_transaction where  userid = ? AND status In(2, 3)",
       [userid]
     );
 
     const totalPaymentAmountTransaction = paymentTransaction.reduce(
-      (accumulator, secure) => accumulator + Number(secure.price_kzs),
+      (accumulator, secure) => accumulator + Number(secure.amount),
       0
     );
     let balance =
@@ -4737,9 +4737,9 @@ admin.post("/driver-group/add-services", async (req, res) => {
               COALESCE((SELECT SUM(amount) 
                         FROM subscription_transaction 
                         WHERE deleted = 0 AND group_id = ${group_id}), 0) AS totalSubTransactions,
-              COALESCE((SELECT SUM(price_uzs) 
+              COALESCE((SELECT SUM(amount) 
                         FROM services_transaction 
-                        WHERE group_id = ${group_id}), 0) AS totalServiceTransactions;
+                        WHERE status In(2, 3) AND group_id = ${group_id}), 0) AS totalServiceTransactions;
       `);
 
       const { totalTopUpTransactions, totalWithdrawTransactions, totalSubTransactions, totalServiceTransactions } = result[0];
@@ -4865,7 +4865,7 @@ admin.get("/driver-group/balance", async (req, res) => {
     );
 
     const [serviceTransactions] = await connect.query(
-      `SELECT * from services_transaction where group_id = ${group_id}`
+      `SELECT * from services_transaction where group_id = ${group_id} AND status In(2, 3)`
     );
 
     const totalTopUpTransactions = topUpTransactions.reduce(
@@ -4881,7 +4881,7 @@ admin.get("/driver-group/balance", async (req, res) => {
       0
     );
     const totalTServiceransactions = serviceTransactions.reduce(
-      (accumulator, secure) => accumulator + +Number(secure.price_uzs),
+      (accumulator, secure) => accumulator + +Number(secure.amount),
       0
     );
     appData.data = { balance: (totalTopUpTransactions - totalWithdrawTransactions) - (totalTSubransactions + totalTServiceransactions) };
