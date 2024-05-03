@@ -3836,13 +3836,14 @@ admin.post("/agent/add-services", async (req, res) => {
       const [user] = await connect.query(
         "SELECT * FROM users_list WHERE to_subscription >= CURDATE() AND id = ?",
         [user_id]
-      );
+        );
       if (!user.length) {
         appData.error = "Необходимо оформить подписку";
-        return res.status(400).json(appData);
-      }
-    } else {
-      connect = await database.connection.getConnection();
+        res.status(400).json(appData);
+        return
+      } 
+    } 
+    
     const [rows] = await connect.query(
       "SELECT * FROM users_contacts WHERE text = ? AND verify = 1",
       [phone]
@@ -3899,9 +3900,8 @@ admin.post("/agent/add-services", async (req, res) => {
           res.status(400).json(appData);
         }
     }
-    }
-    
   } catch (e) {
+    console.log(e)
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
