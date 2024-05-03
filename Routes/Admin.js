@@ -3831,7 +3831,11 @@ admin.post("/agent/add-services", async (req, res) => {
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);;
   const { user_id, phone, services } = req.body;
   try {
-    if (!services) {
+    const [user] = await connect.query(
+      "SELECT * FROM users_list WHERE to_subscription >= CURDATE() AND id = ?",
+      [userId]
+    );
+    if (!user.length) {
       appData.error = "Необходимо оформить подписку";
       return res.status(400).json(appData);
     }
