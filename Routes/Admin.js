@@ -3836,7 +3836,7 @@ admin.post("/agent/add-services", async (req, res) => {
     if(!services[0]?.without_subscription) {
       const [user] = await connect.query(
         "SELECT * FROM users_list WHERE to_subscription >= CURDATE() AND id = ?",
-        [userId]
+        [user_id]
       );
       if (!user.length) {
         appData.error = "Необходимо оформить подписку";
