@@ -5762,4 +5762,40 @@ const statusCheck=(params)=> {
   }
 }
 
-module.exports = admin;
+function uploadFile(photoData) {
+  // Assuming minioClient is properly configured elsewhere in your code
+  // Constructing the file path
+  const filePath = "tirgo/" + photoData.file_id + ".jpg"; // You can adjust the file path as needed
+
+  // Converting the photo data to a buffer
+  const buffer = Buffer.from(photoData.file_id, 'base64'); // Assuming file_id is base64 encoded
+
+  // Uploading the file to MinIO
+  minioClient.putObject("tirgo", filePath, buffer, function (err, etag) {
+    if (err) {
+      console.error("Error uploading file:", err);
+    } else {
+      console.log("File uploaded successfully. ETag:", etag);
+    }
+  });
+}
+
+admin.get('/download-file/:fileName', (req, res) => {
+  const { fileName } = req.params;
+  // Download file from MinIO
+  minioClient.getObject('tirgo', fileName, (err, stream) => {
+    if (err) {
+      console.error('Error retrieving file:', err);
+      return res.status(500).send('Error retrieving file');
+    }
+
+    // Set response headers
+    res.setHeader('Content-disposition', `attachment; filename=${fileName}`);
+    res.setHeader('Content-type', 'application/octet-stream');
+
+    // Pipe MinIO stream to response
+    stream.pipe(res);
+  });
+});
+
+module.exports = {admin, uploadFile};
