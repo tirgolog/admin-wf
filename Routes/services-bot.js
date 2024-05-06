@@ -1,19 +1,34 @@
 const { Bot, InlineKeyboard } = require("grammy");
 const database = require("../Database/database");
-const { uploadFile } = require("./Admin");
+// const { uploadFile } = require("./Admin");
+const socket = require("../Modules/Socket");
 
 // Create an instance of the Bot class and pass your bot token to it.
 const bot = new Bot("7058770363:AAHZAcPHrUPMaJBuj6Pcwsdojo4IRHOV38s"); // <-- put your bot token between the ""
 bot.command("start", onCommandStart);
 
 
-// Handle incoming messages
-bot.on('message', async (ctx) => {
+// Handle incoming photo messages
+bot.on('message:photo', async (ctx) => {
+  const connecttion = await database.connection.getConnection();
+  const message = ctx.message;
+  // uploadFile(message.photo[0])
+  console.log('Photo message !');
+
+});
+
+// Handle incoming contact messages
+bot.on('message:contact', async (ctx) => {
+  console.log('Contact message !');
+    await onContactReceived(ctx)
+});
+
+// Handle incoming text messages
+bot.on('message:text', async (ctx) => {
   const connecttion = await database.connection.getConnection();
   const message = ctx.message;
 
-  console.log(message)
-  // uploadFile(message.photo[0])
+  console.log('Text message !')
   const [botUser] = await connecttion.query(`
   SELECT user_id FROM services_bot_users WHERE chat_id = ${message.from?.id}`);
   
@@ -42,11 +57,6 @@ bot.on('message', async (ctx) => {
     }
     const res = await saveMessageToDatabase(data);
     console.log(res)
-  }
-
-  // Check if the message contains contact information
-  if (message.contact) {
-    await onContactReceived(ctx)
   }
 
 });
@@ -223,10 +233,34 @@ async function saveMessageToDatabase (data) {
     }
 }
 
+async function savePhotoMessageDeatilsToDatabase (data) {
+  const connection = await database.connection.getConnection();
+  const [insertData] = await connection.query(`
+  INSERT INTO service_bot_photo_details set 
+    file_id = ?,
+    file_unique_id = ?,
+    file_size = ?,
+    width = ?,
+    height = ?,
+    minio_file_name = ?,
+    bot_message_id = ?,
+    user_id = ?
+  `, [
+      data.fileId, 
+      data.fileUniqueId, 
+      data.fileSize, 
+      data.width, 
+      data.height,
+      data.minioFileName,
+      data.botMessageId,
+      data.userId
+    ]);
+}
+
 async function sendServiceBotMessageToUser(chatId, text) {
  return await bot.api.sendMessage(chatId, text);
 }
-
+console.log('func', sendServiceBotMessageToUser)
 module.exports = {sendServiceBotMessageToUser};
 
 //   `CREATE TABLE service_bot_message (
