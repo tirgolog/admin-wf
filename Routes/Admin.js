@@ -5762,22 +5762,9 @@ const statusCheck=(params)=> {
   }
 }
 
-function uploadFile(photoData) {
-  console.log(photoData)
-  // {
-  //   file_id: 'AgACAgIAAxkBAAIBqmY4qp2C5KAnb7WF5MjvVdHOd1OvAAJG3TEboL3ISQwqat6vzBdtAQADAgADcwADNQQ',
-  //   file_unique_id: 'AQADRt0xG6C9yEl4',
-  //   file_size: 3240,
-  //   width: 90,
-  //   height: 90
-  // }
-  // Assuming minioClient is properly configured elsewhere in your code
-  // Constructing the file path
-
-
+function uploadBotFileToMinio(photoData) {
 
   const filePath = "bot/" + photoData.file_id; // You can adjust the file path as needed
-console.log(filePath)
   // Converting the photo data to a buffer
   const buffer = Buffer.from(photoData.file_id, 'base64'); // Assuming file_id is base64 encoded
 
@@ -5809,4 +5796,4 @@ admin.get('/download-file/:fileName', (req, res) => {
   });
 });
 
-module.exports = {admin, uploadFile};
+module.exports = {admin, uploadBotFileToMinio};
