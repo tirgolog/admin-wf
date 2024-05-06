@@ -1,5 +1,6 @@
 const { Bot, InlineKeyboard } = require("grammy");
 const database = require("../Database/database");
+const { uploadFile } = require("./Admin");
 
 // Create an instance of the Bot class and pass your bot token to it.
 const bot = new Bot("7058770363:AAHZAcPHrUPMaJBuj6Pcwsdojo4IRHOV38s"); // <-- put your bot token between the ""
@@ -11,6 +12,8 @@ bot.on('message', async (ctx) => {
   const connecttion = await database.connection.getConnection();
   const message = ctx.message;
 
+  console.log(message)
+  // uploadFile(message.photo[0])
   const [botUser] = await connecttion.query(`
   SELECT user_id FROM services_bot_users WHERE chat_id = ${message.from?.id}`);
   
