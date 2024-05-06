@@ -14,31 +14,32 @@ bot.on('message', async (ctx) => {
   const [botUser] = await connecttion.query(`
   SELECT user_id FROM services_bot_users WHERE chat_id = ${message.from?.id}`);
   
+  if(botUser[0]?.length && !message.contact) {
+    let data = {
+      messageId: message.message_id,
+      senderType: 'user',
+      senderUserId: botUser[0]?.user_id,
+      senderBotId: message.from?.id
+    };
   
-  let data = {
-    messageId: message.message_id,
-    senderType: 'user',
-    senderUserId: botUser[0]?.user_id,
-    senderBotId: message.from?.id
-  };
-
-  // data.receiverUserId,
-  // data.receiverBotId
-
-  if(message.text) {
-    data.messageType = 'text';
-    data.message = message.text;
-  } else if(data.document) {
-    data.messageType = 'document';
-    data.message = 'document'
-
-  } else if(data.photo) {
-    data.messageType = 'photo';
-    data.message = 'photo'
-
+    // data.receiverUserId,
+    // data.receiverBotId
+  
+    if(message.text) {
+      data.messageType = 'text';
+      data.message = message.text;
+    } else if(data.document) {
+      data.messageType = 'document';
+      data.message = 'document'
+  
+    } else if(data.photo) {
+      data.messageType = 'photo';
+      data.message = 'photo'
+  
+    }
+    const res = await saveMessageToDatabase(data);
+    console.log(res)
   }
-  const res = await saveMessageToDatabase(data);
-  console.log(res)
 
   // Check if the message contains contact information
   if (message.contact) {
@@ -103,16 +104,29 @@ async function onContactReceived(ctx) {
     `, [phoneNumber]);
 
     let res;
-    if(!userChat.length) {
+    if(!userChat?.length) {
       res = await connection.query(`
         INSERT INTO services_bot_users set first_name = ?, last_name = ?, phone_number = ?, tg_username = ?, chat_id = ?, user_id = ?
         `, [chatFirstName, chatLastName, phoneNumber, username, chatId, user[0]?.user_id]);
+
+        let data = {
+          messageId: ctx.message.message_id,
+          senderType: 'user',
+          senderUserId: user[0]?.user_id,
+          senderBotId: ctx.message.from?.id,
+          messageType: 'contact',
+          message: phoneNumber
+        };
+        await saveMessageToDatabase(data)
     } else {
       res = await connection.query(
         "UPDATE services_bot_users set first_name = ?, last_name = ?, phone_number = ?, tg_username = ?, chat_id = ?, user_id = ? WHERE phone_number = ?",
         [chatFirstName, chatLastName, phoneNumber, username, chatId, user[0]?.user_id, phoneNumber]
       );
     }
+
+    
+
     // Send a notification to the user
     if (res) {
       if(user[0]) {
@@ -158,6 +172,15 @@ async function onServicesClick(ctx) {
       } else {
           await ctx.reply(`No services available.`);
       }
+      let data = {
+        messageId: ctx.callbackQuery.message.message_id,
+        senderType: 'user',
+        senderUserId: 'user[0]?.user_id',
+        senderBotId: ctx.callbackQuery.message.from?.id,
+        messageType: 'contact',
+        message: 'phoneNumber'
+      };
+      console.log('data', data)
   } catch (err) {
       console.log('BOT Error while getting services list: ', err);
       await ctx.reply(`Error while getting services list.`);
