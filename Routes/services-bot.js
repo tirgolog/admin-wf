@@ -14,7 +14,7 @@ bot.on('message', async (ctx) => {
   const [botUser] = await connecttion.query(`
   SELECT user_id FROM services_bot_users WHERE chat_id = ${message.from?.id}`);
   
-  if(botUser[0]?.length && !message.contact) {
+  if(botUser?.length && !message.contact) {
     let data = {
       messageId: message.message_id,
       senderType: 'user',
@@ -195,7 +195,7 @@ async function onServicesClick(ctx) {
 async function saveMessageToDatabase (data) {
   const connection = await database.connection.getConnection();
 
-  return await connection.query(`
+  const [insertData] = await connection.query(`
   INSERT INTO service_bot_message set 
     message_type = ?,
     message = ?,
@@ -215,10 +215,13 @@ async function saveMessageToDatabase (data) {
       data.senderBotId,
       data.receiverBotId
     ]);
+    if(insertData.affectedRows) {
+      socket.updateAllMessages("update-service-messages", JSON.stringify({ userId: data.receiverUserId, message: data.message, messageType: data.messageType, messageId: data.messageId}));
+    }
 }
 
 async function sendServiceBotMessageToUser(chatId, text) {
- return await bot.api.sendMessage(chatId, 'Код для логин: ' + text);
+ return await bot.api.sendMessage(chatId, text);
 }
 
 module.exports = {sendServiceBotMessageToUser};
