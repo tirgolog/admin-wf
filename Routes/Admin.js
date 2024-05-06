@@ -5142,7 +5142,7 @@ admin.post("/message/bot-user", async (req, res) => {
           receiverBotId
         ]);
         if(insertResult[0].affectedRows) {
-          const botRes = await sendServiceBotMessageToUser(receiverBotId, 'Hello there')
+          const botRes = await sendServiceBotMessageToUser(receiverBotId, message)
           if(botRes) {
             const [edit] = await connect.query(
               "UPDATE service_bot_message SET bot_message_id = ? WHERE id = ?",
@@ -5240,7 +5240,7 @@ try {
       created_at createdAt
       FROM service_bot_message
       WHERE sender_user_id = ${userId} OR receiver_user_id = ${userId}
-      ORDER BY created_at DESC LIMIT ${from}, ${limit}
+      ORDER BY created_at ASC LIMIT ${from}, ${limit}
     `);
   
     if(rows.length) {
