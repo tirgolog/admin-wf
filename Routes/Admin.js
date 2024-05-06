@@ -2710,6 +2710,125 @@ admin.post("/uploadImage", upload.single("file"), async (req, res) => {
   }
 });
 
+admin.post("/service-document", async (req, res) => {
+  let connect,
+    name = req.body.name,
+    appData = { status: false };
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      "SELECT * FROM service_document where name = ?",
+      [name]
+    );
+    if (rows.length > 0) {
+      appData.error = "Есть Документ на это имя";
+      res.status(400).json(appData);
+    } else {
+      const [document] = await connect.query(
+        "INSERT INTO service_document SET name = ?",
+        [name]
+      );
+      appData.status = true;
+      appData.data = document;
+      res.status(200).json(appData);
+    }
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.put("/service-document/:id", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  try {
+    connect = await database.connection.getConnection();
+    const { id } = req.params;
+    const { name } = req.body;
+    if (!id || !name) {
+      appData.error = "All fields are required";
+      return res.status(400).json(appData);
+    }
+    const [rows] = await connect.query(
+      `UPDATE service_document SET name = ? WHERE id = ?`,
+      [name, id]
+    );
+    if (rows.affectedRows > 0) {
+      appData.status = true;
+      return res.status(200).json(appData);
+    } else {
+      appData.error = "No records were updated";
+      return res.status(404).json(appData);
+    }
+  } catch (err) {
+    appData.error = "Internal error";
+    res.status(500).json(appData);
+  } finally {
+    if (connect) {
+      connect.release(); // Release the connection when done
+    }
+  }
+});
+
+admin.get("/service-documents", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  try {
+    connect = await database.connection.getConnection();
+    const [serviceDocuments] = await connect.query("SELECT * FROM service_document");
+    if (serviceDocuments.length) {
+      appData.status = true;
+      appData.data = serviceDocuments;
+      res.status(200).json(appData);
+    } else {
+      appData.error = "Данные для входа введены неверно";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/service-document/:id", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  id = req.params.id;
+  try {
+    connect = await database.connection.getConnection();
+    const [serviceDocument] = await connect.query(
+      "SELECT * FROM service_document where id = ?",
+      [id]
+    );
+    if (serviceDocument.length) {
+      appData.status = true;
+      appData.data = serviceDocument;
+      res.status(200).json(appData);
+    } else {
+      appData.error = "Данные для входа введены неверно";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+
 admin.post("/subscription", async (req, res) => {
   let connect,
     name = req.body.name,
