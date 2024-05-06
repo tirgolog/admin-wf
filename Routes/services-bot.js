@@ -109,8 +109,8 @@ async function onContactReceived(ctx) {
         `, [chatFirstName, chatLastName, phoneNumber, username, chatId, user[0]?.user_id]);
     } else {
       res = await connection.query(
-        "UPDATE services_bot_users set first_name = ?, last_name = ?, phone_number = ?, tg_username = ?, chat_id = ?, user_id = ?",
-        [chatFirstName, chatLastName, phoneNumber, username, chatId, user[0]?.user_id]
+        "UPDATE services_bot_users set first_name = ?, last_name = ?, phone_number = ?, tg_username = ?, chat_id = ?, user_id = ? WHERE phone_number = ?",
+        [chatFirstName, chatLastName, phoneNumber, username, chatId, user[0]?.user_id, phoneNumber]
       );
     }
     // Send a notification to the user
