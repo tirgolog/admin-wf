@@ -5762,21 +5762,25 @@ const statusCheck=(params)=> {
   }
 }
 
-function uploadBotFileToMinio(photoData) {
+async function uploadBotFileToMinio(fileId, userId) {
+  return new Promise((resolve, reject) => {
+    const filePath = "bot/" + userId + '_' + Date.now(); // Adjusted the file path creation
+    // Converting the photo data to a buffer
+    const buffer = Buffer.from(fileId, 'base64'); // Assuming file_id is base64 encoded
 
-  const filePath = "bot/" + photoData.file_id; // You can adjust the file path as needed
-  // Converting the photo data to a buffer
-  const buffer = Buffer.from(photoData.file_id, 'base64'); // Assuming file_id is base64 encoded
-
-  // Uploading the file to MinIO
-  // minioClient.putObject("tirgo", filePath, buffer, function (err, etag) {
-  //   if (err) {
-  //     console.error("Error uploading file:", err);
-  //   } else {
-  //     console.log("File uploaded successfully. ETag:", etag);
-  //   }
-  // });
+    // Uploading the file to MinIO
+    minioClient.putObject("tirgo", filePath, buffer, function (err, etag) {
+      if (err) {
+        console.error("Error uploading file:", err);
+        reject(err);
+      } else {
+        console.log("File uploaded successfully. ETag:", etag);
+        resolve(etag);
+      }
+    });
+  });
 }
+
 
 admin.get('/download-file/:fileName', (req, res) => {
   const { fileName } = req.params;
