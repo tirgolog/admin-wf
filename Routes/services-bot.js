@@ -1,18 +1,40 @@
 const { Bot, InlineKeyboard } = require("grammy");
 const database = require("../Database/database");
-// const { uploadFile } = require("./Admin");
+const { uploadBotFileToMinio } = require("./Admin");
 const socket = require("../Modules/Socket");
 
-// Create an instance of the Bot class and pass your bot token to it.
-const bot = new Bot("7058770363:AAHZAcPHrUPMaJBuj6Pcwsdojo4IRHOV38s"); // <-- put your bot token between the ""
-bot.command("start", onCommandStart);
+// Determine environment (e.g., development or production)
+const environment = process.env.NODE_ENV || 'development';
 
+// Set up tokens for different environments
+const tokens = {
+    development: '6999025382:AAGmZC8M6AeBH0vjt4r-azCHzOvvW_4OIVY',
+    production: '7058770363:AAHZAcPHrUPMaJBuj6Pcwsdojo4IRHOV38s'
+};
+const token = tokens[environment];
+// Create an instance of the Bot class and pass your bot token to it.
+const bot = new Bot(token); // <-- put your bot token between the ""
+
+
+bot.command("start", onCommandStart);
 
 // Handle incoming photo messages
 bot.on('message:photo', async (ctx) => {
-  const connecttion = await database.connection.getConnection();
   const message = ctx.message;
-  // uploadFile(message.photo[0])
+  for(let photo of message.photo) {
+    const minioRes = await uploadBotFileToMinio(photo.file_id, 6197);
+    const data = {
+      fileId: file_id, 
+      fileUniqueId: file_unique_id, 
+      fileSize: file_size, 
+      width: width, 
+      height: height,
+      minioFileName: 'minioRes',
+      botMessageId: 'botMessageId',
+      userId: 'userId'
+    }
+    savePhotoMessageDeatilsToDatabase(data);
+  }
   console.log('Photo message !');
 
 });
@@ -28,7 +50,7 @@ bot.on('message:text', async (ctx) => {
   const connecttion = await database.connection.getConnection();
   const message = ctx.message;
 
-  console.log('Text message !')
+  console.log('Text message !', message.text)
   const [botUser] = await connecttion.query(`
   SELECT user_id FROM services_bot_users WHERE chat_id = ${message.from?.id}`);
   
@@ -56,7 +78,6 @@ bot.on('message:text', async (ctx) => {
   
     }
     const res = await saveMessageToDatabase(data);
-    console.log(res)
   }
 
 });
@@ -228,6 +249,7 @@ async function saveMessageToDatabase (data) {
       data.senderBotId,
       data.receiverBotId
     ]);
+    console.log(insertData)
     if(insertData.affectedRows) {
       socket.updateAllMessages("update-service-messages", JSON.stringify({ userId: data.receiverUserId, message: data.message, messageType: data.messageType, messageId: data.messageId}));
     }
@@ -260,7 +282,7 @@ async function savePhotoMessageDeatilsToDatabase (data) {
 async function sendServiceBotMessageToUser(chatId, text) {
  return await bot.api.sendMessage(chatId, text);
 }
-console.log('func', sendServiceBotMessageToUser)
+  
 module.exports = {sendServiceBotMessageToUser};
 
 //   `CREATE TABLE service_bot_message (
