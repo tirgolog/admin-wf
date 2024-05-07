@@ -25,7 +25,7 @@ const
     socket = require('./Modules/Socket'),
     Users = require('./Routes/Users'),
     Payme = require('./Routes/Payme.js'),
-    {admin} = require('./Routes/Admin'),
+    Admin = require('./Routes/Admin'),
     Reborn = require('./Routes/Reborn'),
     Merchant = require('./Routes/Merchant'),
     port = 7790;
@@ -111,7 +111,7 @@ app.get('/download/:filename', (req, res) => {
 });
 app.use('/users', Users);
 app.use('/api', Payme);
-app.use('/admin', admin);
+app.use('/admin', Admin);
 app.use('/reborn', Reborn);
 app.use('/merchant', Merchant);
 require('./Routes/rabbit.js')
