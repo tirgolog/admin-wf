@@ -4,7 +4,7 @@ const socket = require("../Modules/Socket");
 
 // Determine environment (e.g., development or production)
 const environment = process.env.NODE_ENV || 'development';
-
+console.log(process.env )
 // Set up tokens for different environments
 const tokens = {
     development: '6999025382:AAGmZC8M6AeBH0vjt4r-azCHzOvvW_4OIVY',
