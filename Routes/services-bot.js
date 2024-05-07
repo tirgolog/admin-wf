@@ -1,7 +1,7 @@
 const { Bot, InlineKeyboard } = require("grammy");
 const database = require("../Database/database");
 const socket = require("../Modules/Socket");
-// require('dotenv').config();
+require('dotenv').config();
 
 // Determine environment (e.g., development or production)
 const environment = process.env.NODE_ENV || 'development';
