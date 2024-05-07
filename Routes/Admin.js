@@ -12,7 +12,7 @@ const socket = require("../Modules/Socket");
 const { userInfo } = require("os");
 const amqp = require("amqplib");
 const axios = require("axios");
-const { sendServiceBotMessageToUser } = require("./services-bot");
+const {sendServiceBotMessageToUser} = require("./services-bot");
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
@@ -5762,26 +5762,6 @@ const statusCheck=(params)=> {
   }
 }
 
-async function uploadBotFileToMinio(fileId, userId) {
-  return new Promise((resolve, reject) => {
-    const filePath = "bot/" + userId + '_' + Date.now(); // Adjusted the file path creation
-    // Converting the photo data to a buffer
-    const buffer = Buffer.from(fileId, 'base64'); // Assuming file_id is base64 encoded
-
-    // Uploading the file to MinIO
-    minioClient.putObject("tirgo", filePath, buffer, function (err, etag) {
-      if (err) {
-        console.error("Error uploading file:", err);
-        reject(err);
-      } else {
-        console.log("File uploaded successfully. ETag:", etag);
-        resolve(etag);
-      }
-    });
-  });
-}
-
-
 admin.get('/download-file/:fileName', (req, res) => {
   const { fileName } = req.params;
   // Download file from MinIO
@@ -5800,4 +5780,4 @@ admin.get('/download-file/:fileName', (req, res) => {
   });
 });
 
-module.exports = {admin, uploadBotFileToMinio};
+module.exports = admin;

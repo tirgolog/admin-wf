@@ -1,6 +1,5 @@
 const { Bot, InlineKeyboard } = require("grammy");
 const database = require("../Database/database");
-const { uploadBotFileToMinio } = require("./Admin");
 const socket = require("../Modules/Socket");
 
 // Determine environment (e.g., development or production)
@@ -281,6 +280,25 @@ async function savePhotoMessageDeatilsToDatabase (data) {
 
 async function sendServiceBotMessageToUser(chatId, text) {
  return await bot.api.sendMessage(chatId, text);
+}
+
+async function uploadBotFileToMinio(fileId, userId) {
+  return new Promise((resolve, reject) => {
+    const filePath = "bot/" + userId + '_' + Date.now(); // Adjusted the file path creation
+    // Converting the photo data to a buffer
+    const buffer = Buffer.from(fileId, 'base64'); // Assuming file_id is base64 encoded
+
+    // Uploading the file to MinIO
+    minioClient.putObject("tirgo", filePath, buffer, function (err, etag) {
+      if (err) {
+        console.error("Error uploading file:", err);
+        reject(err);
+      } else {
+        console.log("File uploaded successfully. ETag:", etag);
+        resolve(etag);
+      }
+    });
+  });
 }
   
 module.exports = {sendServiceBotMessageToUser};
