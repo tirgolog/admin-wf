@@ -24,7 +24,8 @@ bot.onText(/\/start/, (msg, match) => {
 
 
 bot.on("contact", async (msg) => {
-  let phoneNumber = msg.contact.phone_number.toString().replace('+', '');
+  try {
+    let phoneNumber = msg.contact.phone_number.toString().replace('+', '');
   const chatId = msg.chat.id;
   let connect = await database.connection.getConnection();
 
@@ -40,6 +41,9 @@ bot.on("contact", async (msg) => {
     bot.sendMessage(chatId, 'Код для логин: ' + rows[0].verify_code);
   } else {
     console.log('Login is not by tg')
+  }
+  } catch(err) {
+    console.log(err)
   }
 });
 
