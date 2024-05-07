@@ -1,10 +1,10 @@
 const { Bot, InlineKeyboard } = require("grammy");
 const database = require("../Database/database");
 const socket = require("../Modules/Socket");
+require('dotenv').config();
 
 // Determine environment (e.g., development or production)
 const environment = process.env.NODE_ENV || 'development';
-console.log(process.env )
 // Set up tokens for different environments
 const tokens = {
     development: '6999025382:AAGmZC8M6AeBH0vjt4r-azCHzOvvW_4OIVY',
