@@ -1,18 +1,18 @@
 const { Bot, InlineKeyboard } = require("grammy");
 const database = require("../Database/database");
 const socket = require("../Modules/Socket");
-require('dotenv').config();
+// require('dotenv').config();
 
 // Determine environment (e.g., development or production)
-const environment = process.env.NODE_ENV || 'development';
+// const environment = process.env.NODE_ENV || 'development';
 // Set up tokens for different environments
-const tokens = {
-    development: '6999025382:AAGmZC8M6AeBH0vjt4r-azCHzOvvW_4OIVY',
-    production: '7058770363:AAHZAcPHrUPMaJBuj6Pcwsdojo4IRHOV38s'
-};
-const token = tokens[environment];
+// const tokens = {
+//     development: '6999025382:AAGmZC8M6AeBH0vjt4r-azCHzOvvW_4OIVY',
+//     production: '7058770363:AAHZAcPHrUPMaJBuj6Pcwsdojo4IRHOV38s'
+// };
+// const token = tokens[environment];
 // Create an instance of the Bot class and pass your bot token to it.
-const bot = new Bot(token); // <-- put your bot token between the ""
+const bot = new Bot('7058770363:AAHZAcPHrUPMaJBuj6Pcwsdojo4IRHOV38s'); // <-- put your bot token between the ""
 
 
 bot.command("start", onCommandStart);
