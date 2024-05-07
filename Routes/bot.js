@@ -1,4 +1,5 @@
-
+if(process.env.NODE_ENV == 'production') {
+  
 const TelegramBot = require("node-telegram-bot-api");
 const token = '6286374907:AAEvEgm_NDDv-r6ppBEy-qvoJGWFKCb_Rbw';
 const bot = new TelegramBot(token, { polling: true });
@@ -62,3 +63,5 @@ async function sendBotMessageToUser(chatId, text) {
 }
 
 module.exports = {sendBotMessageToUser};
+
+}
