@@ -260,32 +260,7 @@ admin.post("/agent-service/add-to-driver", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
-      const [paymentUser] = await connect.query(
-        "SELECT * FROM alpha_payment where  userid = ? ",
-        [user_id]
-      );
-      const totalPaymentAmount = paymentUser.reduce(
-        (accumulator, secure) => accumulator + Number(secure.amount),
-        0
-      );
-
-      const [paymentTransaction] = await connect.query(
-        "SELECT * FROM services_transaction where  userid = ? AND status In(2, 3) ",
-        [user_id]
-      );
-
-      const totalPaymentAmountTransaction = paymentTransaction.reduce(
-        (accumulator, secure) => accumulator + Number(secure.amount),
-        0
-      );
-
-      const totalAmount = services.reduce(
-        (accumulator, secure) => accumulator + Number(secure.price_uzs),
-        0
-      );
-
-      let balance = totalPaymentAmount - totalPaymentAmountTransaction;
-      if (balance >= totalAmount) {
+    
         const [editUser] = await connect.query(
           "UPDATE users_list SET is_service = 1  WHERE id = ?",
           [user_id]
@@ -332,11 +307,6 @@ admin.post("/agent-service/add-to-driver", async (req, res) => {
           appData.status = false;
           res.status(400).json(appData);
         }
-      } else {
-        appData.error = "Недостаточно средств на балансе";
-        appData.status = false;
-        res.status(400).json(appData);
-      }
     }
   } catch (e) {
     appData.error = e.message;
@@ -3870,20 +3840,7 @@ admin.post("/addDriverServices", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
-      const [paymentUser] = await connect.query(
-        `SELECT 
-        COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE userid = ? AND is_agent = false), 0) - 
-        COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false AND status In(2, 3)), 0)
-        AS balance;`,
-        [userid, userid]
-      );
 
-      const totalAmount = services.reduce(
-        (accumulator, secure) => accumulator + Number(secure.price_uzs),
-        0
-      );
-
-      if (paymentUser[0]?.balance >= totalAmount) {
         const [editUser] = await connect.query(
           "UPDATE users_list SET is_service = 1  WHERE id = ?",
           [user_id]
@@ -3929,11 +3886,7 @@ admin.post("/addDriverServices", async (req, res) => {
           appData.status = false;
           res.status(400).json(appData);
         }
-      } else {
-        appData.error = "Недостаточно средств на балансе";
-        appData.status = false;
-        res.status(400).json(appData);
-      }
+
     }
   } catch (e) {
     appData.error = e.message;
@@ -4519,7 +4472,7 @@ admin.get("/driver-group/transactions", async (req, res) => {
         groupId: el.group_id,
         driverId: el.driverId,
         driverName: el.driverName,
-        amount: el.price_uzs,
+        amount: el.amount,
         createdAt: el.createdAt,
         serviceName: el.service_name,
         transactionType: 'subscription'
@@ -4847,31 +4800,6 @@ admin.post("/driver-group/add-services", async (req, res) => {
       res.status(400).json(appData);
     } else {
 
-      const [result] = await connect.query(`
-          SELECT 
-              COALESCE((SELECT SUM(amount) 
-                        FROM driver_group_transaction 
-                        WHERE driver_group_id = ${group_id} AND type = 'Пополнение'), 0) AS totalTopUpTransactions,
-              COALESCE((SELECT SUM(amount) 
-                        FROM driver_group_transaction 
-                        WHERE driver_group_id = ${group_id} AND type = 'Вывод'), 0) AS totalWithdrawTransactions,
-              COALESCE((SELECT SUM(amount) 
-                        FROM subscription_transaction 
-                        WHERE deleted = 0 AND group_id = ${group_id}), 0) AS totalSubTransactions,
-              COALESCE((SELECT SUM(amount) 
-                        FROM services_transaction 
-                        WHERE status In(2, 3) AND group_id = ${group_id}), 0) AS totalServiceTransactions;
-      `);
-
-      const { totalTopUpTransactions, totalWithdrawTransactions, totalSubTransactions, totalServiceTransactions } = result[0];
-
-      const balance = (totalTopUpTransactions - totalWithdrawTransactions) - (totalSubTransactions + totalServiceTransactions);
-      const totalAmount = services.reduce(
-        (accumulator, secure) => accumulator + Number(secure.price_uzs),
-        0
-      );
-
-      if (balance >= totalAmount) {
         const [editUser] = await connect.query(
           "UPDATE users_list SET is_service = 1  WHERE id = ?",
           [user_id]
@@ -4918,11 +4846,6 @@ admin.post("/driver-group/add-services", async (req, res) => {
           appData.status = false;
           res.status(400).json(appData);
         }
-      } else {
-        appData.error = "Недостаточно средств на балансе";
-        appData.status = false;
-        res.status(400).json(appData);
-      }
     }
   } catch (e) {
     appData.error = e.message;
@@ -5750,11 +5673,8 @@ admin.get("/excel/services-transaction", async (req, res) => {
     let query = `SELECT 
       st.userid as "driverId",
       s.name as "serviceName",
-      CASE 
-      WHEN st.amount = 0 OR st.amount IS NULL THEN st.price_uzs
-      ELSE st.amount
-      END AS "amount",
       st.rate,
+      st.amount,
       st.status as "statusId",
       st.created_at as "createdAt",
       al.name as "agentName",

@@ -1399,7 +1399,7 @@ users.get("/checkSession", async function (req, res) {
         (COALESCE(
           (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND group_id = ${rows[0]?.driver_group_id}), 0) +
         COALESCE(
-          (SELECT SUM(price_uzs) FROM services_transaction WHERE group_id = ${rows[0]?.driver_group_id}), 0)) as balance;
+          (SELECT SUM(amount) FROM services_transaction WHERE group_id = ${rows[0]?.driver_group_id}), 0)) as balance;
     `);
 
       appData.user = rows[0];
@@ -4755,7 +4755,7 @@ users.post("/addDriverSubscription", async (req, res) => {
                 (COALESCE(
                   (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND group_id = ${rows[0]?.driver_group_id}), 0) +
                 COALESCE(
-                  (SELECT SUM(price_uzs) FROM services_transaction WHERE group_id = ${rows[0]?.driver_group_id}), 0)) as balance;
+                  (SELECT SUM(amount) FROM services_transaction WHERE group_id = ${rows[0]?.driver_group_id}), 0)) as balance;
             `);
             balance = result[0]?.balance;
           } else {
@@ -5002,11 +5002,6 @@ users.post("/addDriverServices", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
-    
-      const totalAmount = services.reduce(
-        (accumulator, secure) => accumulator + Number(secure.price_uzs),
-        0
-      );
 
       const [user] = await connect.query(
         "SELECT * FROM users_list WHERE id = ?",
@@ -5025,7 +5020,7 @@ users.post("/addDriverServices", async (req, res) => {
             (COALESCE(
               (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND group_id = ${user[0]?.driver_group_id}), 0) +
             COALESCE(
-              (SELECT SUM(price_uzs) FROM services_transaction WHERE group_id = ${user[0]?.driver_group_id}), 0)) as balance;
+              (SELECT SUM(amount) FROM services_transaction WHERE group_id = ${user[0]?.driver_group_id}), 0)) as balance;
         `);
         balance = result[0]?.balance;
       } else {
@@ -5040,7 +5035,6 @@ users.post("/addDriverServices", async (req, res) => {
       }
 
 
-      if (balance >= totalAmount) {
         const [editUser] = await connect.query(
           "UPDATE users_list SET is_service = 1  WHERE id = ?",
           [user_id]
@@ -5101,11 +5095,6 @@ users.post("/addDriverServices", async (req, res) => {
           appData.status = false;
           res.status(400).json(appData);
         }
-      } else {
-        appData.error = "Недостаточно средств на балансе";
-        appData.status = false;
-        res.status(400).json(appData);
-      }
     }
   } catch (e) {
     appData.error = e.message;
