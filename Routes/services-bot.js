@@ -1,6 +1,14 @@
 // const { Bot, InlineKeyboard } = require("grammy");
 // const database = require("../Database/database");
 // const socket = require("../Modules/Socket");
+// const Minio = require("minio");
+// const minioClient = new Minio.Client({
+//   endPoint: "13.232.83.179",
+//   port: 9000,
+//   useSSL: false,
+//   accessKey: "2ByR3PpFGckilG4fhSaJ",
+//   secretKey: "8UH4HtIBc7WCwgCVshcxmQslHFyJB8Y79Bauq5Xd",
+// });
 // // require('dotenv').config();
 
 // // Determine environment (e.g., development or production)
@@ -12,36 +20,59 @@
 // // };
 // // const token = tokens[environment];
 // // Create an instance of the Bot class and pass your bot token to it.
-// const bot = new Bot('7058770363:AAHZAcPHrUPMaJBuj6Pcwsdojo4IRHOV38s'); // <-- put your bot token between the ""
+// const bot = new Bot('6999025382:AAGmZC8M6AeBH0vjt4r-azCHzOvvW_4OIVY'); // <-- put your bot token between the ""
 
 
 // bot.command("start", onCommandStart);
 
 // // Handle incoming photo messages
 // bot.on('message:photo', async (ctx) => {
-//   const message = ctx.message;
-//   for(let photo of message.photo) {
-//     const minioRes = await uploadBotFileToMinio(photo.file_id, 6197);
-//     const data = {
-//       fileId: file_id, 
-//       fileUniqueId: file_unique_id, 
-//       fileSize: file_size, 
-//       width: width, 
-//       height: height,
-//       minioFileName: 'minioRes',
-//       botMessageId: 'botMessageId',
-//       userId: 'userId'
+//   try {
+//     const connection = await database.connection.getConnection();
+//     const message = ctx.message;
+//     const userChatBotId = message.from.id;
+//     const [userChat] = await connection.query(`
+//       SELECT * FROM services_bot_users WHERE chat_id = ?
+//     `, [userChatBotId]);
+//     if (userChat[0]?.user_id) {
+//       message.photo.forEach(async (photo) => {
+//         const minioRes = await uploadBotFileToMinio(photo.file_id, 6197);
+//         const data = {
+//           fileId: photo.file_id,
+//           fileUniqueId: photo.file_unique_id,
+//           fileSize: photo.file_size,
+//           width: photo.width,
+//           height: photo.height,
+//           minioFileName: minioRes.fileName,
+//           botMessageId: message.message_id,
+//           userId: userChat[0]?.user_id
+//         }
+//         await savePhotoMessageDeatilsToDatabase(data);
+//       });
+
+//         let data = {
+//           messageId: message.message_id,
+//           senderType: 'user',
+//           senderUserId: userChat[0]?.user_id,
+//           senderBotId: message.from?.id,
+//           messageType: 'photo',
+//           message: 'photo'
+//         };
+    
+//         const res = await saveMessageToDatabase(data);
 //     }
-//     savePhotoMessageDeatilsToDatabase(data);
+
+//     console.log('Photo message !');
+//   } catch (err) {
+//     console.log('Error while handling files from bot', err)
 //   }
-//   console.log('Photo message !');
 
 // });
 
 // // Handle incoming contact messages
 // bot.on('message:contact', async (ctx) => {
 //   console.log('Contact message !');
-//     await onContactReceived(ctx)
+//   await onContactReceived(ctx)
 // });
 
 // // Handle incoming text messages
@@ -52,29 +83,29 @@
 //   console.log('Text message !', message.text)
 //   const [botUser] = await connecttion.query(`
 //   SELECT user_id FROM services_bot_users WHERE chat_id = ${message.from?.id}`);
-  
-//   if(botUser?.length && !message.contact) {
+
+//   if (botUser?.length && !message.contact) {
 //     let data = {
 //       messageId: message.message_id,
 //       senderType: 'user',
 //       senderUserId: botUser[0]?.user_id,
 //       senderBotId: message.from?.id
 //     };
-  
+
 //     // data.receiverUserId,
 //     // data.receiverBotId
-  
-//     if(message.text) {
+
+//     if (message.text) {
 //       data.messageType = 'text';
 //       data.message = message.text;
-//     } else if(data.document) {
+//     } else if (data.document) {
 //       data.messageType = 'document';
 //       data.message = 'document'
-  
-//     } else if(data.photo) {
+
+//     } else if (data.photo) {
 //       data.messageType = 'photo';
 //       data.message = 'photo'
-  
+
 //     }
 //     const res = await saveMessageToDatabase(data);
 //   }
@@ -85,10 +116,10 @@
 //   const callbackData = ctx.callbackQuery.data;
 
 //   if (callbackData === '#services') {
-//       // Handle 'Типы услуг' button click here
-//      await onServicesClick(ctx);
-//   } else if(callbackData.startsWith('#service_')) {
-//     await ctx.reply(`you choosed.` + callbackData );
+//     // Handle 'Типы услуг' button click here
+//     await onServicesClick(ctx);
+//   } else if (callbackData.startsWith('#service_')) {
+//     await ctx.reply(`you choosed.` + callbackData);
 //   }
 // });
 
@@ -121,10 +152,10 @@
 //   const connection = await database.connection.getConnection();
 //   try {
 //     console.log(`Received contact information from ${chatFirstName}: ${phoneNumber}`);
-//      // Create an inline keyboard with menu options
+//     // Create an inline keyboard with menu options
 
 
-//  // Send the message with the menu
+//     // Send the message with the menu
 //     await ctx.reply(`Thank you, ${chatFirstName}! We've received your contact information.`);
 
 
@@ -137,20 +168,20 @@
 //     `, [phoneNumber]);
 
 //     let res;
-//     if(!userChat?.length) {
+//     if (!userChat?.length) {
 //       res = await connection.query(`
 //         INSERT INTO services_bot_users set first_name = ?, last_name = ?, phone_number = ?, tg_username = ?, chat_id = ?, user_id = ?
 //         `, [chatFirstName, chatLastName, phoneNumber, username, chatId, user[0]?.user_id]);
 
-//         let data = {
-//           messageId: ctx.message.message_id,
-//           senderType: 'user',
-//           senderUserId: user[0]?.user_id,
-//           senderBotId: ctx.message.from?.id,
-//           messageType: 'contact',
-//           message: phoneNumber
-//         };
-//         await saveMessageToDatabase(data)
+//       let data = {
+//         messageId: ctx.message.message_id,
+//         senderType: 'user',
+//         senderUserId: user[0]?.user_id,
+//         senderBotId: ctx.message.from?.id,
+//         messageType: 'contact',
+//         message: phoneNumber
+//       };
+//       await saveMessageToDatabase(data)
 //     } else {
 //       res = await connection.query(
 //         "UPDATE services_bot_users set first_name = ?, last_name = ?, phone_number = ?, tg_username = ?, chat_id = ?, user_id = ? WHERE phone_number = ?",
@@ -158,20 +189,20 @@
 //       );
 //     }
 
-    
+
 
 //     // Send a notification to the user
 //     if (res) {
-//       if(user[0]) {
+//       if (user[0]) {
 //         const keyboard = new InlineKeyboard()
-//         .text('Типы услуг', '#services')
+//           .text('Типы услуг', '#services')
 //         await ctx.reply(`Дорогой ${chatFirstName}! Вы успешно зарегистрировались.`, { reply_markup: keyboard });
 //       } else {
-//        await bot.api.sendMessage(
-//             ctx.message.chat.id,
-//             `Дорогой ${chatFirstName}! Пожалуйста, зарегистрируйтесь в приложении по <a href="YOUR_LINK_HERE">ссылке</a>.`,
-//             { parse_mode: "HTML" },
-//           );
+//         await bot.api.sendMessage(
+//           ctx.message.chat.id,
+//           `Дорогой ${chatFirstName}! Пожалуйста, зарегистрируйтесь в приложении по <a href="YOUR_LINK_HERE">ссылке</a>.`,
+//           { parse_mode: "HTML" },
+//         );
 //       }
 //     } else {
 //       await ctx.reply(`Дорогой ${chatFirstName}! Регистрация не удалась. Пожалуйста, попробуйте позднее.`);
@@ -190,42 +221,42 @@
 // // Function to handle 'Типы услуг' button click
 // async function onServicesClick(ctx) {
 //   const connection = await database.connection.getConnection();
-  
-//   try {
-//       const services = await connection.query('SELECT * FROM services');
-//       if (services && services.length > 0) {
-//           const keyboard = new InlineKeyboard();
-//           for (let service of services[0]) {
-//             const serviceNameWithLineBreak = service.name.replace(/\\n/g, '\n');
-//               keyboard.text(serviceNameWithLineBreak, `#service_${service.id}`);
-//               keyboard.row()
-//           }
 
-//           await ctx.reply(`Choose a service:`, { reply_markup: keyboard });
-//       } else {
-//           await ctx.reply(`No services available.`);
+//   try {
+//     const services = await connection.query('SELECT * FROM services');
+//     if (services && services.length > 0) {
+//       const keyboard = new InlineKeyboard();
+//       for (let service of services[0]) {
+//         const serviceNameWithLineBreak = service.name.replace(/\\n/g, '\n');
+//         keyboard.text(serviceNameWithLineBreak, `#service_${service.id}`);
+//         keyboard.row()
 //       }
-//       let data = {
-//         messageId: ctx.callbackQuery.message.message_id,
-//         senderType: 'user',
-//         senderUserId: 'user[0]?.user_id',
-//         senderBotId: ctx.callbackQuery.message.from?.id,
-//         messageType: 'contact',
-//         message: 'phoneNumber'
-//       };
-//       console.log('data', data)
+
+//       await ctx.reply(`Choose a service:`, { reply_markup: keyboard });
+//     } else {
+//       await ctx.reply(`No services available.`);
+//     }
+//     let data = {
+//       messageId: ctx.callbackQuery.message.message_id,
+//       senderType: 'user',
+//       senderUserId: 'user[0]?.user_id',
+//       senderBotId: ctx.callbackQuery.message.from?.id,
+//       messageType: 'contact',
+//       message: 'phoneNumber'
+//     };
+//     console.log('data', data)
 //   } catch (err) {
-//       console.log('BOT Error while getting services list: ', err);
-//       await ctx.reply(`Error while getting services list.`);
+//     console.log('BOT Error while getting services list: ', err);
+//     await ctx.reply(`Error while getting services list.`);
 //   } finally {
-//       // Release the connection back to the pool
-//       if (connection) {
-//           connection.release();
-//       }
+//     // Release the connection back to the pool
+//     if (connection) {
+//       connection.release();
+//     }
 //   }
 // }
 
-// async function saveMessageToDatabase (data) {
+// async function saveMessageToDatabase(data) {
 //   const connection = await database.connection.getConnection();
 
 //   const [insertData] = await connection.query(`
@@ -239,22 +270,22 @@
 //     sender_bot_chat_id = ?,
 //     receiver_bot_chat_id = ?
 //   `, [
-//       data.messageType, 
-//       data.message, 
-//       data.senderType, 
-//       data.messageId, 
-//       data.senderUserId,
-//       data.receiverUserId,
-//       data.senderBotId,
-//       data.receiverBotId
-//     ]);
-//     console.log(insertData)
-//     if(insertData.affectedRows) {
-//       socket.updateAllMessages("update-service-messages", JSON.stringify({ userId: data.receiverUserId, message: data.message, messageType: data.messageType, messageId: data.messageId}));
-//     }
+//     data.messageType,
+//     data.message,
+//     data.senderType,
+//     data.messageId,
+//     data.senderUserId,
+//     data.receiverUserId,
+//     data.senderBotId,
+//     data.receiverBotId
+//   ]);
+//   console.log(insertData)
+//   if (insertData.affectedRows) {
+//     socket.updateAllMessages("update-service-messages", JSON.stringify({ userId: data.receiverUserId, message: data.message, messageType: data.messageType, messageId: data.messageId }));
+//   }
 // }
 
-// async function savePhotoMessageDeatilsToDatabase (data) {
+// async function savePhotoMessageDeatilsToDatabase(data) {
 //   const connection = await database.connection.getConnection();
 //   const [insertData] = await connection.query(`
 //   INSERT INTO service_bot_photo_details set 
@@ -267,87 +298,43 @@
 //     bot_message_id = ?,
 //     user_id = ?
 //   `, [
-//       data.fileId, 
-//       data.fileUniqueId, 
-//       data.fileSize, 
-//       data.width, 
-//       data.height,
-//       data.minioFileName,
-//       data.botMessageId,
-//       data.userId
-//     ]);
+//     data.fileId,
+//     data.fileUniqueId,
+//     data.fileSize,
+//     data.width,
+//     data.height,
+//     data.minioFileName,
+//     data.botMessageId,
+//     data.userId
+//   ]);
 // }
 
 // async function sendServiceBotMessageToUser(chatId, text) {
-//  return await bot.api.sendMessage(chatId, text);
+//   return await bot.api.sendMessage(chatId, text);
+// }
+
+// async function replyServiceBotMessageToUser(chatId, text, replyMessageId) {
+//   console.log(replyMessageId)
+//   return await bot.api.sendMessage(chatId, text, { reply_to_message_id: replyMessageId });
 // }
 
 // async function uploadBotFileToMinio(fileId, userId) {
 //   return new Promise((resolve, reject) => {
-//     const filePath = "bot/" + userId + '_' + Date.now(); // Adjusted the file path creation
+//     const fileName = userId + '_' + Date.now(); // Adjusted the file path creation
 //     // Converting the photo data to a buffer
 //     const buffer = Buffer.from(fileId, 'base64'); // Assuming file_id is base64 encoded
 
 //     // Uploading the file to MinIO
-//     minioClient.putObject("tirgo", filePath, buffer, function (err, etag) {
+//     minioClient.putObject("tirgo", "bot/" + fileName, buffer, function (err, etag) {
 //       if (err) {
 //         console.error("Error uploading file:", err);
 //         reject(err);
 //       } else {
 //         console.log("File uploaded successfully. ETag:", etag);
-//         resolve(etag);
+//         resolve({ etag: etag.etag, fileName });
 //       }
 //     });
 //   });
 // }
-  
-// module.exports = {sendServiceBotMessageToUser};
 
-// //   `CREATE TABLE service_bot_message (
-// //     id SERIAL PRIMARY KEY,
-// //     message_type VARCHAR,
-// //     message TEXT,
-// //     message_sender_type VARCHAR,
-// //     bot_message_id int,
-// //     sender_user_id int,
-// //     receiver_user_id int,
-// //     sender_bot_chat_id int,
-// //     receiver_bot_chat_id int
-// //   );`
-
-// // `{
-// //   message_id: 259,
-// //   from: {
-// //     id: 1689259996,
-// //     is_bot: false,
-// //     first_name: 'Fazliddin',
-// //     last_name: 'Norkhujayev',
-// //     username: 'nfaxriddinovich',
-// //     language_code: 'en'
-// //   },
-// //   chat: {
-// //     id: 1689259996,
-// //     first_name: 'Fazliddin',
-// //     last_name: 'Norkhujayev',
-// //     username: 'nfaxriddinovich',
-// //     type: 'private'
-// //   },
-// //   date: 1714378398,
-// //   document: {
-// //     file_name: 'carriers.xlsx',
-// //     mime_type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-// //     file_id: 'BQACAgIAAxkBAAIBA2YvVp5Q4TcwelRr77h8lfaXhMn5AAJnTwACYYB5SX5mpWZMY9z0NAQ',
-// //     file_unique_id: 'AgADZ08AAmGAeUk',
-// //     file_size: 17118
-// //   },
-// //   photo: [
-// //     {
-// //       file_id: 'AgACAgIAAxkBAAP-Zi9V-hH_BwO5U4pkkThXmNc2gDsAAiPYMRthgHlJT76ubkOGHUgBAAMCAANzAAM0BA',
-// //       file_unique_id: 'AQADI9gxG2GAeUl4',
-// //       file_size: 1318,
-// //       width: 90,
-// //       height: 90
-// //     }
-// //   ],
-// //   text: 'asd'
-// // }`
+// module.exports = { sendServiceBotMessageToUser, replyServiceBotMessageToUser };
