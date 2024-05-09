@@ -12,7 +12,7 @@ const socket = require("../Modules/Socket");
 const { userInfo } = require("os");
 const amqp = require("amqplib");
 const axios = require("axios");
-// const {sendServiceBotMessageToUser, replyServiceBotMessageToUser} = require("./services-bot");
+// const {sendServiceBotMessageToUser, replyServiceBotMessageToUser, deleteMessageFromBotChat, editMessageInBotChat} = require("./services-bot");
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
@@ -85,28 +85,28 @@ admin.post("/loginAdmin", async (req, res) => {
   }
 });
 
-admin.use((req, res, next) => {
-  let token =
-    req.body.token ||
-    req.headers["token"] ||
-    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-  let appData = {};
-  if (token) {
-    jwt.verify(token, process.env.SECRET_KEY, function (err) {
-      if (err) {
-        appData["error"] = err;
-        appData["data"] = "Token is invalid";
-        res.status(403).json(appData);
-      } else {
-        next();
-      }
-    });
-  } else {
-    appData["error"] = 1;
-    appData["data"] = "Token is null";
-    res.status(200).json(appData);
-  }
-});
+// admin.use((req, res, next) => {
+//   let token =
+//     req.body.token ||
+//     req.headers["token"] ||
+//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+//   let appData = {};
+//   if (token) {
+//     jwt.verify(token, process.env.SECRET_KEY, function (err) {
+//       if (err) {
+//         appData["error"] = err;
+//         appData["data"] = "Token is invalid";
+//         res.status(403).json(appData);
+//       } else {
+//         next();
+//       }
+//     });
+//   } else {
+//     appData["error"] = 1;
+//     appData["data"] = "Token is null";
+//     res.status(200).json(appData);
+//   }
+// });
 
 admin.get("/getAllAgent", async (req, res) => {
   let connect,
@@ -5096,6 +5096,90 @@ admin.post("/message/bot-user", async (req, res) => {
   }
 });
 
+admin.delete("/message/bot-user", async (req, res) => {
+  let appData = { status: false };
+  let connect;
+  let { 
+    messageId,
+    receiverUserId,
+  } = req.body;
+    
+  try {
+    connect = await database.connection.getConnection();
+    
+    const [botUser] = await connect.query(`
+    SELECT user_id, chat_id FROM services_bot_users WHERE user_id = ${receiverUserId}`);
+    // senderBotId,
+    if(!botUser.length) {
+      appData.error = 'User not registered in bot'
+      appData.status = false;
+      res.status(400).json(appData);
+    } else {
+      let receiverBotId = botUser[0]?.chat_id;
+      // const response = await deleteMessageFromBotChat(receiverBotId, messageId);      
+      // if(response) {
+      //   appData.status = true;
+      //   res.status(200).json(appData);
+      // } else {
+      //  appData.error = 'Удалить сообщение не удалось'
+      //  appData.status = false;
+      //  res.status(400).json(appData);
+      // }
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.put("/message/bot-user", async (req, res) => {
+  let appData = { status: false };
+  let connect;
+  let { 
+    messageId,
+    messageType,
+    message,
+    receiverUserId,
+  } = req.body;
+    
+  try {
+    connect = await database.connection.getConnection();
+    
+    const [botUser] = await connect.query(`
+    SELECT user_id, chat_id FROM services_bot_users WHERE user_id = ${receiverUserId}`);
+    // senderBotId,
+    if(!botUser.length) {
+      appData.error = 'User not registered in bot'
+      appData.status = false;
+      res.status(400).json(appData);
+    } else {
+      let receiverBotId = botUser[0]?.chat_id;
+      // const response = await editMessageInBotChat(receiverBotId, messageId, message);      
+      // if(response) {
+      //   appData.status = true;
+      //   res.status(200).json(appData);
+      // } else {
+      //  appData.error = 'Удалить сообщение не удалось'
+      //  appData.status = false;
+      //  res.status(400).json(appData);
+      // }
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 admin.post("/reply-message/bot-user", async (req, res) => {
   let appData = { status: false };
   let connect;
@@ -5240,6 +5324,7 @@ try {
       message_type messageType,
       message,
       is_reply isReplied,
+      caption,
       replied_message_id repliedMessageId,
       message_sender_type messageSenderType,
       bot_message_id botMessageId,
