@@ -5187,13 +5187,14 @@ admin.post("/reply-message/bot-user", async (req, res) => {
     messageType,
     message,
     receiverUserId,
-    replyMessageId
+    replyMessageId,
+    replyMessage
   } = req.body;
     
   let userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   try {
     connect = await database.connection.getConnection();
-    if( !messageType || !message || !receiverUserId || !replyMessageId) {
+    if( !messageType || !message || !receiverUserId || !replyMessageId || !replyMessage) {
       appData.status = false;
       appData.error = 'All fields are required!'
       res.status(400).json(appData);
@@ -5220,7 +5221,8 @@ admin.post("/reply-message/bot-user", async (req, res) => {
         receiver_user_id = ?,
         receiver_bot_chat_id = ?,
         is_reply = ?,
-        replied_message_id = ?
+        replied_message_id = ?,
+        replied_message = ?
       `, [
           messageType, 
           message, 
@@ -5229,7 +5231,8 @@ admin.post("/reply-message/bot-user", async (req, res) => {
           receiverUserId,
           receiverBotId,
           true,
-          replyMessageId
+          replyMessageId,
+          replyMessage
         ]);
         if(insertResult[0].affectedRows) {
           // const botRes = await replyServiceBotMessageToUser(receiverBotId, message, replyMessageId)
@@ -5326,6 +5329,7 @@ try {
       is_reply isReplied,
       caption,
       replied_message_id repliedMessageId,
+      replied_message repliedMessage,
       message_sender_type messageSenderType,
       bot_message_id botMessageId,
       sender_user_id senderUserId,
