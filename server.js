@@ -35,14 +35,6 @@ process.env.FILES_PATCH = "/var/www/html/";
 process.env.SERVER_URL = "https://tirgo.io/";
 
 //Beeline
-// const minioClient = new Minio.Client({
-//   endPoint: "185.183.243.223",
-//   port: 9000,
-//   useSSL: false,
-//   accessKey: "4iC87KDCglhYTPZGpA0D",
-//   secretKey: "1EnXPZiSEdHrJluSPgYLMQXuxbcSJF3TWIiklZDs",
-// });
-
 //AWS
 // const minioClient = new Minio.Client({
 //     endPoint: "13.232.83.179",
