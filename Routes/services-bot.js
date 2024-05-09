@@ -55,8 +55,7 @@
 //               height: photo.height,
 //               minioFileName: minioRes.fileName,
 //               botMessageId: message.message_id,
-//               userId: userChat[0]?.user_id,
-//               caption: message.caption
+//               userId: userChat[0]?.user_id
 //             }
 //             await savePhotoMessageDeatilsToDatabase(data);
 //             await deleteFileFromLocalDisk(minioRes.localFilePath)
@@ -72,7 +71,8 @@
 //           senderUserId: userChat[0]?.user_id,
 //           senderBotId: message.from?.id,
 //           messageType: 'photo',
-//           message: 'photo'
+//           message: 'photo',
+//           caption: message.caption
 //         };
     
 //         const res = await saveMessageToDatabase(data);
@@ -284,7 +284,8 @@
 //     sender_user_id = ?,
 //     receiver_user_id = ?,
 //     sender_bot_chat_id = ?,
-//     receiver_bot_chat_id = ?
+//     receiver_bot_chat_id = ?,
+//     caption = ?
 //   `, [
 //     data.messageType,
 //     data.message,
@@ -293,7 +294,8 @@
 //     data.senderUserId,
 //     data.receiverUserId,
 //     data.senderBotId,
-//     data.receiverBotId
+//     data.receiverBotId,
+//     data.caption
 //   ]);
 //   console.log(insertData)
 //   if (insertData.affectedRows) {
@@ -312,8 +314,7 @@
 //     height = ?,
 //     minio_file_name = ?,
 //     bot_message_id = ?,
-//     user_id = ?,
-//     caption = ?
+//     user_id = ?
 //   `, [
 //     data.fileId,
 //     data.fileUniqueId,
@@ -322,8 +323,7 @@
 //     data.height,
 //     data.minioFileName,
 //     data.botMessageId,
-//     data.userId,
-//     data.caption
+//     data.userId
 //   ]);
 // }
 
