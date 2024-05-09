@@ -4113,8 +4113,10 @@ admin.get("/services-transaction", async (req, res) => {
       LEFT JOIN users_list adl ON adl.id = st.created_by_id AND adl.user_type = 3
       LEFT JOIN services s ON s.id = st.service_id`;
 
+      let countQuery = `SELECT COUNT(id) as count FROM services_transaction`;
     if (queryConditions.length > 0) {
       query += " WHERE " + queryConditions.join(" AND ");
+      countQuery += " WHERE " + queryConditions.join(" AND ");
     }
 
     if(sortByDate) {
@@ -4126,9 +4128,11 @@ admin.get("/services-transaction", async (req, res) => {
     queryParams.push(+from, +limit);
 
     const [services_transaction] = await connect.query(query, queryParams);
+    const [services_transaction_total_count] = await connect.query(countQuery, queryParams);
 
     if (services_transaction.length) {
       appData.status = true;
+      appData.totalCount = services_transaction_total_count[0].count;
       appData.data = services_transaction;
       res.status(200).json(appData);
     } else {
@@ -5779,23 +5783,5 @@ const statusCheck=(params)=> {
       return null;
   }
 }
-
-admin.get('/download-file/:fileName', (req, res) => {
-  const { fileName } = req.params;
-  // Download file from MinIO
-  minioClient.getObject('tirgo', 'bot/' + fileName, (err, stream) => {
-    if (err) {
-      console.error('Error retrieving file:', err);
-      return res.status(500).send('Error retrieving file');
-    }
-
-    // Set response headers
-    res.setHeader('Content-disposition', `attachment; filename=${fileName}`);
-    res.setHeader('Content-type', 'application/octet-stream');
-
-    // Pipe MinIO stream to response
-    stream.pipe(res);
-  });
-});
 
 module.exports = admin;
