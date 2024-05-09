@@ -46,7 +46,6 @@
 //     if (userChat[0]?.user_id) {
 //       message.photo.forEach(async (photo) => {
 //         const minioRes = await saveFileToLocalDiskAndMinIO(photo.file_id, 6197);
-//         console.log(minioRes, minioRes.success)
 //         if(minioRes.success) {       
 //             const data = {
 //               fileId: photo.file_id,
@@ -56,7 +55,8 @@
 //               height: photo.height,
 //               minioFileName: minioRes.fileName,
 //               botMessageId: message.message_id,
-//               userId: userChat[0]?.user_id
+//               userId: userChat[0]?.user_id,
+//               caption: message.caption
 //             }
 //             await savePhotoMessageDeatilsToDatabase(data);
 //             await deleteFileFromLocalDisk(minioRes.localFilePath)
@@ -312,7 +312,8 @@
 //     height = ?,
 //     minio_file_name = ?,
 //     bot_message_id = ?,
-//     user_id = ?
+//     user_id = ?,
+//     caption = ?
 //   `, [
 //     data.fileId,
 //     data.fileUniqueId,
@@ -321,7 +322,8 @@
 //     data.height,
 //     data.minioFileName,
 //     data.botMessageId,
-//     data.userId
+//     data.userId,
+//     data.caption
 //   ]);
 // }
 
@@ -402,4 +404,25 @@
 //     });
 // }
 
-// module.exports = { sendServiceBotMessageToUser, replyServiceBotMessageToUser };
+// async function deleteMessageFromBotChat(chatId, messageId) {
+//     try {
+//         await bot.api.deleteMessage(chatId, messageId);
+//         console.log('Message deleted successfully.');
+//         return true;
+//     } catch (error) {
+//         console.error('Error deleting message:', error.description);
+//         return false;
+//     }
+// }
+
+// async function editMessageInBotChat(chatId, messageId, newText) {
+//     try {
+//         await bot.api.editMessageText(chatId, messageId, newText);
+//         console.log('Message edited successfully.');
+//         return true;
+//     } catch (error) {
+//         console.error('Error editing message:', error.description);
+//         return false;
+//     }
+// }
+// module.exports = { sendServiceBotMessageToUser, replyServiceBotMessageToUser, deleteMessageFromBotChat, editMessageInBotChat };
