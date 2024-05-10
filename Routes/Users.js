@@ -1399,7 +1399,7 @@ users.get("/checkSession", async function (req, res) {
         (COALESCE(
           (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND group_id = ${rows[0]?.driver_group_id}), 0) +
         COALESCE(
-          (SELECT SUM(amount) FROM services_transaction WHERE group_id = ${rows[0]?.driver_group_id}), 0)) as balance;
+          (SELECT SUM(amount) FROM services_transaction WHERE group_id = ${rows[0]?.driver_group_id} AND status In(2, 3)), 0)) as balance;
     `);
 
       appData.user = rows[0];
@@ -4755,7 +4755,7 @@ users.post("/addDriverSubscription", async (req, res) => {
                 (COALESCE(
                   (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND group_id = ${rows[0]?.driver_group_id}), 0) +
                 COALESCE(
-                  (SELECT SUM(amount) FROM services_transaction WHERE group_id = ${rows[0]?.driver_group_id}), 0)) as balance;
+                  (SELECT SUM(amount) FROM services_transaction WHERE group_id = ${rows[0]?.driver_group_id} AND status In(2, 3)), 0)) as balance;
             `);
             balance = result[0]?.balance;
           } else {
@@ -5020,14 +5020,14 @@ users.post("/addDriverServices", async (req, res) => {
             (COALESCE(
               (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND group_id = ${user[0]?.driver_group_id}), 0) +
             COALESCE(
-              (SELECT SUM(amount) FROM services_transaction WHERE group_id = ${user[0]?.driver_group_id}), 0)) as balance;
+              (SELECT SUM(amount) FROM services_transaction WHERE group_id = ${user[0]?.driver_group_id} AND status In(2, 3)), 0)) as balance;
         `);
         balance = result[0]?.balance;
       } else {
         const [paymentUser] = await connect.query(
           `SELECT 
           COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE userid = ? AND is_agent = false), 0) - 
-          COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false AND status <> 4), 0)
+          COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false AND status In(2, 3)), 0)
           AS balance;`,
           [userid, userid]
         );
@@ -5167,7 +5167,7 @@ users.post("/services-transaction/user/balanse", async (req, res) => {
       const [paymentUser] = await connect.query(
         `SELECT 
         COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE userid = ? AND is_agent = false), 0) - 
-        COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false AND status <> 4), 0)
+        COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false AND status In(2, 3)), 0)
         AS balance;`,
         [userid, userid]
       );
