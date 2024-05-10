@@ -789,6 +789,40 @@ users.post("/login", async (req, res) => {
   }
 });
 
+users.post("/refreshToken", async (req, res) => {
+  let connect,
+  appData = { status: false },
+  refreshTokenFromRequest = req.body.refreshToken;
+  if (!refreshTokenFromRequest)
+    return res
+      .status(401)
+      .json({ status: false, error: "Требуется токен обновления." });
+    console.log(refreshTokenFromRequest);
+     connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      "SELECT * FROM users_list WHERE refresh_token = ?",
+      [refreshTokenFromRequest]
+    );
+
+    if (rows.length === 0) {
+      return res
+        .status(403)
+        .json({ status: false, error: "Неверный токен обновления" });
+    }
+    const token = jwt.sign({ id: rows[0].id }, process.env.SECRET_KEY, {
+      expiresIn: "2m",
+    });
+    const refreshToken = jwt.sign({ id: rows[0].id }, process.env.SECRET_KEY);
+    await connect.query(
+      "UPDATE users_list SET refresh_token = ? WHERE id = ?",
+      [refreshToken, rows[0].id]
+    );
+    appData.status = true;
+    appData.token = token;
+    appData.refreshToken = refreshToken;
+    res.status(200).json(appData);
+});
+
 users.post("/sms-verification", async (req, res) => {
   let connect,
     appData = { status: false },
@@ -985,7 +1019,19 @@ users.post("/codeverify", async (req, res) => {
         [phone, code]
       );
       appData.status = true;
-      appData.token = jwt.sign({ id: rows[0].user_id }, process.env.SECRET_KEY);
+      const token = jwt.sign({id: rows[0].id}, process.env.SECRET_KEY, { expiresIn: '2m' });
+      const refreshToken = jwt.sign({id: rows[0].id}, process.env.SECRET_KEY);
+      const [setToken] = await connect.query(
+        "UPDATE users_list SET date_last_login = ?, refresh_token = ? WHERE id = ?",
+        [new Date(), refreshToken, rows[0].id]
+      );
+      if (setToken.affectedRows > 0) {
+        appData.status = true;
+        appData.token = token;
+        appData.refreshToken = refreshToken;
+      } else {
+        appData.error = "Данные для входа введены неверно";
+      }
     } else {
       appData.text = "Проверочный код введен не верно";
     }
@@ -1014,7 +1060,19 @@ users.post("/codeverifycation", async (req, res) => {
     );
     if (rows.length > 0) {
       appData.status = true;
-      appData.token = jwt.sign({ id: rows[0].user_id }, process.env.SECRET_KEY);
+      const token = jwt.sign({id: rows[0].id}, process.env.SECRET_KEY, { expiresIn: '2m' });
+      const refreshToken = jwt.sign({id: rows[0].id}, process.env.SECRET_KEY);
+      const [setToken] = await connect.query(
+        "UPDATE users_list SET date_last_login = ?, refresh_token = ? WHERE id = ?",
+        [new Date(), refreshToken, rows[0].id]
+      );
+      if (setToken.affectedRows > 0) {
+        appData.status = true;
+        appData.token = token;
+        appData.refreshToken = refreshToken;
+      } else {
+        appData.error = "Данные для входа введены неверно";
+      }
     } else {
       appData.text = "Проверочный код введен не верно";
     }
@@ -1047,7 +1105,12 @@ users.post("/codeverifyClient", async (req, res) => {
         [phone, code]
       );
       appData.status = true;
-      appData.token = jwt.sign({ id: rows[0].user_id }, process.env.SECRET_KEY);
+      const token = jwt.sign({id: rows[0].id}, process.env.SECRET_KEY, { expiresIn: '2m' });
+      const refreshToken = jwt.sign({id: rows[0].id}, process.env.SECRET_KEY);
+      await connect.query('UPDATE users_list SET refresh_token = ? WHERE id = ?', [refreshToken, rows[0].id]);
+      appData.status = true;
+      appData.token = token;
+      appData.refreshToken = refreshToken;
     } else {
       appData.text = "Проверочный код введен не верно";
     }
@@ -1073,19 +1136,28 @@ users.use((req, res, next) => {
   if (token) {
     jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
       if (err) {
-        console.error("JWT Verification Error:", err);
-        appData["error"] = err;
-        appData["data"] = "Token is invalid";
-        res.status(401).json(appData);
+        if (err.name === 'TokenExpiredError') {
+          appData["error"] = "Token has expired";
+          return res.status(401).json(appData);
+        } else {
+          console.error("JWT Verification Error:", err);
+          appData["error"] = "Token is invalid";
+          return res.status(401).json(appData);
+        }
       } else {
+        // Check if token has expired
+        const currentTimestamp = Math.floor(Date.now() / 1000);
+        if (decoded.exp < currentTimestamp) {
+          appData["data"] = "Token has expired";
+          return res.status(401).json(appData);
+        }
         // Attach user information from the decoded token to the request
         req.user = decoded;
         next();
       }
     });
   } else {
-    appData["error"] = 1;
-    appData["data"] = "Token is null";
+    appData["error"] = "Token is null";
     res.status(401).json(appData);
   }
 });
@@ -1456,17 +1528,17 @@ users.get("/checkSession", async function (req, res) {
       );
       appData.status = true;
       res.status(200).json(appData);
-      await connect.query(
-        "INSERT INTO users_activity SET userid = ?,text = ?",
-        [
-          userInfo.id,
-          "Произведен вход " +
-          req.headers["user-agent"].split("(")[1].replace(")", "") +
-          ",IP: " +
-          parseIp(req).replace("::ffff:", ""),
-        ]
-      );
-      socket.updateActivity("update-activity", "1");
+      // await connect.query(
+      //   "INSERT INTO users_activity SET userid = ?,text = ?",
+      //   [
+      //     userInfo.id,
+      //     "Произведен вход " +
+      //     req.headers["user-agent"].split("(")[1].replace(")", "") +
+      //     ",IP: " +
+      //     parseIp(req).replace("::ffff:", ""),
+      //   ]
+      // );
+      // socket.updateActivity("update-activity", "1");
     } else {
       res.status(200).json(appData);
     }
@@ -1532,17 +1604,17 @@ users.get("/checkSessionClient", async function (req, res) {
       );
       appData.status = true;
       res.status(200).json(appData);
-      await connect.query(
-        "INSERT INTO users_activity SET userid = ?,text = ?",
-        [
-          userInfo.id,
-          "Произведен вход " +
-          req.headers["user-agent"].split("(")[1].replace(")", "") +
-          ",IP: " +
-          parseIp(req).replace("::ffff:", ""),
-        ]
-      );
-      socket.updateActivity("update-activity", "1");
+      // await connect.query(
+      //   "INSERT INTO users_activity SET userid = ?,text = ?",
+      //   [
+      //     userInfo.id,
+      //     "Произведен вход " +
+      //     req.headers["user-agent"].split("(")[1].replace(")", "") +
+      //     ",IP: " +
+      //     parseIp(req).replace("::ffff:", ""),
+      //   ]
+      // );
+      // socket.updateActivity("update-activity", "1");
     } else {
       res.status(200).json(appData);
     }

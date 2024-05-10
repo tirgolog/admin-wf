@@ -1,7 +1,6 @@
-const
-    mysql = require('mysql2/promise'),
+const    mysql = require('mysql2/promise'),
     connection = mysql.createPool({
-        host:'13.233.208.188',
+        host:'localhost',
         user:'root',
         password:'tirgO@01',
         database:'tirgo',
@@ -9,6 +8,5 @@ const
         debug: false,
         multipleStatements: true,
 });
-
 
 module.exports.connection = connection;

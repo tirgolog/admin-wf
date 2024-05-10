@@ -17,8 +17,12 @@ merchant.post('/loginAdmin', async (req, res) => {
         connect = await database.connection.getConnection();
         const [rows] = await connect.query('SELECT * FROM users_list WHERE merch_login = ? AND merch_password = ?',[login,password]);
         if (rows.length){
+            const token = jwt.sign({id: rows[0].id}, process.env.SECRET_KEY, { expiresIn: '200m' });
+            const refreshToken = jwt.sign({id: rows[0].id}, process.env.SECRET_KEY);
+            await connect.query('UPDATE users_list SET refresh_token = ? WHERE id = ?', [refreshToken, rows[0].id]);
             appData.status = true;
-            appData.token = jwt.sign({id: rows[0].id, type_business: rows[0].type_business, type_user: rows[0].type_user,}, process.env.SECRET_KEY);
+            appData.token = token;
+            appData.refreshToken = refreshToken;
         }else {
             appData.error = 'Данные для входа введены неверно'
         }
@@ -34,25 +38,75 @@ merchant.post('/loginAdmin', async (req, res) => {
     }
 });
 
-merchant.use((req, res, next) => {
-    let token = req.body.token || req.headers['token'] || (req.headers.authorization && req.headers.authorization.split(' ')[1]);
-    let appData = {};
-    if (token) {
-        jwt.verify(token, process.env.SECRET_KEY, function(err) {
-            if (err) {
-                appData["error"] = err;
-                appData["data"] = "Token is invalid";
-                res.status(403).json(appData);
-            } else {
-                next();
-            }
-        });
-    } else {
-        appData["error"] = 1;
-        appData["data"] = "Token is null";
-        res.status(200).json(appData);
-    }
+merchant.post("/refreshToken", async (req, res) => {
+    let connect,
+    appData = { status: false },
+    refreshTokenFromRequest = req.body.refreshToken;
+    if (!refreshTokenFromRequest)
+      return res
+        .status(401)
+        .json({ status: false, error: "Требуется токен обновления." });
+      console.log(refreshTokenFromRequest);
+       connect = await database.connection.getConnection();
+      const [rows] = await connect.query(
+        "SELECT * FROM users_list WHERE refresh_token = ?",
+        [refreshTokenFromRequest]
+      );
+  
+      if (rows.length === 0) {
+        return res
+          .status(403)
+          .json({ status: false, error: "Неверный токен обновления" });
+      }
+      const token = jwt.sign({ id: rows[0].id }, process.env.SECRET_KEY, {
+        expiresIn: "20m",
+      });
+      const refreshToken = jwt.sign({ id: rows[0].id }, process.env.SECRET_KEY);
+      await connect.query(
+        "UPDATE users_list SET refresh_token = ? WHERE id = ?",
+        [refreshToken, rows[0].id]
+      );
+      appData.status = true;
+      appData.token = token;
+      appData.refreshToken = refreshToken;
+      res.status(200).json(appData);
 });
+
+merchant.use((req, res, next) => {
+    let token =
+      req.body.token ||
+      req.headers["token"] ||
+      (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+    let appData = {};
+  
+    if (token) {
+      jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
+        if (err) {
+          if (err.name === 'TokenExpiredError') {
+            appData["error"] = "Token has expired";
+            return res.status(401).json(appData);
+          } else {
+            console.error("JWT Verification Error:", err);
+            appData["error"] = "Token is invalid";
+            return res.status(401).json(appData);
+          }
+        } else {
+          // Check if token has expired
+          const currentTimestamp = Math.floor(Date.now() / 1000);
+          if (decoded.exp < currentTimestamp) {
+            appData["data"] = "Token has expired";
+            return res.status(401).json(appData);
+          }
+          // Attach user information from the decoded token to the request
+          req.user = decoded;
+          next();
+        }
+      });
+    } else {
+      appData["error"] = "Token is null";
+      res.status(401).json(appData);
+    }
+  });
 merchant.get('/checkSessionAdmin', async function(req, res) {
     let connect,
         userInfo = jwt.decode(req.headers.authorization.split(' ')[1]),
