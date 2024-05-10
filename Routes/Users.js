@@ -106,14 +106,14 @@ users.post("/completeClickPay", async function (req, res) {
             );
             let valueofPayment;
             let duration = 1;
-            if (180000 > Number(checkpay[0].amount) >= 80000) {
+            if (180000 > Number(rows[0].amount) >= 80000) {
               valueofPayment = 80000;
               duration = 1;
-            } else if (570000 > Number(checkpay[0].amount) >= 180000) {
+            } else if (570000 > Number(rows[0].amountt) >= 180000) {
               duration = 3;
               valueofPayment = 180000;
             }
-            if (Number(checkpay[0].amount) >= 570000) {
+            if (Number(rows[0].amount) >= 570000) {
               duration = 12;
               valueofPayment = 570000;
             }
@@ -123,9 +123,9 @@ users.post("/completeClickPay", async function (req, res) {
             );
             const [users] = await connect.query(
               "SELECT * FROM users_list where id = ?",
-              [checkpay[0].userid]
+              [req.body.merchant_trans_id]
             );
-            if (checkpay[0].amount > valueofPayment) {
+            if (rows[0].amount > valueofPayment) {
               let nextMonth = new Date(
                 new Date().setMonth(
                   new Date().getMonth() + subscription[0].duration
@@ -133,13 +133,13 @@ users.post("/completeClickPay", async function (req, res) {
               );
               const [userUpdate] = await connect.query(
                 "UPDATE users_list SET subscription_id = ?, from_subscription = ? , to_subscription=?  WHERE id = ?",
-                [subscription[0].id, new Date(), nextMonth, checkpay[0].userid]
+                [subscription[0].id, new Date(), nextMonth, req.body.merchant_trans_id]
               );
               if (userUpdate.affectedRows == 1) {
                 const subscription_transaction = await connect.query(
                   "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?",
                   [
-                    checkpay[0].userid,
+                    req.body.merchant_trans_id,
                     subscription[0].id,
                     users[0].phone,
                     valueofPayment,
