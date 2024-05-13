@@ -82,8 +82,8 @@ const corsOptions = {
     optionsSuccessStatus: 204,
     preflightContinue: true, // Handle preflight requests
 };
-const token = jwt.sign({id: 6650}, process.env.SECRET_KEY, { expiresIn: '20m' });
-console.log(token)
+// const token = jwt.sign({id: 6650}, process.env.SECRET_KEY, { expiresIn: '20m' });
+// console.log(token)
 app.use(cors());
 app.options('*', cors());
 // app.use(cors());
@@ -125,11 +125,6 @@ require('./Routes/rabbit.js')
 http.on('listening', function () {
     console.log('ok, server is running');   
 });
-
-http.listen(port,'192.168.1.58', function () {
+http.listen(port, function () {
     console.log('tirgo server listening on port ' + port);
 });
-
-// http.listen(port, function () {
-//     console.log('tirgo server listening on port ' + port);
-// });

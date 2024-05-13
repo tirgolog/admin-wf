@@ -5979,13 +5979,13 @@ admin.post("/report/user-activity", async (req, res) => {
       JOIN 
           users_list ul ON ua.userid = ul.id
       WHERE 
-          ua.date BETWEEN ? AND ?
+         ua.date BETWEEN ? AND DATE_ADD(?, INTERVAL 1 DAY)
       GROUP BY 
           ul.user_type`,
       [from_date, to_date]
     );
-  console.log(rows)
-    if (rows.length) {
+  console.log(rows, 'average')
+    if (rows.length>0) {
       appData.status = true;
       appData.data = rows;
       res.status(200).json(appData);
@@ -6019,7 +6019,7 @@ admin.post("/report/user-activity-average", async (req, res) => {
       JOIN 
           users_list ul ON ua.userid = ul.id
       WHERE 
-          ua.date BETWEEN ? AND ?
+          ua.date BETWEEN ? AND DATE_ADD(?, INTERVAL 1 DAY)
       GROUP BY 
           ul.user_type`,
       [from_date, to_date]
