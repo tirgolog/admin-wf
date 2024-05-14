@@ -463,12 +463,14 @@ async function onSubscriptionResponseClick(ctx) {
     let connection, balance;
     try {
         connection = await database.connection.getConnection();
+        // start sql transaction
+        await connection.beginTransaction();
         const isConfirmed = ctx.callbackQuery?.data.split('_')[2] == 'confirm';
         const userBotId = ctx.callbackQuery?.from?.id
         const requestId = Number(ctx.callbackQuery?.data.split('_')[3]);
 
         const [userChat] = await connection.query(`
-        SELECT sbu.*, ul.driver_group_id groupId FROM services_bot_users sbu
+        SELECT sbu.*, ul.driver_group_id groupId, ul.phone FROM services_bot_users sbu
         LEFT JOIN users_list ul on ul.id = sbu.user_id
         WHERE chat_id = ?
         `, [userBotId]);
@@ -506,19 +508,47 @@ async function onSubscriptionResponseClick(ctx) {
                     "UPDATE users_list SET subscription_id = ?, from_subscription = ? , to_subscription=?  WHERE id = ?",
                     [subscriptionRequest[0]?.id, new Date(), nextMonth, userChat[0]?.user_id]
                   );
+                  if(userUpdate.affectedRows) {
+                    if(userChat[0]?.groupId) {
+                        const [subscription_transaction] = await connection.query(
+                          "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, group_id = ?, is_group = ?",
+                          [userChat[0]?.user_id, subscriptionRequest[0]?.subscriptionId, userChat[0]?.phone, subscriptionRequest[0].subscriptionPrice, userChat[0]?.groupId, true]
+                        );
+                        if(!subscription_transaction.affectedRows) {
+                            throw new Error();
+                        }
+                      } else {
+                        const [subscription_transaction] = await connection.query(
+                          "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?",
+                          [userChat[0]?.user_id, subscriptionRequest[0]?.subscriptionId, userChat[0]?.phone, subscriptionRequest[0].subscriptionPrice]
+                        );
+                        if(!subscription_transaction.affectedRows) {
+                            throw new Error();
+                        }
+                      }
+                  } else {
+                    console.log(userUpdate)
+                    throw new Error();
+                  }
             }
 
             const [update] = await connection.query(`
             UPDATE bot_user_subscription_request SET status = ${isConfirmed ? 1 : 2} WHERE user_chat_id = ? AND id = ?
             `, [userBotId, requestId]);
+
             if (update.affectedRows) {
+                // Commit the transaction
+                await connection.commit();
                 ctx.reply(`Successfully ${isConfirmed ? 'confirmed' : 'canceled'}!`);
                 return
             } else {
-                ctx.reply(`Operation failed! please try again`);
-                return
+                throw new Error();
             }
+
     } catch (err) {
+        if (connection) {
+            await connection.rollback();
+          }
         console.log('Error while requesting subscription', err)
         ctx.reply(`Operation failed, please retry later !`)
         return false;
@@ -618,6 +648,10 @@ async function savePhotoMessageDeatilsToDatabase(data) {
 async function sendServiceBotMessageToUser(chatId, text) {
     return await bot.api.sendMessage(chatId, text);
 }
+
+async function sendBotMessageToUser(chatId, text) {
+    return await bot.api.sendMessage(chatId, 'Код для логин: ' + text);
+  }
 
 async function replyServiceBotMessageToUser(chatId, text, replyMessageId) {
     return await bot.api.sendMessage(chatId, text, { reply_to_message_id: replyMessageId });
@@ -752,4 +786,4 @@ async function getUserBalance(connection, userId, groupId) {
         console.log('Error while getting use balance', error)
     }
 }
-module.exports = { sendServiceBotMessageToUser, replyServiceBotMessageToUser, deleteMessageFromBotChat, editMessageInBotChat };
+module.exports = { sendServiceBotMessageToUser, replyServiceBotMessageToUser, deleteMessageFromBotChat, editMessageInBotChat, sendBotMessageToUser };

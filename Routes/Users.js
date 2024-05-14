@@ -21,7 +21,7 @@ const express = require("express"),
     (req.socket && req.socket.remoteAddress);
 const axios = require("axios");
 const { finishOrderDriver } = require("./rabbit");
-const { sendBotMessageToUser } = require("./bot");
+const { sendBotMessageToUser } = require("./services-bot");
 // Multer configuration
 // const storage = multer.diskStorage({
 //   destination: function (req, file, cb) {
@@ -727,6 +727,7 @@ users.post("/login", async (req, res) => {
         send_sms_res = "waiting";
       }
     }
+
     const [rows] = await connect.query(
       "SELECT * FROM users_contacts WHERE text = ? AND user_type = 1 AND verify = 1",
       [phone]
@@ -734,7 +735,18 @@ users.post("/login", async (req, res) => {
     if (rows.length > 0) {
 
       if (isTelegram) {
-        await sendBotMessageToUser(rows[0]?.tg_chat_id, code)
+        const [chatBotuser] = await connect.query(
+          "SELECT chat_id FROM services_bot_users WHERE phone_number = ?",
+          [phone]
+        );
+
+        if(!chatBotuser.length) {
+          appData.status = false;
+          appData.message = 'User is not registered in bot';
+          res.status(403).json(appData);
+          return;
+        }
+        await sendBotMessageToUser(chatBotuser[0]?.chat_id, code)
         send_sms_res = "waiting"
       }
 
@@ -926,8 +938,19 @@ users.post("/loginClient", async (req, res) => {
     if (rows.length > 0) {
 
       if (isTelegram) {
-        await sendBotMessageToUser(rows[0]?.tg_chat_id, code)
-        send_sms_res = "waiting";
+        const [chatBotuser] = await connect.query(
+          "SELECT chat_id FROM services_bot_users WHERE phone_number = ?",
+          [phone]
+        );
+
+        if(!chatBotuser.length) {
+          appData.status = false;
+          appData.message = 'User is not registered in bot';
+          res.status(403).json(appData);
+          return;
+        }
+        await sendBotMessageToUser(chatBotuser[0]?.chat_id, code)
+        send_sms_res = "waiting"
       }
 
       if (send_sms_res === "waiting") {
