@@ -9,10 +9,9 @@ const express = require("express"),
   jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const socket = require("../Modules/Socket");
-const { userInfo } = require("os");
 const amqp = require("amqplib");
 const axios = require("axios");
-// const {sendServiceBotMessageToUser, replyServiceBotMessageToUser, deleteMessageFromBotChat, editMessageInBotChat} = require("./services-bot");
+const {sendServiceBotMessageToUser, replyServiceBotMessageToUser, deleteMessageFromBotChat, editMessageInBotChat} = require("./services-bot");
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
@@ -547,7 +546,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
             [+from, +limit]
           );
           [row] = await connect.query(
-            `SELECT Count(id) as count FROM services_transaction where created_by_id = ${agentId} AND status <> 4`,
+            `SELECT Count(id) as count FROM services_transaction where created_by_id = ${agentId} AND status In(2, 3)`,
             []
           );
       } 
@@ -5069,13 +5068,13 @@ admin.post("/message/bot-user", async (req, res) => {
           receiverBotId
         ]);
         if(insertResult[0].affectedRows) {
-          // const botRes = await sendServiceBotMessageToUser(receiverBotId, message)
-          // if(botRes) {
-          //   const [edit] = await connect.query(
-          //     "UPDATE service_bot_message SET bot_message_id = ? WHERE id = ?",
-          //     [botRes.message_id, insertResult[0].insertId]
-          //   );
-          // }
+          const botRes = await sendServiceBotMessageToUser(receiverBotId, message)
+          if(botRes) {
+            const [edit] = await connect.query(
+              "UPDATE service_bot_message SET bot_message_id = ? WHERE id = ?",
+              [botRes.message_id, insertResult[0].insertId]
+            );
+          }
 
         appData.data = insertResult;
         appData.status = true;
@@ -5116,15 +5115,15 @@ admin.delete("/message/bot-user", async (req, res) => {
       res.status(400).json(appData);
     } else {
       let receiverBotId = botUser[0]?.chat_id;
-      // const response = await deleteMessageFromBotChat(receiverBotId, messageId);      
-      // if(response) {
-      //   appData.status = true;
-      //   res.status(200).json(appData);
-      // } else {
-      //  appData.error = 'Удалить сообщение не удалось'
-      //  appData.status = false;
-      //  res.status(400).json(appData);
-      // }
+      const response = await deleteMessageFromBotChat(receiverBotId, messageId);      
+      if(response) {
+        appData.status = true;
+        res.status(200).json(appData);
+      } else {
+       appData.error = 'Удалить сообщение не удалось'
+       appData.status = false;
+       res.status(400).json(appData);
+      }
     }
   } catch (e) {
     console.log(e);
@@ -5159,15 +5158,15 @@ admin.put("/message/bot-user", async (req, res) => {
       res.status(400).json(appData);
     } else {
       let receiverBotId = botUser[0]?.chat_id;
-      // const response = await editMessageInBotChat(receiverBotId, messageId, message);      
-      // if(response) {
-      //   appData.status = true;
-      //   res.status(200).json(appData);
-      // } else {
-      //  appData.error = 'Удалить сообщение не удалось'
-      //  appData.status = false;
-      //  res.status(400).json(appData);
-      // }
+      const response = await editMessageInBotChat(receiverBotId, messageId, message);      
+      if(response) {
+        appData.status = true;
+        res.status(200).json(appData);
+      } else {
+       appData.error = 'Удалить сообщение не удалось'
+       appData.status = false;
+       res.status(400).json(appData);
+      }
     }
   } catch (e) {
     console.log(e);
@@ -5235,13 +5234,95 @@ admin.post("/reply-message/bot-user", async (req, res) => {
           replyMessage
         ]);
         if(insertResult[0].affectedRows) {
-          // const botRes = await replyServiceBotMessageToUser(receiverBotId, message, replyMessageId)
-          // if(botRes) {
-          //   const [edit] = await connect.query(
-          //     "UPDATE service_bot_message SET bot_message_id = ? WHERE id = ?",
-          //     [botRes.message_id, insertResult[0].insertId]
-          //   );
-          // }
+          const botRes = await replyServiceBotMessageToUser(receiverBotId, message, replyMessageId)
+          if(botRes) {
+            const [edit] = await connect.query(
+              "UPDATE service_bot_message SET bot_message_id = ? WHERE id = ?",
+              [botRes.message_id, insertResult[0].insertId]
+            );
+          }
+
+        appData.data = insertResult;
+        appData.status = true;
+        res.status(200).json(appData);
+        }else {
+          appData.status = false;
+          res.status(400).json(appData);
+        }
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.post("/message/send-documents-list", async (req, res) => {
+  let appData = { status: false };
+  let connect;
+  let { 
+    messageType,
+    message,
+    receiverUserId,
+    replyMessageId,
+    replyMessage
+  } = req.body;
+    
+  let userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+  try {
+    connect = await database.connection.getConnection();
+    if( !messageType || !message || !receiverUserId || !replyMessageId || !replyMessage) {
+      appData.status = false;
+      appData.error = 'All fields are required!'
+      res.status(400).json(appData);
+      return
+    }
+    const [botUser] = await connect.query(`
+    SELECT user_id, chat_id FROM services_bot_users WHERE user_id = ${receiverUserId}`);
+    // senderBotId,
+    if(!botUser.length) {
+      appData.error = 'User not registered in bot'
+      appData.status = false;
+      res.status(400).json(appData);
+    } else {
+      let receiverBotId = botUser[0]?.chat_id;
+      const senderType = 'admin';
+      const senderUserId = userInfo.id;
+  
+      const insertResult = await connect.query(`
+      INSERT INTO service_bot_message set 
+        message_type = ?,
+        message = ?,
+        message_sender_type = ?,
+        sender_user_id = ?,
+        receiver_user_id = ?,
+        receiver_bot_chat_id = ?,
+        is_reply = ?,
+        replied_message_id = ?,
+        replied_message = ?
+      `, [
+          messageType, 
+          message, 
+          senderType, 
+          senderUserId,
+          receiverUserId,
+          receiverBotId,
+          true,
+          replyMessageId,
+          replyMessage
+        ]);
+        if(insertResult[0].affectedRows) {
+          const botRes = await replyServiceBotMessageToUser(receiverBotId, message, replyMessageId)
+          if(botRes) {
+            const [edit] = await connect.query(
+              "UPDATE service_bot_message SET bot_message_id = ? WHERE id = ?",
+              [botRes.message_id, insertResult[0].insertId]
+            );
+          }
 
         appData.data = insertResult;
         appData.status = true;
@@ -5551,7 +5632,7 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
           } `,
         );
         [row] = await connect.query(
-          `SELECT Count(id) as count FROM services_transaction where created_by_id = ${agentId} AND status <> 4`,
+          `SELECT Count(id) as count FROM services_transaction where created_by_id = ${agentId} AND status In(2, 3)`,
           []
         );
       }
