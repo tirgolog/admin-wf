@@ -615,9 +615,11 @@ async function saveMessageToDatabase(data) {
         data.receiverBotId,
         data.caption
     ]);
+    const [res] = await connection.query(`SELECT created_at FROM service_bot_message WHERE id = ${insertData.insertId}`);
     console.log(insertData)
     if (insertData.affectedRows) {
-        socket.updateAllMessages("update-service-messages", JSON.stringify({ userId: data.receiverUserId, message: data.message, messageType: data.messageType, messageId: data.messageId }));
+        socket.updateAllMessages("update-service-messages", JSON.stringify({ userId: data.receiverUserId,
+             message: data.message, messageType: data.messageType, messageId: data.messageId, createdAt: res[0]?.created_at }));
     }
 }
 
