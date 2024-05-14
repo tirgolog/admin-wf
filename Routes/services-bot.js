@@ -26,7 +26,7 @@ const minioClient = new Minio.Client({
 // };
 // const token = tokens[environment];
 // Create an instance of the Bot class and pass your bot token to it.
-const botToken = '6999025382:AAGmZC8M6AeBH0vjt4r-azCHzOvvW_4OIVY';
+const botToken = '7058770363:AAHZAcPHrUPMaJBuj6Pcwsdojo4IRHOV38s';
 const bot = new Bot(botToken); // <-- put your bot token between the ""
 
 
