@@ -4974,7 +4974,7 @@ try {
       const [subTrans] = await connect.query(`SELECT id, agent_id, agent_trans_id from subscription_transaction WHERE deleted = 0 AND userid = ${user_id} ORDER BY created_at DESC LIMIT 1`);
       if(!subTrans.length) {
         appData.status = false;
-        appData.error = 'Internal error'
+        appData.error = 'User doesn\'t have subscription transaction'
         res.status(400).json(appData)
       } else if(subTrans[0].agent_trans_id) {
         const [agentTrans] = await connect.query(`SELECT id, agent_id from agent_transaction WHERE id = ${subTrans[0].agent_trans_id}`);
