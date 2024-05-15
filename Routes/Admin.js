@@ -6101,18 +6101,17 @@ admin.post("/report/user-activity", async (req, res) => {
     const [rows] = await connect.query(
       `SELECT 
           ul.user_type,
-          COUNT(ua.userid) as total_activity_count
+          COUNT(DISTINCT ua.userid) as total_activity_count
       FROM 
           users_activity ua
       JOIN 
           users_list ul ON ua.userid = ul.id
       WHERE 
-         ua.date BETWEEN ? AND DATE_ADD(?, INTERVAL 1 DAY)
+          ua.date BETWEEN ? AND DATE_ADD(?, INTERVAL 1 DAY)
       GROUP BY 
           ul.user_type`,
       [from_date, to_date]
     );
-  console.log(rows, 'average')
     if (rows.length>0) {
       appData.status = true;
       appData.data = rows;
@@ -6141,7 +6140,7 @@ admin.post("/report/user-activity-average", async (req, res) => {
     const [activityRows] = await connect.query(
       `SELECT 
           ul.user_type,
-          COUNT(ua.userid) as total_activity_count
+          COUNT(DISTINCT ua.userid) as total_activity_count
       FROM 
           users_activity ua
       JOIN 
@@ -6169,6 +6168,62 @@ admin.post("/report/user-activity-average", async (req, res) => {
             .total_user_count) *
         100,
     }));
+    appData.status = true;
+    appData.data = data;
+    res.status(200).json(appData);
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.post("/report/active-user-activity-average", async (req, res) => {
+  let connect,
+    appData = { status: false };
+  const { from_date, to_date } = req.body;
+  try {
+    connect = await database.connection.getConnection();
+    const [activityRows] = await connect.query(
+      `SELECT 
+          ul.user_type,
+          COUNT(DISTINCT ua.userid) as total_activity_count
+      FROM 
+          users_activity ua
+      JOIN 
+          users_list ul ON ua.userid = ul.id
+      WHERE 
+          ua.date BETWEEN ? AND DATE_ADD(?, INTERVAL 1 DAY)
+      GROUP BY 
+          ul.user_type`,
+      [from_date, to_date]
+    );
+    const [userCountRows] = await connect.query(
+      `SELECT 
+      ul.user_type,
+      COUNT(ua.userid) as total_activity_count
+  FROM 
+      users_activity ua
+  JOIN 
+      users_list ul ON ua.userid = ul.id
+  WHERE 
+      ua.date BETWEEN ? AND DATE_ADD(?, INTERVAL 1 DAY)
+  GROUP BY 
+      ul.user_type`,
+  [from_date, to_date]
+    );
+    let data = userCountRows.map((activity) => ({
+      user_type: activity.user_type,
+      average: parseFloat((
+        activity.total_activity_count /
+        activityRows.find((user) => user.user_type === activity.user_type)
+          .total_activity_count
+      ).toFixed(2))
+    }));
+    console.log(data)
     appData.status = true;
     appData.data = data;
     res.status(200).json(appData);
