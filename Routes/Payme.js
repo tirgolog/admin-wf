@@ -157,12 +157,19 @@ payme.post('/payMeMerchantApi', async function(req, res) {
                                         );
                                         console.log(userUpdate);
                                         if (userUpdate.affectedRows == 1) {
-                                          const subscription_transaction = await connect.query(
-                                            "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?",
-                                            [checkpay[0].userid, subscription[0].id, users[0].phone, valueofPayment]
-                                          );
+                                            const [subscription_transaction] = await connect.query(
+                                             "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?",
+                                             [checkpay[0].userid, subscription[0].id, users[0].phone, valueofPayment]
+                                             );
+                                             const [userChat] = await connect.query(`
+                                              SELECT chat_id FROM services_bot_users
+                                              WHERE user_id = ?
+                                              `, [checkpay[0].userid]);
+                                              if(userChat.length) {
+                                                  await connect.query(`DELETE FROM bot_user_subscription_request WHERE user_chat_id = ${userChat[0]?.chat_id} AND status = 0`)
+                                              }
                                           console.log(subscription_transaction);
-                                          if (subscription_transaction.length > 0) {
+                                          if (subscription_transaction.affectedRows) {
                                                   console.log('subscription_transaction', subscription_transaction);
                                           }
                                         } 
