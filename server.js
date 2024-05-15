@@ -1,7 +1,7 @@
 const Minio = require("minio");
 const Push = require('./Modules/Push');
 require('./Routes/bot');
-require('./Routes/services-bot');
+require('./Routes/service-bot');
 const
     app = require('express')(),
     fs = require('fs'),
