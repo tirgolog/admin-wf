@@ -4322,43 +4322,53 @@ admin.post("/services-transaction/user", async (req, res) => {
 
 admin.get("/curence/:key/:value", async (req, res) => {
   let appData = { status: false, timestamp: new Date().getTime() };
-  if (req.params.key == "UZS") {
+  try {
+    const axiosConfig = {
+      timeout: 5000
+    };
     let result = await axios.get(
-      "https://cbu.uz/ru/arkhiv-kursov-valyut/json/"
+      "https://cbu.uz/ru/arkhiv-kursov-valyut/json/",
+      axiosConfig
     );
-    result = result.data.find((res) => res.Ccy == "KZT");
-    appData.data = req.params.value / result?.Rate;
-    appData.status = true;
-    res.status(200).json(appData);
-  } else {
-    try {
-      let result = await axios.get(
-        "https://cbu.uz/ru/arkhiv-kursov-valyut/json/"
-      );
+    if (req.params.key == "UZS") {
+      result = result.data.find((res) => res.Ccy == "KZT");
+      appData.data = req.params.value / result?.Rate;
+      appData.status = true;
+      res.status(200).json(appData);
+    } else {
       result = result.data.find((res) => res.Ccy == req.params.key);
       appData.data = req.params.value * result?.Rate;
       appData.status = true;
       res.status(200).json(appData);
-    } catch (error) {
-      console.error("Error fetching data:", error);
     }
+  } catch (error) {
+    console.error("Error fetching data:", error);
+    res.status(500).json({ error: "Error fetching data" });
   }
 });
 
 admin.get("/curence/course", async (req, res) => {
   let appData = { status: false, timestamp: new Date().getTime() };
   try {
+    const axiosConfig = {
+      timeout: 5000 
+    };
+
     let result = await axios.get(
-      "https://cbu.uz/ru/arkhiv-kursov-valyut/json/"
+      "https://cbu.uz/ru/arkhiv-kursov-valyut/json/",
+      axiosConfig
     );
+
     result = result.data.find((res) => res.Ccy == "KZT");
     appData.data = result?.Rate;
     appData.status = true;
     res.status(200).json(appData);
   } catch (error) {
     console.error("Error fetching data:", error);
+    res.status(500).json({ error: "Error fetching data" });
   }
 });
+
 
 admin.get("/services-transaction/count", async (req, res) => {
   let connect,
