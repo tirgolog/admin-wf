@@ -149,8 +149,8 @@ bot.on('contact', onContactReceived);
 bot.on('text', async (msg) => {
     if(msg.text == '/start') return;
 
-    const middlewareRes = await middleware(msg);
-    if(!middlewareRes) return;
+    // const middlewareRes = await middleware(msg);
+    // if(!middlewareRes) return;
     const connecttion = await database.connection.getConnection();
     console.log('Text message !', msg.text)
     const [botUser] = await connecttion.query(`
@@ -173,10 +173,10 @@ bot.on('text', async (msg) => {
 
 bot.on('callback_query', async (msg) => {
     console.log(msg.data.startsWith('#subscription'))
-    if(!msg.data.startsWith('#subscription') && !msg.data.startsWith('#response_subscription')) {
-        const middlewareRes = await middleware(msg);
-        if(!middlewareRes) return;
-    }
+    // if(!msg.data.startsWith('#subscription') && !msg.data.startsWith('#response_subscription')) {
+    //     const middlewareRes = await middleware(msg);
+    //     if(!middlewareRes) return;
+    // }
     const chatId = msg.from?.id;
     const callbackData = msg.data;
 
