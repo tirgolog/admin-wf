@@ -6,6 +6,7 @@ const
     app = require('express')(),
     fs = require('fs'),
     path = require('path'),
+    jwt = require("jsonwebtoken"),
     // options = {
     //     key: fs.readFileSync('private.key'),
     //     cert: fs.readFileSync('certificate.crt'),
@@ -73,14 +74,18 @@ const corsOptions = {
     optionsSuccessStatus: 204,
     preflightContinue: true, // Handle preflight requests
 };
-app.use(cors(corsOptions));
-// Enable CORS for all routes
-app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*'); // Replace with your Ionic app's address
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
-    next();
-});
+// const token = jwt.sign({id: 6650}, process.env.SECRET_KEY, { expiresIn: '20m' });
+// console.log(token)
+app.use(cors());
+app.options('*', cors());
+// app.use(cors());
+// // Enable CORS for all routes
+// app.use((req, res, next) => {
+//     res.header('Access-Control-Allow-Origin', '*'); // Replace with your Ionic app's address
+//     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+//     res.header('Access-Control-Allow-Headers', 'Content-Type');
+//     next(); 
+// });
 app.use(bodyParser.json({ limit: '150mb' }));
 app.use(bodyParser.urlencoded({
     extended: true
@@ -110,7 +115,7 @@ require('./Routes/rabbit.js')
 
 
 http.on('listening', function () {
-    console.log('ok, server is running');
+    console.log('ok, server is running');   
 });
 http.listen(port, function () {
     console.log('tirgo server listening on port ' + port);
