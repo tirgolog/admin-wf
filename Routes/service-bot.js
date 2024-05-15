@@ -298,6 +298,7 @@ async function onContactReceived(msg) {
                     { command: "subscriptions", description: "Subscriptions list" },
                     { command: "services", description: "Services list" },
                   ]);
+                  socket.updateAllMessages("update-service-users-list", JSON.stringify({userId: user[0]?.user_id}));
             } else {
                 await bot.sendMessage(
                     chatId,
