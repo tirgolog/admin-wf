@@ -21,7 +21,7 @@ const express = require("express"),
     (req.socket && req.socket.remoteAddress);
 const axios = require("axios");
 const { finishOrderDriver } = require("./rabbit");
-const { sendBotMessageToUser } = require("./bot");
+const { sendBotMessageToUser } = require("./services-bot");
 // Multer configuration
 // const storage = multer.diskStorage({
 //   destination: function (req, file, cb) {
@@ -728,6 +728,7 @@ users.post("/login", async (req, res) => {
         send_sms_res = "waiting";
       }
     }
+
     const [rows] = await connect.query(
       "SELECT * FROM users_contacts WHERE text = ? AND user_type = 1 AND verify = 1",
       [phone]
@@ -735,7 +736,18 @@ users.post("/login", async (req, res) => {
     if (rows.length > 0) {
 
       if (isTelegram) {
-        await sendBotMessageToUser(rows[0]?.tg_chat_id, code)
+        const [chatBotuser] = await connect.query(
+          "SELECT chat_id FROM services_bot_users WHERE phone_number = ?",
+          [phone]
+        );
+
+        if(!chatBotuser.length) {
+          appData.status = false;
+          appData.message = 'User is not registered in bot';
+          res.status(403).json(appData);
+          return;
+        }
+        await sendBotMessageToUser(chatBotuser[0]?.chat_id, code)
         send_sms_res = "waiting"
       }
 
@@ -979,8 +991,19 @@ users.post("/loginClient", async (req, res) => {
     if (rows.length > 0) {
 
       if (isTelegram) {
-        await sendBotMessageToUser(rows[0]?.tg_chat_id, code)
-        send_sms_res = "waiting";
+        const [chatBotuser] = await connect.query(
+          "SELECT chat_id FROM services_bot_users WHERE phone_number = ?",
+          [phone]
+        );
+
+        if(!chatBotuser.length) {
+          appData.status = false;
+          appData.message = 'User is not registered in bot';
+          res.status(403).json(appData);
+          return;
+        }
+        await sendBotMessageToUser(chatBotuser[0]?.chat_id, code)
+        send_sms_res = "waiting"
       }
 
       if (send_sms_res === "waiting") {
@@ -1545,7 +1568,7 @@ users.get("/checkSession", async function (req, res) {
         (COALESCE(
           (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND group_id = ${rows[0]?.driver_group_id}), 0) +
         COALESCE(
-          (SELECT SUM(price_uzs) FROM services_transaction WHERE group_id = ${rows[0]?.driver_group_id}), 0)) as balance;
+          (SELECT SUM(amount) FROM services_transaction WHERE group_id = ${rows[0]?.driver_group_id} AND status In(2, 3)), 0)) as balance;
     `);
 
       appData.user = rows[0];
@@ -4902,7 +4925,7 @@ users.post("/addDriverSubscription", async (req, res) => {
                 (COALESCE(
                   (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND group_id = ${rows[0]?.driver_group_id}), 0) +
                 COALESCE(
-                  (SELECT SUM(price_uzs) FROM services_transaction WHERE group_id = ${rows[0]?.driver_group_id}), 0)) as balance;
+                  (SELECT SUM(amount) FROM services_transaction WHERE group_id = ${rows[0]?.driver_group_id} AND status In(2, 3)), 0)) as balance;
             `);
             balance = result[0]?.balance;
           } else {
@@ -5149,11 +5172,6 @@ users.post("/addDriverServices", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
-    
-      const totalAmount = services.reduce(
-        (accumulator, secure) => accumulator + Number(secure.price_uzs),
-        0
-      );
 
       const [user] = await connect.query(
         "SELECT * FROM users_list WHERE id = ?",
@@ -5172,14 +5190,14 @@ users.post("/addDriverServices", async (req, res) => {
             (COALESCE(
               (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND group_id = ${user[0]?.driver_group_id}), 0) +
             COALESCE(
-              (SELECT SUM(price_uzs) FROM services_transaction WHERE group_id = ${user[0]?.driver_group_id}), 0)) as balance;
+              (SELECT SUM(amount) FROM services_transaction WHERE group_id = ${user[0]?.driver_group_id} AND status In(2, 3)), 0)) as balance;
         `);
         balance = result[0]?.balance;
       } else {
         const [paymentUser] = await connect.query(
           `SELECT 
           COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE userid = ? AND is_agent = false), 0) - 
-          COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false AND status <> 4), 0)
+          COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false AND status In(2, 3)), 0)
           AS balance;`,
           [userid, userid]
         );
@@ -5187,7 +5205,6 @@ users.post("/addDriverServices", async (req, res) => {
       }
 
 
-      if (balance >= totalAmount) {
         const [editUser] = await connect.query(
           "UPDATE users_list SET is_service = 1  WHERE id = ?",
           [user_id]
@@ -5248,11 +5265,6 @@ users.post("/addDriverServices", async (req, res) => {
           appData.status = false;
           res.status(400).json(appData);
         }
-      } else {
-        appData.error = "Недостаточно средств на балансе";
-        appData.status = false;
-        res.status(400).json(appData);
-      }
     }
   } catch (e) {
     appData.error = e.message;
@@ -5325,7 +5337,7 @@ users.post("/services-transaction/user/balanse", async (req, res) => {
       const [paymentUser] = await connect.query(
         `SELECT 
         COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE userid = ? AND is_agent = false), 0) - 
-        COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false AND status <> 4), 0)
+        COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false AND status In(2, 3)), 0)
         AS balance;`,
         [userid, userid]
       );

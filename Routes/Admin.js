@@ -9,10 +9,9 @@ const express = require("express"),
   jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const socket = require("../Modules/Socket");
-const { userInfo } = require("os");
 const amqp = require("amqplib");
 const axios = require("axios");
-const { sendServiceBotMessageToUser } = require("./services-bot");
+const {sendServiceBotMessageToUser, replyServiceBotMessageToUser, deleteMessageFromBotChat, editMessageInBotChat} = require("./services-bot");
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
@@ -309,32 +308,7 @@ admin.post("/agent-service/add-to-driver", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
-      const [paymentUser] = await connect.query(
-        "SELECT * FROM alpha_payment where  userid = ? ",
-        [user_id]
-      );
-      const totalPaymentAmount = paymentUser.reduce(
-        (accumulator, secure) => accumulator + Number(secure.amount),
-        0
-      );
-
-      const [paymentTransaction] = await connect.query(
-        "SELECT * FROM services_transaction where  userid = ? AND status In(2, 3) ",
-        [user_id]
-      );
-
-      const totalPaymentAmountTransaction = paymentTransaction.reduce(
-        (accumulator, secure) => accumulator + Number(secure.amount),
-        0
-      );
-
-      const totalAmount = services.reduce(
-        (accumulator, secure) => accumulator + Number(secure.price_uzs),
-        0
-      );
-
-      let balance = totalPaymentAmount - totalPaymentAmountTransaction;
-      if (balance >= totalAmount) {
+    
         const [editUser] = await connect.query(
           "UPDATE users_list SET is_service = 1  WHERE id = ?",
           [user_id]
@@ -381,11 +355,6 @@ admin.post("/agent-service/add-to-driver", async (req, res) => {
           appData.status = false;
           res.status(400).json(appData);
         }
-      } else {
-        appData.error = "Недостаточно средств на балансе";
-        appData.status = false;
-        res.status(400).json(appData);
-      }
     }
   } catch (e) {
     appData.error = e.message;
@@ -620,18 +589,14 @@ admin.get("/agent-service-transactions", async (req, res) => {
           LEFT JOIN users_list al on al.id = st.created_by_id AND al.user_type = 4
           LEFT JOIN users_list adl on adl.id = st.userid AND adl.user_type = 1
           LEFT JOIN services s on s.id = st.service_id
-          where ${rowWhereClause} ORDER BY ${
-            sortByDate ? "st.created_at" : "st.id"
-          } ${
-            sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
-          } LIMIT ?, ?`,
-          [+from, +limit]
-        );
-        [row] = await connect.query(
-          `SELECT Count(id) as count FROM services_transaction where created_by_id = ${agentId} AND status <> 4`,
-          []
-        );
-      }
+          where ${rowWhereClause} ORDER BY ${sortByDate ? 'st.created_at' : 'st.id'} ${sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?`,
+            [+from, +limit]
+          );
+          [row] = await connect.query(
+            `SELECT Count(id) as count FROM services_transaction where created_by_id = ${agentId} AND status In(2, 3)`,
+            []
+          );
+      } 
 
       if (!transactionType || transactionType == "service_balance") {
         if (!driverId) {
@@ -3971,20 +3936,7 @@ admin.post("/addDriverServices", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
-      const [paymentUser] = await connect.query(
-        `SELECT 
-        COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE userid = ? AND is_agent = false), 0) - 
-        COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false AND status In(2, 3)), 0)
-        AS balance;`,
-        [userid, userid]
-      );
 
-      const totalAmount = services.reduce(
-        (accumulator, secure) => accumulator + Number(secure.price_uzs),
-        0
-      );
-
-      if (paymentUser[0]?.balance >= totalAmount) {
         const [editUser] = await connect.query(
           "UPDATE users_list SET is_service = 1  WHERE id = ?",
           [user_id]
@@ -4030,11 +3982,7 @@ admin.post("/addDriverServices", async (req, res) => {
           appData.status = false;
           res.status(400).json(appData);
         }
-      } else {
-        appData.error = "Недостаточно средств на балансе";
-        appData.status = false;
-        res.status(400).json(appData);
-      }
+
     }
   } catch (e) {
     appData.error = e.message;
@@ -4271,8 +4219,10 @@ admin.get("/services-transaction", async (req, res) => {
       LEFT JOIN users_list adl ON adl.id = st.created_by_id AND adl.user_type = 3
       LEFT JOIN services s ON s.id = st.service_id`;
 
+      let countQuery = `SELECT COUNT(id) as count FROM services_transaction`;
     if (queryConditions.length > 0) {
       query += " WHERE " + queryConditions.join(" AND ");
+      countQuery += " WHERE " + queryConditions.join(" AND ");
     }
 
     if (sortByDate) {
@@ -4284,9 +4234,11 @@ admin.get("/services-transaction", async (req, res) => {
     queryParams.push(+from, +limit);
 
     const [services_transaction] = await connect.query(query, queryParams);
+    const [services_transaction_total_count] = await connect.query(countQuery, queryParams);
 
     if (services_transaction.length) {
       appData.status = true;
+      appData.totalCount = services_transaction_total_count[0].count;
       appData.data = services_transaction;
       res.status(200).json(appData);
     } else {
@@ -4603,42 +4555,39 @@ admin.get("/driver-group/transactions", async (req, res) => {
       where is_group = true AND group_id = ${groupId}`
     );
 
-    const transactions = [
-      ...balanceTransactions.map((el) => {
-        return {
-          transactionId: el.id,
-          groupId: el.driver_group_id,
-          amount: el.amount,
-          adminId: el.admin_id,
-          createdAt: el.created_at,
-          transactionType: el.type,
-        };
-      }),
-      ...subTransactions.map((el) => {
-        return {
-          transactionId: el.id,
-          groupId: el.group_id,
-          amount: el.amount,
-          driverId: el.driverId,
-          driverName: el.driverName,
-          adminId: el.admin_id,
-          createdAt: el.created_at,
-          transactionType: "subscription",
-        };
-      }),
-      ...serviceTransactions.map((el) => {
-        return {
-          transactionId: el.id,
-          groupId: el.group_id,
-          driverId: el.driverId,
-          driverName: el.driverName,
-          amount: el.price_uzs,
-          createdAt: el.createdAt,
-          serviceName: el.service_name,
-          transactionType: "subscription",
-        };
-      }),
-    ];
+    const transactions = [...balanceTransactions.map((el) => {
+      return {
+        transactionId: el.id,
+        groupId: el.driver_group_id,
+        amount: el.amount,
+        adminId: el.admin_id,
+        createdAt: el.created_at,
+        transactionType: el.type
+      }
+    }), ...
+    subTransactions.map((el) => {
+      return {
+        transactionId: el.id,
+        groupId: el.group_id,
+        amount: el.amount,
+        driverId: el.driverId,
+        driverName: el.driverName,
+        adminId: el.admin_id,
+        createdAt: el.created_at,
+        transactionType: 'subscription'
+      }
+    }), ...serviceTransactions.map((el) => {
+      return {
+        transactionId: el.id,
+        groupId: el.group_id,
+        driverId: el.driverId,
+        driverName: el.driverName,
+        amount: el.amount,
+        createdAt: el.createdAt,
+        serviceName: el.service_name,
+        transactionType: 'subscription'
+      }
+    })];
 
     appData.data = transactions;
     appData.status = true;
@@ -4960,39 +4909,6 @@ admin.post("/driver-group/add-services", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
-      const [result] = await connect.query(`
-          SELECT 
-              COALESCE((SELECT SUM(amount) 
-                        FROM driver_group_transaction 
-                        WHERE driver_group_id = ${group_id} AND type = 'Пополнение'), 0) AS totalTopUpTransactions,
-              COALESCE((SELECT SUM(amount) 
-                        FROM driver_group_transaction 
-                        WHERE driver_group_id = ${group_id} AND type = 'Вывод'), 0) AS totalWithdrawTransactions,
-              COALESCE((SELECT SUM(amount) 
-                        FROM subscription_transaction 
-                        WHERE deleted = 0 AND group_id = ${group_id}), 0) AS totalSubTransactions,
-              COALESCE((SELECT SUM(amount) 
-                        FROM services_transaction 
-                        WHERE status In(2, 3) AND group_id = ${group_id}), 0) AS totalServiceTransactions;
-      `);
-
-      const {
-        totalTopUpTransactions,
-        totalWithdrawTransactions,
-        totalSubTransactions,
-        totalServiceTransactions,
-      } = result[0];
-
-      const balance =
-        totalTopUpTransactions -
-        totalWithdrawTransactions -
-        (totalSubTransactions + totalServiceTransactions);
-      const totalAmount = services.reduce(
-        (accumulator, secure) => accumulator + Number(secure.price_uzs),
-        0
-      );
-
-      if (balance >= totalAmount) {
         const [editUser] = await connect.query(
           "UPDATE users_list SET is_service = 1  WHERE id = ?",
           [user_id]
@@ -5039,11 +4955,6 @@ admin.post("/driver-group/add-services", async (req, res) => {
           appData.status = false;
           res.status(400).json(appData);
         }
-      } else {
-        appData.error = "Недостаточно средств на балансе";
-        appData.status = false;
-        res.status(400).json(appData);
-      }
     }
   } catch (e) {
     appData.error = e.message;
@@ -5164,48 +5075,18 @@ admin.post("/remove-driver-subscription", async (req, res) => {
       );
       if (!user.length) {
         appData.status = false;
-        appData.error = "Пользователь не найден";
-        res.status(400).json(appData);
-      } else {
-        if (!user[0].to_subscription) {
-          appData.status = false;
-          appData.error = "У водителя нет подписки";
-          res.status(400).json(appData);
-        } else {
-          const [subTrans] = await connect.query(
-            `SELECT id, agent_id, agent_trans_id from subscription_transaction WHERE deleted = 0 AND userid = ${user_id} ORDER BY created_at DESC LIMIT 1`
-          );
-          if (!subTrans.length) {
-            appData.status = false;
-            appData.error = "Internal error";
-            res.status(400).json(appData);
-          } else if (subTrans[0].agent_trans_id) {
-            const [agentTrans] = await connect.query(
-              `SELECT id, agent_id from agent_transaction WHERE id = ${subTrans[0].agent_trans_id}`
-            );
-            if (agentTrans.length) {
-              const [response] = await connect.query(
-                `UPDATE agent_transaction set deleted = true, deleted_by = ${userInfo.id} WHERE id = ${subTrans[0].agent_trans_id}`
-              );
-              console.log("response", response.affectedRows);
-              if (response.affectedRows) {
-                const [response] = await connect.query(
-                  `UPDATE subscription_transaction set deleted = true, deleted_by = ${userInfo.id} WHERE id = ${subTrans[0].id}`
-                );
-                console.log("response2", response.affectedRows);
-                if (!response.affectedRows) {
-                  throw new Error();
-                }
-                const [uRes] = await connect.query(
-                  `UPDATE users_list set to_subscription = null, from_subscription = null WHERE id = ${user_id}`
-                );
-                console.log("uRes", uRes.affectedRows);
-                if (!uRes.affectedRows) {
-                  throw new Error();
-                }
-                appData.status = true;
-                res.status(200).json(appData);
-              }
+        appData.error = 'User doesn\'t have subscription transaction'
+        res.status(400).json(appData)
+      } else if(subTrans[0].agent_trans_id) {
+        const [agentTrans] = await connect.query(`SELECT id, agent_id from agent_transaction WHERE id = ${subTrans[0].agent_trans_id}`);
+        if(agentTrans.length) {
+          const [response] = await connect.query(`UPDATE agent_transaction set deleted = true, deleted_by = ${userInfo.id} WHERE id = ${subTrans[0].agent_trans_id}`);
+          console.log('response', response.affectedRows)
+          if(response.affectedRows) {
+            const [response] = await connect.query(`UPDATE subscription_transaction set deleted = true, deleted_by = ${userInfo.id} WHERE id = ${subTrans[0].id}`);
+            console.log('response2', response.affectedRows)
+            if(!response.affectedRows) {
+              throw new Error()
             }
           } else {
             const [sRes] = await connect.query(
@@ -5313,6 +5194,254 @@ admin.post("/message/bot-user", async (req, res) => {
   }
 });
 
+admin.delete("/message/bot-user", async (req, res) => {
+  let appData = { status: false };
+  let connect;
+  let { 
+    messageId,
+    receiverUserId,
+  } = req.body;
+    
+  try {
+    connect = await database.connection.getConnection();
+    
+    const [botUser] = await connect.query(`
+    SELECT user_id, chat_id FROM services_bot_users WHERE user_id = ${receiverUserId}`);
+    // senderBotId,
+    if(!botUser.length) {
+      appData.error = 'User not registered in bot'
+      appData.status = false;
+      res.status(400).json(appData);
+    } else {
+      let receiverBotId = botUser[0]?.chat_id;
+      const response = await deleteMessageFromBotChat(receiverBotId, messageId);      
+      if(response) {
+        appData.status = true;
+        res.status(200).json(appData);
+      } else {
+       appData.error = 'Удалить сообщение не удалось'
+       appData.status = false;
+       res.status(400).json(appData);
+      }
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.put("/message/bot-user", async (req, res) => {
+  let appData = { status: false };
+  let connect;
+  let { 
+    messageId,
+    messageType,
+    message,
+    receiverUserId,
+  } = req.body;
+    
+  try {
+    connect = await database.connection.getConnection();
+    
+    const [botUser] = await connect.query(`
+    SELECT user_id, chat_id FROM services_bot_users WHERE user_id = ${receiverUserId}`);
+    // senderBotId,
+    if(!botUser.length) {
+      appData.error = 'User not registered in bot'
+      appData.status = false;
+      res.status(400).json(appData);
+    } else {
+      let receiverBotId = botUser[0]?.chat_id;
+      const response = await editMessageInBotChat(receiverBotId, messageId, message);      
+      if(response) {
+        appData.status = true;
+        res.status(200).json(appData);
+      } else {
+       appData.error = 'Удалить сообщение не удалось'
+       appData.status = false;
+       res.status(400).json(appData);
+      }
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.post("/reply-message/bot-user", async (req, res) => {
+  let appData = { status: false };
+  let connect;
+  let { 
+    messageType,
+    message,
+    receiverUserId,
+    replyMessageId,
+    replyMessage
+  } = req.body;
+    
+  let userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+  try {
+    connect = await database.connection.getConnection();
+    if( !messageType || !message || !receiverUserId || !replyMessageId || !replyMessage) {
+      appData.status = false;
+      appData.error = 'All fields are required!'
+      res.status(400).json(appData);
+      return
+    }
+    const [botUser] = await connect.query(`
+    SELECT user_id, chat_id FROM services_bot_users WHERE user_id = ${receiverUserId}`);
+    // senderBotId,
+    if(!botUser.length) {
+      appData.error = 'User not registered in bot'
+      appData.status = false;
+      res.status(400).json(appData);
+    } else {
+      let receiverBotId = botUser[0]?.chat_id;
+      const senderType = 'admin';
+      const senderUserId = userInfo.id;
+  
+      const insertResult = await connect.query(`
+      INSERT INTO service_bot_message set 
+        message_type = ?,
+        message = ?,
+        message_sender_type = ?,
+        sender_user_id = ?,
+        receiver_user_id = ?,
+        receiver_bot_chat_id = ?,
+        is_reply = ?,
+        replied_message_id = ?,
+        replied_message = ?
+      `, [
+          messageType, 
+          message, 
+          senderType, 
+          senderUserId,
+          receiverUserId,
+          receiverBotId,
+          true,
+          replyMessageId,
+          replyMessage
+        ]);
+        if(insertResult[0].affectedRows) {
+          const botRes = await replyServiceBotMessageToUser(receiverBotId, message, replyMessageId)
+          if(botRes) {
+            const [edit] = await connect.query(
+              "UPDATE service_bot_message SET bot_message_id = ? WHERE id = ?",
+              [botRes.message_id, insertResult[0].insertId]
+            );
+          }
+
+        appData.data = insertResult;
+        appData.status = true;
+        res.status(200).json(appData);
+        }else {
+          appData.status = false;
+          res.status(400).json(appData);
+        }
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.post("/message/send-documents-list", async (req, res) => {
+  let appData = { status: false };
+  let connect;
+  let { 
+    messageType,
+    message,
+    receiverUserId,
+    replyMessageId,
+    replyMessage
+  } = req.body;
+    
+  let userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+  try {
+    connect = await database.connection.getConnection();
+    if( !messageType || !message || !receiverUserId || !replyMessageId || !replyMessage) {
+      appData.status = false;
+      appData.error = 'All fields are required!'
+      res.status(400).json(appData);
+      return
+    }
+    const [botUser] = await connect.query(`
+    SELECT user_id, chat_id FROM services_bot_users WHERE user_id = ${receiverUserId}`);
+    // senderBotId,
+    if(!botUser.length) {
+      appData.error = 'User not registered in bot'
+      appData.status = false;
+      res.status(400).json(appData);
+    } else {
+      let receiverBotId = botUser[0]?.chat_id;
+      const senderType = 'admin';
+      const senderUserId = userInfo.id;
+  
+      const insertResult = await connect.query(`
+      INSERT INTO service_bot_message set 
+        message_type = ?,
+        message = ?,
+        message_sender_type = ?,
+        sender_user_id = ?,
+        receiver_user_id = ?,
+        receiver_bot_chat_id = ?,
+        is_reply = ?,
+        replied_message_id = ?,
+        replied_message = ?
+      `, [
+          messageType, 
+          message, 
+          senderType, 
+          senderUserId,
+          receiverUserId,
+          receiverBotId,
+          true,
+          replyMessageId,
+          replyMessage
+        ]);
+        if(insertResult[0].affectedRows) {
+          const botRes = await replyServiceBotMessageToUser(receiverBotId, message, replyMessageId)
+          if(botRes) {
+            const [edit] = await connect.query(
+              "UPDATE service_bot_message SET bot_message_id = ? WHERE id = ?",
+              [botRes.message_id, insertResult[0].insertId]
+            );
+          }
+
+        appData.data = insertResult;
+        appData.status = true;
+        res.status(200).json(appData);
+        }else {
+          appData.status = false;
+          res.status(400).json(appData);
+        }
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 admin.get("/messages/bot-users", async (req, res) => {
   let connect,
     appData = { status: false };
@@ -5376,6 +5505,10 @@ admin.get("/messages/by-bot-user", async (req, res) => {
       id,
       message_type messageType,
       message,
+      is_reply isReplied,
+      caption,
+      replied_message_id repliedMessageId,
+      replied_message repliedMessage,
       message_sender_type messageSenderType,
       bot_message_id botMessageId,
       sender_user_id senderUserId,
@@ -5386,22 +5519,30 @@ admin.get("/messages/by-bot-user", async (req, res) => {
       ORDER BY created_at ASC LIMIT ${from}, ${limit}
     `);
 
-      if (rows.length) {
-        appData.status = true;
-        appData.data = rows;
-        res.status(200).json(appData);
-      } else {
-        res.error = "No data";
-        res.status(400).json(appData);
+    for(let row of rows) {
+      if(row.messageType == 'photo') {
+        const [res] = await connect.query(`
+        SELECT 
+        id,
+        width,
+        height,
+        minio_file_name minioFileName,
+        bot_message_id botMessageId,
+        created_at createdAt
+        FROM service_bot_photo_details
+        WHERE bot_message_id = ${row.botMessageId}
+      `);
+        row.files = res;
       }
-    }
-  } catch (err) {
-    console.log(err);
-    appData.error = err.message;
-    res.status(400).json(appData);
-  } finally {
-    if (connect) {
-      connect.release();
+      }
+  
+    if(rows.length) {
+      appData.status = true;
+      appData.data = rows;
+      res.status(200).json(appData)
+    } else {
+      res.error = 'No data'
+      res.status(400).json(appData)
     }
   }
 });
@@ -5584,7 +5725,7 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
           } ${sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"} `
         );
         [row] = await connect.query(
-          `SELECT Count(id) as count FROM services_transaction where created_by_id = ${agentId} AND status <> 4`,
+          `SELECT Count(id) as count FROM services_transaction where created_by_id = ${agentId} AND status In(2, 3)`,
           []
         );
       }
@@ -5809,11 +5950,8 @@ admin.get("/excel/services-transaction", async (req, res) => {
     let query = `SELECT 
       st.userid as "driverId",
       s.name as "serviceName",
-      CASE 
-      WHEN st.amount = 0 OR st.amount IS NULL THEN st.price_uzs
-      ELSE st.amount
-      END AS "amount",
       st.rate,
+      st.amount,
       st.status as "statusId",
       st.created_at as "createdAt",
       al.name as "agentName",
@@ -5933,23 +6071,6 @@ const statusCheck = (params) => {
   }
 };
 
-function uploadFile(photoData) {
-  // Assuming minioClient is properly configured elsewhere in your code
-  // Constructing the file path
-  const filePath = "tirgo/" + photoData.file_id + ".jpg"; // You can adjust the file path as needed
-
-  // Converting the photo data to a buffer
-  const buffer = Buffer.from(photoData.file_id, "base64"); // Assuming file_id is base64 encoded
-
-  // Uploading the file to MinIO
-  minioClient.putObject("tirgo", filePath, buffer, function (err, etag) {
-    if (err) {
-      console.error("Error uploading file:", err);
-    } else {
-      console.log("File uploaded successfully. ETag:", etag);
-    }
-  });
-}
 
 admin.get("/download-file/:fileName", (req, res) => {
   const { fileName } = req.params;
@@ -6054,4 +6175,4 @@ admin.post("/report/user-activity-average", async (req, res) => {
   }
 });
 
-module.exports = { admin, uploadFile };
+module.exports = admin;
