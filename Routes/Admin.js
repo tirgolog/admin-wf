@@ -11,7 +11,7 @@ const crypto = require("crypto");
 const socket = require("../Modules/Socket");
 const amqp = require("amqplib");
 const axios = require("axios");
-const {sendServiceBotMessageToUser, replyServiceBotMessageToUser, deleteMessageFromBotChat, editMessageInBotChat} = require("./services-bot");
+const {sendServiceBotMessageToUser, replyServiceBotMessageToUser, deleteMessageFromBotChat, editMessageInBotChat} = require("./service-bot");
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
@@ -5476,11 +5476,9 @@ admin.get("/messages/bot-users", async (req, res) => {
     ORDER BY lastMessageDate DESC;
   `);
 
-    if (rows.length) {
       appData.status = true;
       appData.data = rows;
       res.status(200).json(appData);
-    }
   } catch (err) {
     console.log(err);
     appData.error = err.message;
