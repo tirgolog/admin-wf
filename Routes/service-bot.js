@@ -15,18 +15,19 @@ const minioClient = new Minio.Client({
     secretKey: "8UH4HtIBc7WCwgCVshcxmQslHFyJB8Y79Bauq5Xd",
 });
 
-// require('dotenv').config();
+require('dotenv').config();
 
 // Determine environment (e.g., development or production)
-// const environment = process.env.NODE_ENV || 'development';
+const environment = process.env.NODE_ENV || 'development';
+console.log('process.env.NODE_ENV', process.env.NODE_ENV)
 // Set up tokens for different environments
-// const tokens = {
-//     development: '6999025382:AAGmZC8M6AeBH0vjt4r-azCHzOvvW_4OIVY',
-//     production: '7058770363:AAHZAcPHrUPMaJBuj6Pcwsdojo4IRHOV38s'
-// };
-// const token = tokens[environment];
+const tokens = {
+    development: '6999025382:AAGmZC8M6AeBH0vjt4r-azCHzOvvW_4OIVY',
+    production: '7058770363:AAHZAcPHrUPMaJBuj6Pcwsdojo4IRHOV38s'
+};
+const botToken = tokens[environment];
 // Create an instance of the Bot class and pass your bot token to it.
-const botToken = '7058770363:AAHZAcPHrUPMaJBuj6Pcwsdojo4IRHOV38s';
+// const botToken = '7058770363:AAHZAcPHrUPMaJBuj6Pcwsdojo4IRHOV38s';
 const bot = new TelegramBot(botToken, { polling: true });
 
 async function middleware(msg) {
