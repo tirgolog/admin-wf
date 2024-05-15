@@ -5466,11 +5466,9 @@ admin.get("/messages/bot-users", async (req, res) => {
     ORDER BY lastMessageDate DESC;
   `);
 
-    if (rows.length) {
       appData.status = true;
       appData.data = rows;
       res.status(200).json(appData);
-    }
   } catch (err) {
     console.log(err);
     appData.error = err.message;
