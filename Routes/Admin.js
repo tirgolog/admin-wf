@@ -11,7 +11,7 @@ const crypto = require("crypto");
 const socket = require("../Modules/Socket");
 const amqp = require("amqplib");
 const axios = require("axios");
-const {sendServiceBotMessageToUser, replyServiceBotMessageToUser, deleteMessageFromBotChat, editMessageInBotChat} = require("./services-bot");
+const {sendServiceBotMessageToUser, replyServiceBotMessageToUser, deleteMessageFromBotChat, editMessageInBotChat} = require("./service-bot");
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,

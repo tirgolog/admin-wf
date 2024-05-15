@@ -21,7 +21,7 @@ const express = require("express"),
     (req.socket && req.socket.remoteAddress);
 const axios = require("axios");
 const { finishOrderDriver } = require("./rabbit");
-const { sendBotMessageToUser } = require("./services-bot");
+const { sendBotMessageToUser } = require("./service-bot");
 // Multer configuration
 // const storage = multer.diskStorage({
 //   destination: function (req, file, cb) {
