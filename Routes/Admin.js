@@ -5535,7 +5535,6 @@ admin.get("/messages/by-bot-user", async (req, res) => {
         row.files = res;
       }
       }
-  
     if(rows.length) {
       appData.status = true;
       appData.data = rows;
@@ -5545,7 +5544,9 @@ admin.get("/messages/by-bot-user", async (req, res) => {
       res.status(400).json(appData)
     }
   }
-});
+  }  catch (err) {
+   console.log(err)
+  }})
 
 admin.get("/excel/agent-tirgo-balance-transactions", async (req, res) => {
   let connect,
