@@ -11,7 +11,7 @@ const crypto = require("crypto");
 const socket = require("../Modules/Socket");
 const amqp = require("amqplib");
 const axios = require("axios");
-const {sendServiceBotMessageToUser, replyServiceBotMessageToUser, deleteMessageFromBotChat, editMessageInBotChat} = require("./service-bot");
+// const {sendServiceBotMessageToUser, replyServiceBotMessageToUser, deleteMessageFromBotChat, editMessageInBotChat} = require("./service-bot");
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
@@ -5172,16 +5172,16 @@ admin.post("/message/bot-user", async (req, res) => {
         ]
       );
       if (insertResult[0].affectedRows) {
-        const botRes = await sendServiceBotMessageToUser(
-          receiverBotId,
-          message
-        );
-        if (botRes) {
-          const [edit] = await connect.query(
-            "UPDATE service_bot_message SET bot_message_id = ? WHERE id = ?",
-            [botRes.message_id, insertResult[0].insertId]
-          );
-        }
+        // const botRes = await sendServiceBotMessageToUser(
+        //   receiverBotId,
+        //   message
+        // );
+        // if (botRes) {
+        //   const [edit] = await connect.query(
+        //     "UPDATE service_bot_message SET bot_message_id = ? WHERE id = ?",
+        //     [botRes.message_id, insertResult[0].insertId]
+        //   );
+        // }
 
         appData.data = insertResult;
         appData.status = true;
@@ -5222,15 +5222,15 @@ admin.delete("/message/bot-user", async (req, res) => {
       res.status(400).json(appData);
     } else {
       let receiverBotId = botUser[0]?.chat_id;
-      const response = await deleteMessageFromBotChat(receiverBotId, messageId);      
-      if(response) {
-        appData.status = true;
-        res.status(200).json(appData);
-      } else {
-       appData.error = 'Удалить сообщение не удалось'
-       appData.status = false;
-       res.status(400).json(appData);
-      }
+      // const response = await deleteMessageFromBotChat(receiverBotId, messageId);      
+      // if(response) {
+      //   appData.status = true;
+      //   res.status(200).json(appData);
+      // } else {
+      //  appData.error = 'Удалить сообщение не удалось'
+      //  appData.status = false;
+      //  res.status(400).json(appData);
+      // }
     }
   } catch (e) {
     console.log(e);
@@ -5265,15 +5265,15 @@ admin.put("/message/bot-user", async (req, res) => {
       res.status(400).json(appData);
     } else {
       let receiverBotId = botUser[0]?.chat_id;
-      const response = await editMessageInBotChat(receiverBotId, messageId, message);      
-      if(response) {
-        appData.status = true;
-        res.status(200).json(appData);
-      } else {
-       appData.error = 'Удалить сообщение не удалось'
-       appData.status = false;
-       res.status(400).json(appData);
-      }
+      // const response = await editMessageInBotChat(receiverBotId, messageId, message);      
+      // if(response) {
+      //   appData.status = true;
+      //   res.status(200).json(appData);
+      // } else {
+      //  appData.error = 'Удалить сообщение не удалось'
+      //  appData.status = false;
+      //  res.status(400).json(appData);
+      // }
     }
   } catch (e) {
     console.log(e);
@@ -5341,13 +5341,13 @@ admin.post("/reply-message/bot-user", async (req, res) => {
           replyMessage
         ]);
         if(insertResult[0].affectedRows) {
-          const botRes = await replyServiceBotMessageToUser(receiverBotId, message, replyMessageId)
-          if(botRes) {
-            const [edit] = await connect.query(
-              "UPDATE service_bot_message SET bot_message_id = ? WHERE id = ?",
-              [botRes.message_id, insertResult[0].insertId]
-            );
-          }
+          // const botRes = await replyServiceBotMessageToUser(receiverBotId, message, replyMessageId)
+          // if(botRes) {
+          //   const [edit] = await connect.query(
+          //     "UPDATE service_bot_message SET bot_message_id = ? WHERE id = ?",
+          //     [botRes.message_id, insertResult[0].insertId]
+          //   );
+          // }
 
         appData.data = insertResult;
         appData.status = true;
@@ -5423,13 +5423,13 @@ admin.post("/message/send-documents-list", async (req, res) => {
           replyMessage
         ]);
         if(insertResult[0].affectedRows) {
-          const botRes = await replyServiceBotMessageToUser(receiverBotId, message, replyMessageId)
-          if(botRes) {
-            const [edit] = await connect.query(
-              "UPDATE service_bot_message SET bot_message_id = ? WHERE id = ?",
-              [botRes.message_id, insertResult[0].insertId]
-            );
-          }
+          // const botRes = await replyServiceBotMessageToUser(receiverBotId, message, replyMessageId)
+          // if(botRes) {
+          //   const [edit] = await connect.query(
+          //     "UPDATE service_bot_message SET bot_message_id = ? WHERE id = ?",
+          //     [botRes.message_id, insertResult[0].insertId]
+          //   );
+          // }
 
         appData.data = insertResult;
         appData.status = true;
