@@ -6223,7 +6223,6 @@ admin.post("/report/active-user-activity-average", async (req, res) => {
           .total_activity_count
       ).toFixed(2))
     }));
-    console.log(data)
     appData.status = true;
     appData.data = data;
     res.status(200).json(appData);
