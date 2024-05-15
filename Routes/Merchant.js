@@ -59,7 +59,7 @@ merchant.post("/refreshToken", async (req, res) => {
           .json({ status: false, error: "Неверный токен обновления" });
       }
       const token = jwt.sign({ id: rows[0].id }, process.env.SECRET_KEY, {
-        expiresIn: "20m",
+        expiresIn: "1440m",
       });
       const refreshToken = jwt.sign({ id: rows[0].id }, process.env.SECRET_KEY);
       await connect.query(
@@ -78,8 +78,7 @@ merchant.use((req, res, next) => {
       req.headers["token"] ||
       (req.headers.authorization && req.headers.authorization.split(" ")[1]);
     let appData = {};
-  
-    if (token) {
+    if (token && token !== undefined &&token!=='undefined') {
       jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
         if (err) {
           if (err.name === 'TokenExpiredError') {

@@ -824,7 +824,7 @@ users.post("/refreshToken", async (req, res) => {
         .status(403)
         .json({ status: false, error: "Неверный токен обновления" });
     }else{
-      const token = jwt.sign({id: userInfo.id}, process.env.SECRET_KEY, { expiresIn: '2m' });
+      const token = jwt.sign({id: userInfo.id}, process.env.SECRET_KEY, { expiresIn: '1440m' });
       const refreshToken = jwt.sign({id: userInfo.id}, process.env.SECRET_KEY);
       const [setToken] = await connect.query(
         "UPDATE users_list SET date_last_login = ?, refresh_token = ? WHERE id = ?",
@@ -1063,7 +1063,7 @@ users.post("/codeverify", async (req, res) => {
         "SELECT * FROM users_list WHERE phone = ? AND user_type = 1 AND ban <> 1 AND deleted <> 1",
         [phone]
       );
-      const token = jwt.sign({id: users[0].id}, process.env.SECRET_KEY, { expiresIn: '2m' });
+      const token = jwt.sign({id: users[0].id}, process.env.SECRET_KEY, { expiresIn: '1440m' });
       const refreshToken = jwt.sign({id: users[0].id}, process.env.SECRET_KEY);
       const [setToken] = await connect.query(
         "UPDATE users_list SET date_last_login = ?, refresh_token = ? WHERE id = ?",
@@ -1118,7 +1118,7 @@ users.post("/codeverifycation", async (req, res) => {
         "SELECT * FROM users_list WHERE phone = ? AND user_type = 1 AND ban <> 1 AND deleted <> 1",
         [phone]
       );
-      const token = jwt.sign({id: users[0].id}, process.env.SECRET_KEY, { expiresIn: '2m' });
+      const token = jwt.sign({id: users[0].id}, process.env.SECRET_KEY, { expiresIn: '1440m' });
       const refreshToken = jwt.sign({id: users[0].id}, process.env.SECRET_KEY);
       const [setToken] = await connect.query(
         "UPDATE users_list SET date_last_login = ?, refresh_token = ? WHERE id = ?",
@@ -1179,7 +1179,7 @@ users.post("/codeverifyClient", async (req, res) => {
         [phone]
       );
       console.log(users[0])
-      const token = jwt.sign({id: users[0].id}, process.env.SECRET_KEY, { expiresIn: '2m' });
+      const token = jwt.sign({id: users[0].id}, process.env.SECRET_KEY, { expiresIn: '1440m' });
       const refreshToken = jwt.sign({id: users[0].id}, process.env.SECRET_KEY);
       const [setToken] = await connect.query(
         "UPDATE users_list SET date_last_login = ?, refresh_token = ? WHERE id = ?",
@@ -1225,9 +1225,7 @@ users.use((req, res, next) => {
     req.headers["token"] ||
     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
   let appData = {};
-  console.log(typeof token)
   if (token && token !== undefined &&token!=='undefined') {
-    console.log('JWT')
     jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
       if (err) {
         if (err.name === 'TokenExpiredError') {
@@ -1257,7 +1255,6 @@ users.use((req, res, next) => {
 });
 
 users.post("/saveDeviceToken", async (req, res) => {
-  console.log("/saveDeviceToken");
   let connect,
     appData = { status: false },
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]),

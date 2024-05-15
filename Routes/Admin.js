@@ -54,7 +54,7 @@ admin.post("/loginAdmin", async (req, res) => {
     );
     if (rows.length) {
       const token = jwt.sign({ id: rows[0].id }, process.env.SECRET_KEY, {
-        expiresIn: "20m",
+        expiresIn: "1440m",
       });
       const refreshToken = jwt.sign({ id: rows[0].id }, process.env.SECRET_KEY);
       const [setToken] = await connect.query(
@@ -105,7 +105,7 @@ admin.post("/refreshToken", async (req, res) => {
         .json({ status: false, error: "Неверный токен обновления" });
     }
     const token = jwt.sign({ id: rows[0].id }, process.env.SECRET_KEY, {
-      expiresIn: "20m",
+      expiresIn: "1440m",
     });
     const refreshToken = jwt.sign({ id: rows[0].id }, process.env.SECRET_KEY);
     await connect.query(
@@ -124,11 +124,10 @@ admin.use((req, res, next) => {
     req.headers["token"] ||
     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
   let appData = {};
-  if (token) {
+  if (token && token !== undefined &&token!=='undefined') {
     jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
-      console.log(err);
       if (err) {
-        if (err.name === "TokenExpiredError") {
+        if (err.name === 'TokenExpiredError') {
           appData["error"] = "Token has expired";
           return res.status(401).json(appData);
         } else {
@@ -137,7 +136,6 @@ admin.use((req, res, next) => {
           return res.status(401).json(appData);
         }
       } else {
-        console.log(decoded);
         // Check if token has expired
         const currentTimestamp = Math.floor(Date.now() / 1000);
         if (decoded.exp < currentTimestamp) {
