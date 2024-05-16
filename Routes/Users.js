@@ -1056,16 +1056,11 @@ users.post("/codeverify", async (req, res) => {
         "UPDATE users_contacts SET verify = 1 WHERE text = ? AND user_type = 1 AND verify_code = ?",
         [phone, code]
       );
-      const [users] = await connect.query(
-        "SELECT * FROM users_list WHERE phone = ? AND user_type = 1 AND ban <> 1 AND deleted <> 1",
-        [phone]
-      );
-    if (users.length>0) {
-      const token = jwt.sign({id: users[0].id}, process.env.SECRET_KEY, { expiresIn: '1440m' });
-      const refreshToken = jwt.sign({id: users[0].id}, process.env.SECRET_KEY);
+      const token = jwt.sign({id: rows[0].user_id}, process.env.SECRET_KEY, { expiresIn: '1440m' });
+      const refreshToken = jwt.sign({id: rows[0].user_id}, process.env.SECRET_KEY);
       const [setToken] = await connect.query(
         "UPDATE users_list SET date_last_login = ?, refresh_token = ? WHERE id = ?",
-        [new Date(), refreshToken, users[0].id]
+        [new Date(), refreshToken, rows[0].user_id]
       );
       if (setToken.affectedRows > 0) {
         appData.status = true;
@@ -1075,7 +1070,7 @@ users.post("/codeverify", async (req, res) => {
         await connect.query(
           "INSERT INTO users_activity SET userid = ?, text = ?",
           [
-            users[0].id,
+            rows[0].user_id,
             "Произведен вход " +
               req.headers["user-agent"].split("(")[1].replace(")", "") +
               ", IP: " +
@@ -1088,11 +1083,6 @@ users.post("/codeverify", async (req, res) => {
         appData.status = false;
         res.status(403).json(appData);
       }
-    } else {
-      appData.error = "Данные для входа введены неверно";
-      appData.status = false;
-      res.status(403).json(appData);
-    }
     } else {
       appData.error = "Проверочный код введен не верно";
       appData.status = false;
@@ -1121,16 +1111,11 @@ users.post("/codeverifycation", async (req, res) => {
       [code, phone]
     );
     if (rows.length > 0) {
-      const [users] = await connect.query(
-        "SELECT * FROM users_list WHERE phone = ? AND user_type = 1 AND ban <> 1 AND deleted <> 1",
-        [phone]
-      );
-      if (users.length>0) {
-        const token = jwt.sign({id: users[0].id}, process.env.SECRET_KEY, { expiresIn: '1440m' });
-        const refreshToken = jwt.sign({id: users[0].id}, process.env.SECRET_KEY);
+        const token = jwt.sign({id: rows[0].user_id}, process.env.SECRET_KEY, { expiresIn: '1440m' });
+        const refreshToken = jwt.sign({id: rows[0].user_id}, process.env.SECRET_KEY);
         const [setToken] = await connect.query(
           "UPDATE users_list SET date_last_login = ?, refresh_token = ? WHERE id = ?",
-          [new Date(), refreshToken, users[0].id]
+          [new Date(), refreshToken, rows[0].user_id]
         );
         if (setToken.affectedRows > 0) {
           appData.status = true;
@@ -1140,7 +1125,7 @@ users.post("/codeverifycation", async (req, res) => {
           await connect.query(
             "INSERT INTO users_activity SET userid = ?, text = ?",
             [
-              users[0].id,
+              rows[0].user_id,
               "Произведен вход " +
                 req.headers["user-agent"].split("(")[1].replace(")", "") +
                 ", IP: " +
@@ -1158,11 +1143,6 @@ users.post("/codeverifycation", async (req, res) => {
         appData.status = false;
         res.status(403).json(appData);
       }
-    } else {
-      appData.status = false;
-      appData.error = "Проверочный код введен не верно";
-      res.status(403).json(appData);
-    }
   } catch (err) {
     appData.status = false;
     appData.error = err;
@@ -1190,18 +1170,12 @@ users.post("/codeverifyClient", async (req, res) => {
         "UPDATE users_contacts SET verify = 1 WHERE text = ? AND user_type = 2 AND verify_code = ?",
         [phone, code]
       );
-      const [users] = await connect.query(
-        "SELECT * FROM users_list WHERE phone = ? AND user_type = 2 AND ban <> 1 AND deleted <> 1",
-        [phone]
-      );
-
-      if (users.length>0) {
-        const token = jwt.sign({id: users[0].id}, process.env.SECRET_KEY, { expiresIn: '1440m' });
-        const refreshToken = jwt.sign({id: users[0].id}, process.env.SECRET_KEY);
-        const [setToken] = await connect.query(
+      const token = jwt.sign({id: rows[0].user_id}, process.env.SECRET_KEY, { expiresIn: '1440m' });
+      const refreshToken = jwt.sign({id: rows[0].user_id}, process.env.SECRET_KEY);
+      const [setToken] = await connect.query(
           "UPDATE users_list SET date_last_login = ?, refresh_token = ? WHERE id = ?",
-          [new Date(), refreshToken, users[0].id]
-        );
+          [new Date(), refreshToken, rows[0].user_id]
+      );
         if (setToken.affectedRows > 0) {
           appData.status = true;
           appData.token = token;
@@ -1210,7 +1184,7 @@ users.post("/codeverifyClient", async (req, res) => {
           await connect.query(
             "INSERT INTO users_activity SET userid = ?, text = ?",
             [
-              users[0].id,
+              rows[0].user_id,
               "Произведен вход " +
                 req.headers["user-agent"].split("(")[1].replace(")", "") +
                 ", IP: " +
@@ -1228,12 +1202,6 @@ users.post("/codeverifyClient", async (req, res) => {
         appData.status = false;
         res.status(403).json(appData);
       }
-    } else {
-      appData.error = "Проверочный код введен не верно";
-      appData.status = false;
-      res.status(403).json(appData);
-    }
-   
   } catch (err) {
     appData.status = false;
     appData.error = err;

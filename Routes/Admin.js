@@ -92,7 +92,6 @@ admin.post("/refreshToken", async (req, res) => {
     return res
       .status(401)
       .json({ status: false, error: "Требуется токен обновления." });
-    console.log(refreshTokenFromRequest);
      connect = await database.connection.getConnection();
     const [rows] = await connect.query(
       "SELECT * FROM users_list WHERE refresh_token = ?",
@@ -116,6 +115,44 @@ admin.post("/refreshToken", async (req, res) => {
     appData.token = token;
     appData.refreshToken = refreshToken;
     res.status(200).json(appData);
+});
+
+admin.post("/refreshToken", async (req, res) => {
+  let connect,
+  appData = { status: false },
+  userInfo = jwt.decode(req.headers.authorization.split(" ")[1]),
+  refreshTokenFromRequest = req.body.refreshToken;
+  if (!refreshTokenFromRequest)
+    return res
+      .status(401)
+      .json({ status: false, error: "Требуется токен обновления." });
+     connect = await database.connection.getConnection();
+    const [users_list] = await connect.query(
+      "SELECT refresh_token FROM users_list WHERE id = ?",
+      [userInfo.id]
+    );
+    if (users_list[0].refresh_token !== refreshTokenFromRequest) {
+      return res
+        .status(403)
+        .json({ status: false, error: "Неверный токен обновления" });
+    }else{
+      const token = jwt.sign({id: userInfo.id}, process.env.SECRET_KEY, { expiresIn: '1440m' });
+      const refreshToken = jwt.sign({id: userInfo.id}, process.env.SECRET_KEY);
+      const [setToken] = await connect.query(
+        "UPDATE users_list SET date_last_login = ?, refresh_token = ? WHERE id = ?",
+        [new Date(), refreshToken, userInfo.id]
+      );
+      if (setToken.affectedRows > 0) {
+        appData.status = true;
+        appData.token = token;
+        appData.refreshToken = refreshToken;
+        res.status(200).json(appData);
+      } else {
+        appData.error = "Данные для входа введены неверно";
+        appData.status = false;
+        res.status(403).json(appData);
+      }
+    }
 });
 
 admin.use((req, res, next) => {
