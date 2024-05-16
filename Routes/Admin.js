@@ -4510,7 +4510,7 @@ admin.post("/services-transaction/status/to-priced", async (req, res) => {
       SELECT sbu.chat_id, ul.id user_id, ul.driver_group_id groupId FROM services_transaction st
       LEFT JOIN services_bot_users sbu on sbu.user_id = st.userid
       LEFT JOIN users_list ul on ul.id = st.userid
-      WHERE id = ${id}`
+      WHERE st.id = ${id}`
       )
       let balance;
       if (user[0]?.groupId) {
