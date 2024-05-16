@@ -6,6 +6,7 @@ const Minio = require("minio");
 const axios = require("axios");
 const fs = require('fs');
 const path = require('path');
+const { sendServicesListToBotUser, sendSubscriptionsListToBotUser } = require("./service-bot-functions");
 
 const minioClient = new Minio.Client({
     endPoint: "13.232.83.179",
@@ -19,7 +20,6 @@ require('dotenv').config();
 
 // Determine environment (e.g., development or production)
 const environment = process.env.NODE_ENV || 'development';
-console.log('process.env.NODE_ENV', process.env.NODE_ENV)
 // Set up tokens for different environments
 const tokens = {
     development: '6999025382:AAGmZC8M6AeBH0vjt4r-azCHzOvvW_4OIVY',
@@ -30,47 +30,6 @@ const botToken = tokens[environment];
 // const botToken = '7058770363:AAHZAcPHrUPMaJBuj6Pcwsdojo4IRHOV38s';
 const bot = new TelegramBot(botToken, { polling: true });
 
-async function middleware(msg) {
-    let connection;
-    try {
-        connection = await database.connection.getConnection();
-        const chatId = msg.from?.id;
-        console.log('middleware', {chatId})
-        const [userChat] = await connection.query(`
-        SELECT sbu.*, ul.to_subscription FROM services_bot_users sbu
-        LEFT JOIN users_list ul on ul.id = sbu.user_id
-        WHERE chat_id = ?
-        `, [chatId]);
-        if (userChat[0]?.to_subscription) {
-            return true;
-        } else {
-            await bot.sendMessage(chatId, `You don't have subscription, please buy subscription in order to use bot`);
-            const subscriptions = await connection.query('SELECT * FROM subscription');
-            if (subscriptions && subscriptions.length > 0) {
-                const keyboard = new InlineKeyboard();
-                for (let subscription of subscriptions[0]) {
-                    const subscriptionNameWithLineBreak = subscription.name.replace(/\\n/g, '\n');
-                    keyboard.text(subscriptionNameWithLineBreak, `#subscription_${subscription.id}`);
-                }
-                await bot.sendMessage(chatId, `Choose a subscription:`, { reply_markup: keyboard });
-            } else {
-                await bot.sendMessage(chatId, `No subscription available.`);
-            }
-            return false;
-        }
-
-
-    } catch (err) {
-        console.log('Error in middleware', err)
-        return false;
-    } finally {
-        if (connection) {
-            connection.release();
-        }
-    }
-
-
-}
 
 // bot.onText(/\/start/, (msg) => {
 //     try {
@@ -94,7 +53,34 @@ async function middleware(msg) {
 bot.onText(/\/start/, onCommandStart);
 
 // Handle incoming photo messages
-bot.on('photo', async (msg) => {
+bot.on('photo', onPhotoReceived);
+
+// Handle incoming contact messages
+bot.on('contact', onContactReceived);
+
+// Handle incoming text messages
+bot.on('text', onTextReceived);
+
+async function onCommandStart(msg) {
+    const chatFirstName = msg.from.first_name;
+    const chatLastName = msg.from.last_name;
+    const chatId = msg.from.id;
+
+    let replyOptions = {
+        reply_markup: {
+            resize_keyboard: true,
+            one_time_keyboard: true,
+            force_reply: true,
+            keyboard: [[{ text: "📱Отправить номер", request_contact: true }]],
+        },
+    };
+    const text = `Добро пожаловать, ${chatFirstName ? chatFirstName : '@' + msg.from.username} ${chatLastName ? chatLastName : ''} ! \nПожалуйста отправьте свой номер телефона !`;
+
+    // Reply to the user with the message
+    bot.sendMessage(chatId, text, replyOptions);
+}
+
+async function onPhotoReceived (msg) {
     try {
         const connection = await database.connection.getConnection();
         const userChatBotId = msg.from.id;
@@ -141,105 +127,6 @@ bot.on('photo', async (msg) => {
         console.log('Error while handling files from bot', err)
     }
 
-});
-
-// Handle incoming contact messages
-bot.on('contact', onContactReceived);
-
-// Handle incoming text messages
-bot.on('text', async (msg) => {
-    if(msg.text == '/start') return;
-
-    // const middlewareRes = await middleware(msg);
-    // if(!middlewareRes) return;
-    const connecttion = await database.connection.getConnection();
-    console.log('Text message !', msg.text)
-    const [botUser] = await connecttion.query(`
-  SELECT user_id FROM services_bot_users WHERE chat_id = ${msg.from?.id}`);
-
-    if (botUser?.length && !msg.contact) {
-        let data = {
-            msgId: msg.message_id,
-            senderType: 'user',
-            senderUserId: botUser[0]?.user_id,
-            senderBotId: msg.from?.id,
-            messageType: 'text',
-            message:  msg.text,
-        };
-
-        const res = await saveMessageToDatabase(data);
-    }
-
-});
-
-bot.on('callback_query', async (msg) => {
-    console.log(msg.data.startsWith('#subscription'))
-    // if(!msg.data.startsWith('#subscription') && !msg.data.startsWith('#response_subscription')) {
-    //     const middlewareRes = await middleware(msg);
-    //     if(!middlewareRes) return;
-    // }
-    const chatId = msg.from?.id;
-    const callbackData = msg.data;
-
-    if (callbackData === 'click') {
-        // Construct Click payment URL
-        const clickPaymentUrl = 'https://my.click.uz/services/pay?service_id=24721&merchant_id=17235&amount=' + 1000;
-
-        // Redirect user to Click payment URL
-        bot.sendMessage(chatId, 'Redirecting to Click payment...');
-        bot.sendMessage(chatId, clickPaymentUrl);
-    } else if (callbackData === 'payme') {
-        // Construct Payme payment URL
-        const base64 = Buffer.from("m=636ca5172cfb25761a99e6af;ac.UserID=" + msg.from.id + ";a=" + 1000 + "00").toString('base64');
-        const paymePaymentUrl = 'https://checkout.paycom.uz/' + base64;
-
-        // Redirect user to Payme payment URL
-        bot.sendMessage(chatId, 'Redirecting to Payme payment...');
-        bot.sendMessage(chatId, paymePaymentUrl);
-    }
-
-    if (callbackData === '#services') {
-        // Handle 'Типы услуг' button click here
-        await onServicesClick(msg);
-    } else if (callbackData.startsWith('#service_')) {
-        const res = await checkForWaitingServiceRequest(chatId);
-        if (res) {
-            await bot.sendMessage(chatId, `You have service request that status is waiting. Please complete this first`);
-        } else {
-            const success = await onServiceRequestClick(chatId, callbackData.split('_')[1])
-            if (success) {
-                await bot.sendMessage(chatId, `In proccess.`);
-            } else {
-                await bot.sendMessage(chatId, `Fail.`);
-            }
-        }
-    } else if (callbackData.startsWith('#subscriptions')) {
-    } else if (callbackData.startsWith('#subscription_')) {
-        await onSubscriptionRequestClick(msg)
-    } else if (callbackData.startsWith('#response_subscription')) {
-        await onSubscriptionResponseClick(msg);
-    }
-});
-
-// bot.start();
-
-function onCommandStart(msg) {
-    const chatFirstName = msg.from.first_name;
-    const chatLastName = msg.from.last_name;
-    const chatId = msg.from.id;
-
-    let replyOptions = {
-        reply_markup: {
-            resize_keyboard: true,
-            one_time_keyboard: true,
-            force_reply: true,
-            keyboard: [[{ text: "📱Отправить номер", request_contact: true }]],
-        },
-    };
-    const text = `Добро пожаловать, ${chatFirstName ? chatFirstName : '@' + msg.from.username} ${chatLastName ? chatLastName : ''} ! \nПожалуйста отправьте свой номер телефона !`;
-
-    // Reply to the user with the message
-    bot.sendMessage(chatId, text, replyOptions);
 }
 
 async function onContactReceived(msg) {
@@ -321,35 +208,68 @@ async function onContactReceived(msg) {
     }
 }
 
-// Function to handle 'Типы услуг' button click
-async function onServicesClick(msg) {
-    const chatId = msg.from.id;
+async function onTextReceived(msg) {
+    if(msg.text == '/start') return;
+    console.log('Text message !', msg.text)
     const connection = await database.connection.getConnection();
-
-    try {
-        const services = await connection.query('SELECT * FROM services');
-        if (services && services.length > 0) {
-            const keyboard = new InlineKeyboard();
-            for (let service of services[0]) {
-                const serviceNameWithLineBreak = service.name.replace(/\\n/g, '\n');
-                keyboard.text(serviceNameWithLineBreak, `#service_${service.id}`);
-                keyboard.row()
-            }
-            await bot.sendMessage(chatId, `Choose a service:`, { reply_markup: keyboard });
-        } else {
-            await bot.sendMessage(chatId, `No services available.`);
-        }
-
-    } catch (err) {
-        console.log('BOT Error while getting services list: ', err);
-        await bot.sendMessage(chatId, `Error while getting services list.`);
-    } finally {
-        // Release the connection back to the pool
-        if (connection) {
-            connection.release();
-        }
+    
+    if(msg.text == '/services') {
+        await sendServicesListToBotUser(bot, connection, msg.from?.id);
+    } else if(msg.text == '/subscriptions') {
+        await sendSubscriptionsListToBotUser(bot, connection, msg.from?.id);
     }
+
+    const [botUser] = await connection.query(`
+     SELECT user_id FROM services_bot_users WHERE chat_id = ${msg.from?.id}`);
+
+    if (botUser?.length && !msg.contact) {
+        let data = {
+            msgId: msg.message_id,
+            senderType: 'user',
+            senderUserId: botUser[0]?.user_id,
+            senderBotId: msg.from?.id,
+            messageType: 'text',
+            message:  msg.text,
+        };
+
+        const res = await saveMessageToDatabase(data);
+    }
+
 }
+
+// handle call back functions
+bot.on('callback_query', async (msg) => {
+    const connection = await database.connection.getConnection();
+    // if(!msg.data.startsWith('#subscription') && !msg.data.startsWith('#response_subscription')) {
+    //     const middlewareRes = await middleware(msg);
+    //     if(!middlewareRes) return;
+    // }
+    const chatId = msg.from?.id;
+    const callbackData = msg.data;
+
+    if (callbackData === '#services') {
+        // Handle 'Типы услуг' button click here
+        await sendServicesListToBotUser(connection, msg.from?.id);
+    } else if (callbackData.startsWith('#service_')) {
+        const isUnfinishedRequestExist = await checkForWaitingServiceRequest(chatId);
+        console.log(callbackData, isUnfinishedRequestExist)
+        if (isUnfinishedRequestExist == false) {
+            const success = await onServiceRequestClick(chatId, callbackData.split('_')[1])
+            if (success) {
+                await bot.sendMessage(chatId, `In proccess.`);
+            } else {
+                await bot.sendMessage(chatId, `Fail.`);
+            }
+        }
+    } else if (callbackData.startsWith('#subscriptions')) {
+    } else if (callbackData.startsWith('#subscription_')) {
+        await onSubscriptionRequestClick(msg)
+    } else if (callbackData.startsWith('#response_subscription')) {
+        await onSubscriptionResponseClick(msg);
+    }
+});
+
+
 
 async function onServiceRequestClick(userBotId, serviceId) {
     let connection;
@@ -516,9 +436,9 @@ async function onSubscriptionResponseClick(msg) {
             if(isConfirmed) {
                 balance = await getUserBalance(connection, userChat[0]?.user_id, userChat[0]?.groupId);
                 if(balance < subscriptionRequest[0].subscriptionPrice) {
-                    const base64 = Buffer.from("m=636ca5172cfb25761a99e6af;ac.UserID=" + 6197 + ";a=" + 1000 + "00").toString('base64');
+                    const base64 = Buffer.from("m=636ca5172cfb25761a99e6af;ac.UserID=" + userChat[0]?.user_id + ";a=" + Number(subscriptionRequest[0].subscriptionPrice) - Number(balance) + "00").toString('base64');
                     const paymePaymentUrl = 'https://checkout.paycom.uz/' + base64;
-                    const clickUrl = `https://my.click.uz/services/pay?service_id=24721&merchant_id=17235&amount=${1000}&transaction_param=${6197}`
+                    const clickUrl = `https://my.click.uz/services/pay?service_id=24721&merchant_id=17235&amount=${Number(subscriptionRequest[0].subscriptionPrice) - Number(balance)}&transaction_param=${userChat[0]?.user_id}`
                     const keyboard = {
                         inline_keyboard: [
                             [{ text: 'Pay with Click', url: clickUrl }],
@@ -609,34 +529,64 @@ async function checkForWaitingServiceRequest(userBotId) {
 
         const [service] = await connection.query(`
         SELECT 
-        id
+        id,
+        service_name,
+        status,
+        amount
         FROM services_transaction
-        WHERE userid = ? AND status = 0
+        WHERE userid = ? AND status = 0 OR status = 1
         `, [userChat[0]?.user_id]);
 
         if (service.length) {
-            
-            // if(servce[0]?.status  == 0) {
-            //     bot.sendMessage(userBotId, `You have "${service[0]?.name}" service in proccess! \nPlese wait admin's response`);
-            // } else if(servce[0]?.status  == 1) {
-            //     bot.sendMessage(userBotId, `You have "${service[0]?.name}" service that is priced! \nPlese share needed documents`); 
-            // }
+            console.log(service)
+            if(service[0]?.status  == 0) {
+                const keyboard = new InlineKeyboard();
+                keyboard.text('Confirm', `#response_service_confirm_${service[0]?.id}`);
+                keyboard.text('Cancel', `#response_service_cancel_${service[0]?.id}`);
+                bot.sendMessage(userBotId, `You have "${service[0]?.service_name}" service in proccess! 
+                    \nPlease share required documents
+                    \nIf you haven't got documents list yet or shared required documents, wait admin's response`, { reply_markup: keyboard });
 
-            // const balance = await getUserBalance(connection, userChat[0]?.user_id, userChat[0]?.groupId)
-            // bot.sendMessage(userBotId, `You have "${service[0]?.name}" service ! \n 
-            // Subscription's price is ${subscription[0]?.value} \n
-            // Your balance is ${balance} \n
-            // You have to pay ${Number(subscription[0]?.value) - Number(balance)} in order to buy subscription\n
-            // Can you confirm to complete ?`, { reply_markup: keyboard });
+            } else if(service[0]?.status  == 1) {
+                const balance = await getUserBalance(connection, userChat[0]?.user_id, userChat[0]?.groupId)
+                if(service[0]?.amount > balance) {
 
-            
+                    const base64 = Buffer.from("m=636ca5172cfb25761a99e6af;ac.UserID=" + userChat[0]?.user_id + ";a=" + Number(service[0]?.amount) - Number(balance) + "00").toString('base64');
+                    const paymePaymentUrl = 'https://checkout.paycom.uz/' + base64;
+                    const clickUrl = `https://my.click.uz/services/pay?service_id=24721&merchant_id=17235&amount=${Number(service[0]?.amount) - Number(balance)}&transaction_param=${userChat[0]?.user_id}`
+                    const keyboard = {
+                        inline_keyboard: [
+                            [{ text: 'Pay with Click', url: clickUrl }],
+                            [{ text: 'Pay with Payme', url: paymePaymentUrl }],
+                            [{ text: 'Cancel service', callback_data: 'cancel_request' }] 
+                        ]
+                    };
+                    bot.sendMessage(userBotId, `You have "${service[0]?.service_name}" service priced! 
+                    \nYou don't have enough amount in your blance 
+                    \nYour balance is ${balance} 
+                    \nService price is ${service[0]?.amount} 
+                    \nPlease toup your balance for ${Number(service[0]?.amount) - Number(balance)} 
+                    `, { reply_markup: JSON.stringify({
+                        inline_keyboard: keyboard.inline_keyboard.map(row => row.map(button => ({
+                            ...button,
+                            text: button.text 
+                        })))
+                    })});
+
+                } else {
+                    bot.sendMessage(userBotId, `You have "${service[0]?.service_name}" service priced! 
+                    \nPlease topup your balance
+                    \nIf you have already  topuped your balance, wait admin's response`);
+                }
+
+            }
             return true;
         } else {
             return false;
         }
     } catch (err) {
         console.log('Error while requesting service', err)
-        return false;
+        return null;
     } finally {
         if (connection) {
             connection.release();
