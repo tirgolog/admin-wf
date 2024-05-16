@@ -9,3 +9,4 @@ services:
       - "7790:7790"
     command: >
       bash -c "npm install && npm start"
+    restart: always
