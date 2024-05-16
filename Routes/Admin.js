@@ -4254,7 +4254,7 @@ admin.get("/services-transaction", async (req, res) => {
       LEFT JOIN users_list adl ON adl.id = st.created_by_id AND adl.user_type = 3
       LEFT JOIN services s ON s.id = st.service_id`;
 
-      let countQuery = `SELECT COUNT(id) as count FROM services_transaction`;
+      let countQuery = `SELECT COUNT(id) as count FROM services_transaction st`;
     if (queryConditions.length > 0) {
       query += " WHERE " + queryConditions.join(" AND ");
       countQuery += " WHERE " + queryConditions.join(" AND ");
