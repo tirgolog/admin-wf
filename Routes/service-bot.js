@@ -615,6 +615,21 @@ async function checkForWaitingServiceRequest(userBotId) {
         `, [userChat[0]?.user_id]);
 
         if (service.length) {
+            
+            // if(servce[0]?.status  == 0) {
+            //     bot.sendMessage(userBotId, `You have "${service[0]?.name}" service in proccess! \nPlese wait admin's response`);
+            // } else if(servce[0]?.status  == 1) {
+            //     bot.sendMessage(userBotId, `You have "${service[0]?.name}" service that is priced! \nPlese share needed documents`); 
+            // }
+
+            // const balance = await getUserBalance(connection, userChat[0]?.user_id, userChat[0]?.groupId)
+            // bot.sendMessage(userBotId, `You have "${service[0]?.name}" service ! \n 
+            // Subscription's price is ${subscription[0]?.value} \n
+            // Your balance is ${balance} \n
+            // You have to pay ${Number(subscription[0]?.value) - Number(balance)} in order to buy subscription\n
+            // Can you confirm to complete ?`, { reply_markup: keyboard });
+
+            
             return true;
         } else {
             return false;
