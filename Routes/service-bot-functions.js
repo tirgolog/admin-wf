@@ -115,36 +115,7 @@ async function createSubscriptionRequst(bot, connection, userBotId, subscription
 
         const balance = await getUserBalance(connection, userChat[0]?.user_id, userChat[0]?.groupId)
 
-        const [subscriptionRequest] = await connection.query(`
-        SELECT * FROM bot_user_subscription_request WHERE user_chat_id = ? AND status = 0
-        `, [userBotId]);
-        if (subscriptionRequest.length) {
-            const [subscription] = await connection.query(`
-            SELECT * FROM subscription WHERE id = ?
-            `, [subscriptionRequest[0].subscription_id]);
-            const keyboard = new InlineKeyboard();
-            keyboard.text('Confirm', `#response_subscription_confirm_${subscriptionRequest[0].id}`);
-            keyboard.text('Cancel', `#response_subscription_cancel_${subscriptionRequest[0].id}`);
-            bot.sendMessage(userBotId, `
-                You have requested subscription "${subscription[0]?.name}" which is status is "Waiting", please complete or cancel this request first in order to request to another one
-            `);
-
-            if (subscription[0]?.value >= balance) {
-                bot.sendMessage(userBotId, `You have "${subscription[0]?.name}" subscription ! \n 
-                Subscription's price is ${subscription[0]?.value} \n
-                Your balance is ${balance} \n
-                You have to pay ${Number(subscription[0]?.value) - Number(balance)} in order to buy subscription\n
-                Can you confirm to complete ?`, { reply_markup: keyboard });
-            } else {
-                bot.sendMessage(userBotId, `You have "${subscription[0]?.name}" subscription ! 
-                \nSubscription's price is ${subscription[0]?.value}
-                \nYour balance is ${balance}
-                \nAfter buying subscription you will have ${Number(balance) - Number(subscription[0]?.value)}
-                \nCan you confirm to complete ?`, { reply_markup: keyboard });
-            }
-            return;
-        }
-
+       
         const [subscription] = await connection.query(`
         SELECT * FROM subscription WHERE id = ?
         `, [subscriptionId]);
@@ -155,21 +126,34 @@ async function createSubscriptionRequst(bot, connection, userBotId, subscription
         `, [userBotId, subscriptionId]);
 
         if (insertResult.affectedRows) {
-            const keyboard = new InlineKeyboard();
-            keyboard.text('Confirm', `#response_subscription_confirm_${insertResult.insertId}`);
-            keyboard.text('Cancel', `#response_subscription_cancel_${insertResult.insertId}`);
+            const keyboard = {
+                inline_keyboard: [
+                    [{ text: 'Confirm', callback_data: `#response_subscription_confirm_${insertResult.insertId}` }],
+                    [{ text: 'Cancel', callback_data: `#response_subscription_cancel_${insertResult.insertId}` }] 
+                ]
+            };
             if (subscription[0]?.value >= balance) {
                 bot.sendMessage(userBotId, `You chose "${subscription[0]?.name}" subscription ! \n 
                 Subscription's price is ${subscription[0]?.value} \n
                 Your balance is ${balance} \n
                 You have to pay ${Number(subscription[0]?.value) - Number(balance)} in order to buy subscription\n
-                Can you confirm to continue ?`, { reply_markup: keyboard });
+                Can you confirm to continue ?`, { reply_markup: JSON.stringify({
+                    inline_keyboard: keyboard.inline_keyboard.map(row => row.map(button => ({
+                        ...button,
+                        text: button.text 
+                    })))
+                })});
             } else {
                 bot.sendMessage(userBotId, `You chose "${subscription[0]?.name}" subscription ! 
                 \nSubscription's price is ${subscription[0]?.value}
                 \nYour balance is ${balance}
                 \nAfter buying subscription you will have ${Number(balance) - Number(subscription[0]?.value)}
-                \nCan you confirm to continue ?`, { reply_markup: keyboard });
+                \nCan you confirm to continue ?`, { reply_markup: JSON.stringify({
+                    inline_keyboard: keyboard.inline_keyboard.map(row => row.map(button => ({
+                        ...button,
+                        text: button.text 
+                    })))
+                })});
             }
         } else {
             console.log('Create bot subs trans failed: ', insertResult);
@@ -179,6 +163,183 @@ async function createSubscriptionRequst(bot, connection, userBotId, subscription
     } catch (err) {
         console.log('Error while requesting subscription', err)
         bot.sendMessage(userBotId, `Submission failed, please retry later !`)
+        return false;
+    } finally {
+        if (connection) {
+            connection.release();
+        }
+    }
+}
+
+async function checkUserSubscriptionRequests(bot, connection, userBotId) {
+    try {
+        const [userChat] = await connection.query(`
+        SELECT sbu.*, ul.driver_group_id groupId FROM services_bot_users sbu
+        LEFT JOIN users_list ul on ul.id = sbu.user_id
+        WHERE chat_id = ?
+        `, [userBotId]);
+
+        const [subscriptionRequest] = await connection.query(`
+        SELECT * FROM bot_user_subscription_request WHERE user_chat_id = ? AND status = 0
+        `, [userBotId]);
+        if (subscriptionRequest.length) {
+
+            const [subscription] = await connection.query(`
+            SELECT * FROM subscription WHERE id = ?
+            `, [subscriptionRequest[0].subscription_id]);
+
+            // const keyboard = new InlineKeyboard();
+            // keyboard.text('Confirm', `#response_subscription_confirm_${subscriptionRequest[0].id}`);
+            // keyboard.text('Cancel', `#response_subscription_cancel_${subscriptionRequest[0].id}`);
+
+            const keyboard = {
+                inline_keyboard: [
+                    [{ text: 'Confirm', callback_data: `#response_subscription_confirm_${subscriptionRequest[0]?.id}` }],
+                    [{ text: 'Cancel', callback_data: `#response_subscription_cancel_${subscriptionRequest[0]?.id}` }] 
+                ]
+            };
+            bot.sendMessage(userBotId, `
+                You have requested subscription "${subscription[0]?.name}" which is status is "Waiting", please complete or cancel this request first in order to request to another one
+            `);
+            const balance = await getUserBalance(connection, userChat[0]?.user_id, userChat[0]?.groupId)
+            if (subscription[0]?.value > balance) {
+                bot.sendMessage(userBotId, `You have "${subscription[0]?.name}" subscription ! \n 
+                Subscription's price is ${subscription[0]?.value} \n
+                Your balance is ${balance} \n
+                You have to pay ${Number(subscription[0]?.value) - Number(balance)} in order to buy subscription\n
+                Can you confirm to complete ?`, { reply_markup: JSON.stringify({
+                    inline_keyboard: keyboard.inline_keyboard.map(row => row.map(button => ({
+                        ...button,
+                        text: button.text 
+                    })))
+                })});
+            } else {
+                bot.sendMessage(userBotId, `You have "${subscription[0]?.name}" subscription ! 
+                \nSubscription's price is ${subscription[0]?.value}
+                \nYour balance is ${balance}
+                \nAfter buying subscription you will have ${Number(balance) - Number(subscription[0]?.value)}
+                \nCan you confirm to complete ?`, { reply_markup: JSON.stringify({
+                    inline_keyboard: keyboard.inline_keyboard.map(row => row.map(button => ({
+                        ...button,
+                        text: button.text 
+                    })))
+                })});
+            }
+            return false;
+        } else {
+            return true;
+        }
+    } catch (err) {
+        console.log('Error while requesting subscription', err)
+        bot.sendMessage(userBotId, `Operation failed, please retry later !`)
+        return false;
+    } finally {
+        if (connection) {
+            connection.release();
+        }
+    }
+}
+
+async function onSubscriptionResponseClick(bot, connection, userBotId, isConfirmed, requestId) {
+    try {
+        // start sql transaction
+        await connection.beginTransaction();
+
+        const [userChat] = await connection.query(`
+        SELECT sbu.*, ul.driver_group_id groupId, ul.phone FROM services_bot_users sbu
+        LEFT JOIN users_list ul on ul.id = sbu.user_id
+        WHERE chat_id = ?
+        `, [userBotId]);
+
+        const [subscriptionRequest] = await connection.query(`
+            SELECT busr.status, busr.id, s.id as subscriptionId, s.name as subscriptionName, s.value as subscriptionPrice, s.duration FROM bot_user_subscription_request busr
+            LEFT JOIN subscription s on s.id = busr.subscription_id
+            WHERE busr.user_chat_id = ? AND busr.id = ?
+            `, [userBotId, requestId]);
+            if(subscriptionRequest[0].status == 1) {
+                bot.sendMessage(userBotId, `Request alrerady completed, ${isConfirmed ? `you can't confirm it` : `you can't cancel it`}`);
+                return
+            } else if (subscriptionRequest[0].status == 2) {
+                bot.sendMessage(userBotId, `Request alrerady canceleted, ${isConfirmed ? `you can't confirm it` : `you can't cancel it`}`);
+                return
+            }
+            console.log(isConfirmed)
+            if(isConfirmed) {
+                balance = await getUserBalance(connection, userChat[0]?.user_id, userChat[0]?.groupId);
+                if(balance < subscriptionRequest[0].subscriptionPrice) {
+                    const base64 = Buffer.from("m=636ca5172cfb25761a99e6af;ac.UserID=" + userChat[0]?.user_id + ";a=" + Number(subscriptionRequest[0].subscriptionPrice) - Number(balance) + "00").toString('base64');
+                    const paymePaymentUrl = 'https://checkout.paycom.uz/' + base64;
+                    const clickUrl = `https://my.click.uz/services/pay?service_id=24721&merchant_id=17235&amount=${Number(subscriptionRequest[0].subscriptionPrice) - Number(balance)}&transaction_param=${userChat[0]?.user_id}`
+                    const keyboard = {
+                        inline_keyboard: [
+                            [{ text: 'Pay with Click', url: clickUrl }],
+                            [{ text: 'Pay with Payme', url: paymePaymentUrl }]
+                        ]
+                    };
+                    bot.sendMessage(userBotId, `You don't have enough amount in your blance 
+                    \nYour balance is ${balance} 
+                    \nSubscription price is ${subscriptionRequest[0].subscriptionPrice} 
+                    \nPlease toup your balance for ${Number(subscriptionRequest[0].subscriptionPrice) - Number(balance)} 
+                    \n Link for payment: asdasdasd`, { reply_markup: JSON.stringify({
+                        inline_keyboard: keyboard.inline_keyboard.map(row => row.map(button => ({
+                            ...button,
+                            text: button.text 
+                        })))
+                    })});
+                    return;
+                }
+                let nextMonth = new Date(
+                    new Date().setMonth(
+                      new Date().getMonth() + subscriptionRequest[0].duration
+                    )
+                  );
+                  const [userUpdate] = await connection.query(
+                    "UPDATE users_list SET subscription_id = ?, from_subscription = ? , to_subscription=?  WHERE id = ?",
+                    [subscriptionRequest[0]?.id, new Date(), nextMonth, userChat[0]?.user_id]
+                  );
+                  if(userUpdate.affectedRows) {
+                    if(userChat[0]?.groupId) {
+                        const [subscription_transaction] = await connection.query(
+                          "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, group_id = ?, is_group = ?",
+                          [userChat[0]?.user_id, subscriptionRequest[0]?.subscriptionId, userChat[0]?.phone, subscriptionRequest[0].subscriptionPrice, userChat[0]?.groupId, true]
+                        );
+                        if(!subscription_transaction.affectedRows) {
+                            throw new Error();
+                        }
+                      } else {
+                        const [subscription_transaction] = await connection.query(
+                          "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?",
+                          [userChat[0]?.user_id, subscriptionRequest[0]?.subscriptionId, userChat[0]?.phone, subscriptionRequest[0].subscriptionPrice]
+                        );
+                        if(!subscription_transaction.affectedRows) {
+                            throw new Error();
+                        }
+                      }
+                  } else {
+                    console.log(userUpdate)
+                    throw new Error();
+                  }
+            }
+
+            const [update] = await connection.query(`
+            UPDATE bot_user_subscription_request SET status = ${isConfirmed ? 1 : 2} WHERE user_chat_id = ? AND id = ?
+            `, [userBotId, requestId]);
+
+            if (update.affectedRows) {
+                // Commit the transaction
+                await connection.commit();
+                bot.sendMessage(userBotId, `Successfully ${isConfirmed ? 'confirmed' : 'canceled'}!`);
+                return
+            } else {
+                throw new Error();
+            }
+
+    } catch (err) {
+        if (connection) {
+            await connection.rollback();
+          }
+        console.log('Error while requesting subscription', err)
+        bot.sendMessage(userBotId, `Operation failed, please retry later !`)
         return false;
     } finally {
         if (connection) {
@@ -400,5 +561,7 @@ module.exports = {
     checkUserServiceRequests, 
     createServiceRequest, 
     cancelServiceRequest, 
-    createSubscriptionRequst
+    createSubscriptionRequst,
+    checkUserSubscriptionRequests,
+    onSubscriptionResponseClick
  };
