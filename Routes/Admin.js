@@ -4467,6 +4467,15 @@ admin.post("/services-transaction/status/by", async (req, res) => {
       [status, id]
     );
     if (updateResult.affectedRows > 0) {
+
+      const [user] = await connect.query(
+        `SELECT sbu.chat_id, st.service_name FROM services_transaction st
+        LEFT JOIN services_bot_users sbu on sbu.user_id = st.userid`
+      );
+      if(status == 2 && user.length) {
+        await sendServiceBotMessageToUser(user[0]?.chat_id, `Service "${user[0]?.service_name}" is issued to you`)
+      }
+
       appData.status = true;
       res.status(200).json(appData);
     } else {
