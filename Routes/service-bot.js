@@ -6,7 +6,7 @@ const Minio = require("minio");
 const axios = require("axios");
 const fs = require('fs');
 const path = require('path');
-const { sendServicesListToBotUser, sendSubscriptionsListToBotUser, checkUserServiceRequests, cancelServiceRequest, createServiceRequest, createSubscriptionRequst } = require("./service-bot-functions");
+const { sendServicesListToBotUser, sendSubscriptionsListToBotUser, checkUserServiceRequests, cancelServiceRequest, createServiceRequest, createSubscriptionRequst, checkUserSubscriptionRequests, onSubscriptionResponseClick } = require("./service-bot-functions");
 
 const minioClient = new Minio.Client({
     endPoint: "13.232.83.179",
@@ -259,131 +259,14 @@ bot.on('callback_query', async (msg) => {
         await cancelServiceRequest(bot, connection, chatId, callbackData.split('_')[3])
     } else if (callbackData.startsWith('#subscriptions')) {
     } else if (callbackData.startsWith('#subscription_request')) {
+       const canRequest = await checkUserSubscriptionRequests(bot, connection, msg.from.id);
+       if(canRequest) {
         await createSubscriptionRequst(bot, connection, chatId, callbackData.split('_')[2])
+       }
     } else if (callbackData.startsWith('#response_subscription')) {
-        await onSubscriptionResponseClick(msg);
+        await onSubscriptionResponseClick(bot, connection, msg.from.id, msg.data.split('_')[2] == 'confirm', msg.data.split('_')[3]);
     }
 });
-
-
-
-
-
-
-
-async function onSubscriptionResponseClick(msg) {
-    let connection, balance;
-    const userBotId = msg.from?.id
-    try {
-        connection = await database.connection.getConnection();
-        // start sql transaction
-        await connection.beginTransaction();
-        const isConfirmed = msg.data.split('_')[2] == 'confirm';
-        const requestId = Number(msg.data.split('_')[3]);
-
-        const [userChat] = await connection.query(`
-        SELECT sbu.*, ul.driver_group_id groupId, ul.phone FROM services_bot_users sbu
-        LEFT JOIN users_list ul on ul.id = sbu.user_id
-        WHERE chat_id = ?
-        `, [userBotId]);
-
-        const [subscriptionRequest] = await connection.query(`
-            SELECT busr.status, busr.id, s.id as subscriptionId, s.name as subscriptionName, s.value as subscriptionPrice, s.duration FROM bot_user_subscription_request busr
-            LEFT JOIN subscription s on s.id = busr.subscription_id
-            WHERE busr.user_chat_id = ? AND busr.id = ?
-            `, [userBotId, requestId]);
-            if(subscriptionRequest[0].status == 1) {
-                bot.sendMessage(userBotId, `Request alrerady completed, ${isConfirmed ? `you can't confirm it` : `you can't cancel it`}`);
-                return
-            } else if (subscriptionRequest[0].status == 2) {
-                bot.sendMessage(userBotId, `Request alrerady canceleted, ${isConfirmed ? `you can't confirm it` : `you can't cancel it`}`);
-                return
-            }
-
-            if(isConfirmed) {
-                balance = await getUserBalance(connection, userChat[0]?.user_id, userChat[0]?.groupId);
-                if(balance < subscriptionRequest[0].subscriptionPrice) {
-                    const base64 = Buffer.from("m=636ca5172cfb25761a99e6af;ac.UserID=" + userChat[0]?.user_id + ";a=" + Number(subscriptionRequest[0].subscriptionPrice) - Number(balance) + "00").toString('base64');
-                    const paymePaymentUrl = 'https://checkout.paycom.uz/' + base64;
-                    const clickUrl = `https://my.click.uz/services/pay?service_id=24721&merchant_id=17235&amount=${Number(subscriptionRequest[0].subscriptionPrice) - Number(balance)}&transaction_param=${userChat[0]?.user_id}`
-                    const keyboard = {
-                        inline_keyboard: [
-                            [{ text: 'Pay with Click', url: clickUrl }],
-                            [{ text: 'Pay with Payme', url: paymePaymentUrl }]
-                        ]
-                    };
-                    bot.sendMessage(userBotId, `You don't have enough amount in your blance 
-                    \nYour balance is ${balance} 
-                    \nSubscription price is ${subscriptionRequest[0].subscriptionPrice} 
-                    \nPlease toup your balance for ${Number(subscriptionRequest[0].subscriptionPrice) - Number(balance)} 
-                    \n Link for payment: asdasdasd`, { reply_markup: JSON.stringify({
-                        inline_keyboard: keyboard.inline_keyboard.map(row => row.map(button => ({
-                            ...button,
-                            text: button.text 
-                        })))
-                    })});
-                    return;
-                }
-                let nextMonth = new Date(
-                    new Date().setMonth(
-                      new Date().getMonth() + subscriptionRequest[0].duration
-                    )
-                  );
-                  const [userUpdate] = await connection.query(
-                    "UPDATE users_list SET subscription_id = ?, from_subscription = ? , to_subscription=?  WHERE id = ?",
-                    [subscriptionRequest[0]?.id, new Date(), nextMonth, userChat[0]?.user_id]
-                  );
-                  if(userUpdate.affectedRows) {
-                    if(userChat[0]?.groupId) {
-                        const [subscription_transaction] = await connection.query(
-                          "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, group_id = ?, is_group = ?",
-                          [userChat[0]?.user_id, subscriptionRequest[0]?.subscriptionId, userChat[0]?.phone, subscriptionRequest[0].subscriptionPrice, userChat[0]?.groupId, true]
-                        );
-                        if(!subscription_transaction.affectedRows) {
-                            throw new Error();
-                        }
-                      } else {
-                        const [subscription_transaction] = await connection.query(
-                          "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?",
-                          [userChat[0]?.user_id, subscriptionRequest[0]?.subscriptionId, userChat[0]?.phone, subscriptionRequest[0].subscriptionPrice]
-                        );
-                        if(!subscription_transaction.affectedRows) {
-                            throw new Error();
-                        }
-                      }
-                  } else {
-                    console.log(userUpdate)
-                    throw new Error();
-                  }
-            }
-
-            const [update] = await connection.query(`
-            UPDATE bot_user_subscription_request SET status = ${isConfirmed ? 1 : 2} WHERE user_chat_id = ? AND id = ?
-            `, [userBotId, requestId]);
-
-            if (update.affectedRows) {
-                // Commit the transaction
-                await connection.commit();
-                bot.sendMessage(userBotId, `Successfully ${isConfirmed ? 'confirmed' : 'canceled'}!`);
-                return
-            } else {
-                throw new Error();
-            }
-
-    } catch (err) {
-        if (connection) {
-            await connection.rollback();
-          }
-        console.log('Error while requesting subscription', err)
-        bot.sendMessage(userBotId, `Operation failed, please retry later !`)
-        return false;
-    } finally {
-        if (connection) {
-            connection.release();
-        }
-    }
-}
-
 
 
 async function saveMessageToDatabase(data) {
@@ -545,42 +428,4 @@ async function editMessageInBotChat(chatId, messageId, newText) {
     }
 }
 
-async function getUserBalance(connection, userId, groupId) {
-    try {
-        if (groupId) {
-            const [result] = await connection.query(`
-            SELECT 
-                (COALESCE(
-                  (SELECT SUM(amount) FROM driver_group_transaction WHERE driver_group_id = ${groupId} AND type = 'Пополнение'), 0) -
-                COALESCE(
-                  (SELECT SUM(amount) FROM driver_group_transaction WHERE driver_group_id = ${groupId} AND type = 'Вывод'), 0)) -
-        
-                (COALESCE(
-                  (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND group_id = ${groupId}), 0) +
-                COALESCE(
-                  (SELECT SUM(amount) FROM services_transaction WHERE group_id = ${groupId} AND status In(2, 3)), 0)) as balance;
-            `);
-            return result[0]?.balance;
-        } else {
-            const [result] = await connection.query(`
-            SELECT 
-                COALESCE(
-                  (SELECT SUM(amount) from secure_transaction where dirverid = ${userId} and status = 2), 0) +
-  
-                COALESCE(
-                  (SELECT SUM(amount) FROM payment WHERE userid = ${userId} and status = 1 and date_cancel_time IS NULL), 0) -
-  
-                COALESCE(
-                  (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND userid = ${userId} AND agent_id = 0 AND (admin_id <> 0 OR admin_id IS NULL)), 0) -
-  
-                COALESCE(
-                  (SELECT SUM(amount) from driver_withdrawal where driver_id = ${userId}) , 
-                  0) as balance;
-            `);
-            return result[0]?.balance;
-        }
-    } catch (error) {
-        console.log('Error while getting use balance', error)
-    }
-}
 module.exports = { sendServiceBotMessageToUser, replyServiceBotMessageToUser, deleteMessageFromBotChat, editMessageInBotChat, sendBotMessageToUser };
