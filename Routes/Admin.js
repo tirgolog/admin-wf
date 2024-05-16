@@ -92,7 +92,6 @@ admin.post("/refreshToken", async (req, res) => {
     return res
       .status(401)
       .json({ status: false, error: "Требуется токен обновления." });
-    console.log(refreshTokenFromRequest);
      connect = await database.connection.getConnection();
     const [rows] = await connect.query(
       "SELECT * FROM users_list WHERE refresh_token = ?",
@@ -116,6 +115,44 @@ admin.post("/refreshToken", async (req, res) => {
     appData.token = token;
     appData.refreshToken = refreshToken;
     res.status(200).json(appData);
+});
+
+admin.post("/refreshToken", async (req, res) => {
+  let connect,
+  appData = { status: false },
+  userInfo = jwt.decode(req.headers.authorization.split(" ")[1]),
+  refreshTokenFromRequest = req.body.refreshToken;
+  if (!refreshTokenFromRequest)
+    return res
+      .status(401)
+      .json({ status: false, error: "Требуется токен обновления." });
+     connect = await database.connection.getConnection();
+    const [users_list] = await connect.query(
+      "SELECT refresh_token FROM users_list WHERE id = ?",
+      [userInfo.id]
+    );
+    if (users_list[0].refresh_token !== refreshTokenFromRequest) {
+      return res
+        .status(403)
+        .json({ status: false, error: "Неверный токен обновления" });
+    }else{
+      const token = jwt.sign({id: userInfo.id}, process.env.SECRET_KEY, { expiresIn: '1440m' });
+      const refreshToken = jwt.sign({id: userInfo.id}, process.env.SECRET_KEY);
+      const [setToken] = await connect.query(
+        "UPDATE users_list SET date_last_login = ?, refresh_token = ? WHERE id = ?",
+        [new Date(), refreshToken, userInfo.id]
+      );
+      if (setToken.affectedRows > 0) {
+        appData.status = true;
+        appData.token = token;
+        appData.refreshToken = refreshToken;
+        res.status(200).json(appData);
+      } else {
+        appData.error = "Данные для входа введены неверно";
+        appData.status = false;
+        res.status(403).json(appData);
+      }
+    }
 });
 
 admin.use((req, res, next) => {
@@ -4217,7 +4254,7 @@ admin.get("/services-transaction", async (req, res) => {
       LEFT JOIN users_list adl ON adl.id = st.created_by_id AND adl.user_type = 3
       LEFT JOIN services s ON s.id = st.service_id`;
 
-      let countQuery = `SELECT COUNT(id) as count FROM services_transaction`;
+      let countQuery = `SELECT COUNT(id) as count FROM services_transaction st`;
     if (queryConditions.length > 0) {
       query += " WHERE " + queryConditions.join(" AND ");
       countQuery += " WHERE " + queryConditions.join(" AND ");
@@ -6101,18 +6138,17 @@ admin.post("/report/user-activity", async (req, res) => {
     const [rows] = await connect.query(
       `SELECT 
           ul.user_type,
-          COUNT(ua.userid) as total_activity_count
+          COUNT(DISTINCT ua.userid) as total_activity_count
       FROM 
           users_activity ua
       JOIN 
           users_list ul ON ua.userid = ul.id
       WHERE 
-         ua.date BETWEEN ? AND DATE_ADD(?, INTERVAL 1 DAY)
+          ua.date BETWEEN ? AND DATE_ADD(?, INTERVAL 1 DAY)
       GROUP BY 
           ul.user_type`,
       [from_date, to_date]
     );
-  console.log(rows, 'average')
     if (rows.length>0) {
       appData.status = true;
       appData.data = rows;
@@ -6141,7 +6177,7 @@ admin.post("/report/user-activity-average", async (req, res) => {
     const [activityRows] = await connect.query(
       `SELECT 
           ul.user_type,
-          COUNT(ua.userid) as total_activity_count
+          COUNT(DISTINCT ua.userid) as total_activity_count
       FROM 
           users_activity ua
       JOIN 
@@ -6168,6 +6204,61 @@ admin.post("/report/user-activity-average", async (req, res) => {
           userCountRows.find((user) => user.user_type === activity.user_type)
             .total_user_count) *
         100,
+    }));
+    appData.status = true;
+    appData.data = data;
+    res.status(200).json(appData);
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.post("/report/active-user-activity-average", async (req, res) => {
+  let connect,
+    appData = { status: false };
+  const { from_date, to_date } = req.body;
+  try {
+    connect = await database.connection.getConnection();
+    const [activityRows] = await connect.query(
+      `SELECT 
+          ul.user_type,
+          COUNT(DISTINCT ua.userid) as total_activity_count
+      FROM 
+          users_activity ua
+      JOIN 
+          users_list ul ON ua.userid = ul.id
+      WHERE 
+          ua.date BETWEEN ? AND DATE_ADD(?, INTERVAL 1 DAY)
+      GROUP BY 
+          ul.user_type`,
+      [from_date, to_date]
+    );
+    const [userCountRows] = await connect.query(
+      `SELECT 
+      ul.user_type,
+      COUNT(ua.userid) as total_activity_count
+  FROM 
+      users_activity ua
+  JOIN 
+      users_list ul ON ua.userid = ul.id
+  WHERE 
+      ua.date BETWEEN ? AND DATE_ADD(?, INTERVAL 1 DAY)
+  GROUP BY 
+      ul.user_type`,
+  [from_date, to_date]
+    );
+    let data = userCountRows.map((activity) => ({
+      user_type: activity.user_type,
+      average: parseFloat((
+        activity.total_activity_count /
+        activityRows.find((user) => user.user_type === activity.user_type)
+          .total_activity_count
+      ).toFixed(2))
     }));
     appData.status = true;
     appData.data = data;
