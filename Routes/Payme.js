@@ -34,7 +34,6 @@ payme.post('/payMeMerchantApi', async function(req, res) {
         appData = {};
     try {
         connect = await database.connection.getConnection();
-        console.log(parseIp(req))
         if (addresses.findIndex(e => e.ip === parseIp(req).replace('::ffff:','')) >= 0){
             if (req.header('authorization') === 'Basic '+btoa(login+':'+password)){
                 if (method === 'CheckTransaction'){
@@ -140,7 +139,6 @@ payme.post('/payMeMerchantApi', async function(req, res) {
                                         "SELECT * FROM subscription where duration = ?",
                                         [duration]
                                       );
-                                      console.log(subscription);
                                       const [users] = await connect.query(
                                         "SELECT * FROM users_list where id = ?",
                                         [checkpay[0].userid]
@@ -155,7 +153,6 @@ payme.post('/payMeMerchantApi', async function(req, res) {
                                           "UPDATE users_list SET subscription_id = ?, from_subscription = ? , to_subscription=?  WHERE id = ?",
                                           [subscription[0].id, new Date(), nextMonth, checkpay[0].userid]
                                         );
-                                        console.log(userUpdate);
                                         if (userUpdate.affectedRows == 1) {
                                             const [subscription_transaction] = await connect.query(
                                              "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?",
@@ -168,7 +165,6 @@ payme.post('/payMeMerchantApi', async function(req, res) {
                                               if(userChat.length) {
                                                   await connect.query(`DELETE FROM bot_user_subscription_request WHERE user_chat_id = ${userChat[0]?.chat_id} AND status = 0`)
                                               }
-                                          console.log(subscription_transaction);
                                           if (subscription_transaction.affectedRows) {
                                                   console.log('subscription_transaction', subscription_transaction);
                                           }
@@ -290,8 +286,6 @@ payme.post('/payMeMerchantAlpha', async function(req, res) {
         appData = {};
     try {
         connect = await database.connection.getConnection();
-        console.log(parseIp(req))
-        console.log(req.body)
         if (addresses.findIndex(e => e.ip === parseIp(req).replace('::ffff:','')) >= 0){
             console.log('keld')
             if (req.header('authorization') === 'Basic '+btoa(login+':'+allpha_password)){
@@ -328,7 +322,6 @@ payme.post('/payMeMerchantAlpha', async function(req, res) {
                             res.status(200).json(appData);
                         }else {
                             const [insertpay] = await connect.query('INSERT INTO alpha_payment SET pay_method = ?,userid = ?, date_timestamp = ?,payid = ?,amount = ?,status_pay_me = ?', ['payme_merchant',+params.account.UserID,params.time,params.id,params.amount.toString().slice(0, params.amount.toString().length - 2),1]);
-                            console.log(insertpay, 'insertpay')
                              if (insertpay.affectedRows > 0){
                                 appData.result = {
                                     "create_time" : params.time,

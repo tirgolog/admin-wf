@@ -1292,7 +1292,6 @@ admin.post("/createOrder", async (req, res) => {
     appData = { status: false, timestamp: new Date().getTime() },
     data = req.body.data;
   try {
-    console.log(data);
     connect = await database.connection.getConnection();
     const [routes] = await connect.query(
       "SELECT * FROM routes WHERE from_city_id = ? AND to_city_id = ? LIMIT 1",
@@ -1725,7 +1724,6 @@ admin.post("/saveRole", async (req, res) => {
     appData = { status: false };
   try {
     connect = await database.connection.getConnection();
-    console.log(data);
     if (id !== 0) {
       await connect.query("UPDATE role_user SET ? WHERE id = ?", [data, id]);
       appData.status = true;
@@ -3584,7 +3582,6 @@ admin.post("/addUserByAgent", async (req, res) => {
                 "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, type = 'subscription'",
                 [agent_id, paymentValue]
               );
-              console.log(insertResult, insertResult.affectedRows);
               if (insertResult.affectedRows) {
                 let nextthreeMonth = new Date(
                   new Date().setMonth(
@@ -5126,10 +5123,8 @@ admin.post("/remove-driver-subscription", async (req, res) => {
         const [agentTrans] = await connect.query(`SELECT id, agent_id from agent_transaction WHERE id = ${subTrans[0].agent_trans_id}`);
         if(agentTrans.length) {
           const [response] = await connect.query(`UPDATE agent_transaction set deleted = true, deleted_by = ${userInfo.id} WHERE id = ${subTrans[0].agent_trans_id}`);
-          console.log('response', response.affectedRows)
           if(response.affectedRows) {
             const [response] = await connect.query(`UPDATE subscription_transaction set deleted = true, deleted_by = ${userInfo.id} WHERE id = ${subTrans[0].id}`);
-            console.log('response2', response.affectedRows)
             if(!response.affectedRows) {
               throw new Error()
             }
@@ -5137,14 +5132,12 @@ admin.post("/remove-driver-subscription", async (req, res) => {
             const [sRes] = await connect.query(
               `UPDATE subscription_transaction set deleted = true, deleted_by = ${userInfo.id} WHERE id = ${subTrans[0].id}`
             );
-            console.log("sRes", sRes.affectedRows);
             if (!sRes.affectedRows) {
               throw new Error();
             }
             const [usRes] = await connect.query(
               `UPDATE users_list set to_subscription = null, from_subscription = null WHERE id = ${user_id}`
             );
-            console.log("usRes", usRes.affectedRows);
             if (!usRes.affectedRows) {
               throw new Error();
             }

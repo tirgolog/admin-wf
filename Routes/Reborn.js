@@ -216,7 +216,6 @@ reborn.post('/getUserInfo', async (req, res) => {
                 // console.log(newTruck)
                 return newTruck;
             }));
-            console.log(appData.data)
             const [orders] = await connect.query('SELECT * FROM orders_accepted oa LEFT JOIN orders o ON oa.order_id = o.id WHERE oa.user_id = ?', [rows[0].id]);
             appData.data.orders = orders;
             const [contacts] = await connect.query('SELECT * FROM users_contacts WHERE user_id = ?', [rows[0].id]);
