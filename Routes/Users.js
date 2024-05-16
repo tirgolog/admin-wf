@@ -146,10 +146,6 @@ users.post("/completeClickPay", async function (req, res) {
                   ]
                 );
                 if (subscription_transaction.length > 0) {
-                  console.log(
-                    "subscription_transaction",
-                    subscription_transaction
-                  );
                 }
               }
             }
@@ -348,7 +344,6 @@ async function refreshTokenSmsEskiz() {
         },
       };
       const rp_res = await rp(options);
-      console.log("refreshTokenSmsEskiz", rp_res);
       if (rp_res.data) {
         await connect.query("UPDATE config SET token_sms = ? WHERE id = 1", [
           rp_res.data.token,
@@ -367,7 +362,6 @@ async function refreshTokenSmsEskiz() {
 async function sendSmsGlobal(phone, code, country_code) {
   let connect;
   try {
-    console.log(phone, code, country_code);
     connect = await database.connection.getConnection();
     const [row] = await connect.query(
       "SELECT * FROM config WHERE id = 1 LIMIT 1"
@@ -392,7 +386,6 @@ async function sendSmsGlobal(phone, code, country_code) {
     };
     const rp_res_update = await rp(optionsUpdate);
     if (rp_res_update.data) {
-      console.log("refreshTokenSmsEskiz", rp_res_update);
       await connect.query("UPDATE config SET token_sms = ? WHERE id = 1", [
         rp_res_update.data.token,
       ]);
@@ -410,7 +403,6 @@ async function sendSmsGlobal(phone, code, country_code) {
         },
       };
       const rp_res = await rp(options);
-      console.log(rp_res);
       return rp_res.status;
     }
   } catch (err) {
@@ -422,9 +414,6 @@ async function sendSmsGlobal(phone, code, country_code) {
   }
 }
 async function sendSmsPlayMobile(phone, code, country_code) {
-  console.log(phone, "playmobile");
-  console.log(code, "playmobile");
-  console.log(country_code, "playmobile");
   let options = {
     method: "POST",
     uri: "http://91.204.239.44/broker-api/send",
@@ -636,7 +625,6 @@ async function getCityFromLatLng(lat, lng) {
   }
 }
 users.post("/findCity", async (req, res) => {
-  console.log(req.body);
   let query = {
     query: req.body.query,
     count: 10,
@@ -668,7 +656,6 @@ users.post("/findCity", async (req, res) => {
 
 // (999) 13-37-913
 users.post("/login", async (req, res) => {
-  console.log(req.body, "login");
   let connect,
     appData = { status: false },
     country_code = req.body.country_code,
@@ -677,7 +664,6 @@ users.post("/login", async (req, res) => {
   (code = Math.floor(10000 + Math.random() * 89999)),
     (phone = req.body.phone.replace(/[^0-9, ]/g, "").replace(/ /g, ""));
   try {
-    console.log("body", req.body);
     console.log("phone", phone);
     connect = await database.connection.getConnection();
     if (phone === "998935421324" || phone === "9988888888") {
@@ -717,7 +703,6 @@ users.post("/login", async (req, res) => {
           async function (res) {
             sendpulse.smsSend(
               function (data) {
-                console.log(data, "senpulse");
               },
               "TIRGO",
               ["+" + phone],
@@ -895,7 +880,6 @@ users.post("/sms-verification", async (req, res) => {
         async function (res) {
           sendpulse.smsSend(
             function (data) {
-              console.log(data, "senpulse");
             },
             "TIRGO",
             ["+" + phone],
@@ -1648,7 +1632,6 @@ users.get("/checkSessionClient", async function (req, res) {
       "SELECT * FROM users_list WHERE id = ? AND user_type = 2  AND deleted <> 1",
       [userInfo.id]
     );
-    console.log(rows)
     if (rows.length) {
       const [config] = await connect.query("SELECT * FROM config LIMIT 1");
       appData.user = rows[0];
@@ -2253,7 +2236,6 @@ users.post("/addTransport", async (req, res) => {
   }
 });
 users.post("/editTransport", async (req, res) => {
-  console.log(req.body);
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
     id = req.body.id,
@@ -2591,7 +2573,6 @@ users.put("/update-verification", async (req, res) => {
       appData.error = "All fields are required";
       res.status(400).json(appData);
     }
-    console.log(req.body);
     // connect = await database.connection.getConnection();
     // const [rows] = await connect.query(
     //   `UPDATE verification
@@ -2659,7 +2640,6 @@ users.patch("/verify-driver", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const { id } = req.body;
-    console.log(req.body);
     if (!id) {
       appData.error = "VerificationId is required";
       res.status(400).json(appData);
@@ -2694,7 +2674,6 @@ users.patch("/unverify-driver", async (req, res) => {
       "UPDATE verification SET send_verification = 0, verified = 0 WHERE id = ?",
       [id]
     );
-    console.log(rows);
     if (rows.affectedRows) {
       appData.status = true;
       res.status(200).json(appData);
@@ -2926,7 +2905,6 @@ users.post("/acceptOrderDriver", async (req, res) => {
     three_day = 0,
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   pricePlus = 0;
-  console.log(req.body);
   if (isMerchant) {
     const merchantCargos = await axios.get(
       "https://merchant.tirgo.io/api/v1/cargo/id?id=" + orderid
@@ -3310,7 +3288,6 @@ users.post("/cancelDriverClient", async (req, res) => {
   }
 });
 users.post("/delPhotoUser", async (req, res) => {
-  console.log(req.body, "delPhotoUser");
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
     file = req.body.filename,
@@ -3352,17 +3329,12 @@ users.post("/fonishOrderDriver", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     info = await getCityFromLatLng(lat, lng);
-    console.log(req.body.lat);
-    console.log(req.body.lng);
     location = info.city + ", " + info.country;
-    console.log(info);
-    console.log(location);
     const [orderInfo] = await connect.query(
       "SELECT r.* FROM routes r LEFT JOIN orders o ON o.route_id = r.id WHERE o.id = ? LIMIT 1",
       [orderid]
     );
     if (orderInfo.length || isMerchant) {
-      console.log(orderInfo[0].to_city);
       if (orderInfo[0].to_city === location) {
         const [rows] = await connect.query(
           "UPDATE orders SET status = 2,end_driver = 1 WHERE id = ?",
@@ -3932,7 +3904,6 @@ users.get("/getMyOrdersDriver", async (req, res) => {
       "SELECT o.*,ul.name as usernameorder,ul.phone as userphoneorder FROM orders o LEFT JOIN users_list ul ON o.user_id = ul.id WHERE o.status <> 3 ORDER BY o.id DESC",
       [transportstypes, transportstypes]
     );
-    console.log(rows[0], 'rows');
     if (rows.length) {
       appData.data = await Promise.all(
         [...merchantData, ...rows].map(async (item) => {
@@ -4187,13 +4158,11 @@ users.post("/createOrderClient", async (req, res) => {
 });
 
 users.post("/createOrderClientTypes", async (req, res) => {
-  console.log(req.body);
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
     data = req.body.data,
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   try {
-    console.log(data);
     connect = await database.connection.getConnection();
     const [routes] = await connect.query(
       "SELECT * FROM routes WHERE from_city_id = ? AND to_city_id = ? LIMIT 1",
@@ -5199,7 +5168,6 @@ users.post("/addDriverServices", async (req, res) => {
         );
         if (editUser.affectedRows > 0) {
           const insertValues = await Promise.all(services.map(async (service) => {
-            console.log(service, "service");
             try {
               const [result] = await connect.query(
                 "SELECT * FROM services WHERE id = ?",
