@@ -6,7 +6,7 @@ const Minio = require("minio");
 const axios = require("axios");
 const fs = require('fs');
 const path = require('path');
-const { sendServicesListToBotUser, sendSubscriptionsListToBotUser } = require("./service-bot-functions");
+const { sendServicesListToBotUser, sendSubscriptionsListToBotUser, checkUserServiceRequests, cancelServiceRequest, createServiceRequest, createSubscriptionRequst } = require("./service-bot-functions");
 
 const minioClient = new Minio.Client({
     endPoint: "13.232.83.179",
@@ -240,30 +240,26 @@ async function onTextReceived(msg) {
 // handle call back functions
 bot.on('callback_query', async (msg) => {
     const connection = await database.connection.getConnection();
-    // if(!msg.data.startsWith('#subscription') && !msg.data.startsWith('#response_subscription')) {
-    //     const middlewareRes = await middleware(msg);
-    //     if(!middlewareRes) return;
-    // }
     const chatId = msg.from?.id;
     const callbackData = msg.data;
 
     if (callbackData === '#services') {
-        // Handle 'Типы услуг' button click here
         await sendServicesListToBotUser(connection, msg.from?.id);
-    } else if (callbackData.startsWith('#service_')) {
-        const isUnfinishedRequestExist = await checkForWaitingServiceRequest(chatId);
-        console.log(callbackData, isUnfinishedRequestExist)
-        if (isUnfinishedRequestExist == false) {
-            const success = await onServiceRequestClick(chatId, callbackData.split('_')[1])
+    } else if (callbackData.startsWith('#service_request')) {
+        const canRequest = await checkUserServiceRequests(bot, connection, chatId);
+        if (canRequest) {
+            const success = await createServiceRequest(connection, chatId, callbackData.split('_')[2])
             if (success) {
                 await bot.sendMessage(chatId, `In proccess.`);
             } else {
                 await bot.sendMessage(chatId, `Fail.`);
             }
         }
+    } else if (callbackData.startsWith('#cancel_service_request')) {
+        await cancelServiceRequest(bot, connection, chatId, callbackData.split('_')[3])
     } else if (callbackData.startsWith('#subscriptions')) {
-    } else if (callbackData.startsWith('#subscription_')) {
-        await onSubscriptionRequestClick(msg)
+    } else if (callbackData.startsWith('#subscription_request')) {
+        await createSubscriptionRequst(bot, connection, chatId, callbackData.split('_')[2])
     } else if (callbackData.startsWith('#response_subscription')) {
         await onSubscriptionResponseClick(msg);
     }
@@ -271,138 +267,9 @@ bot.on('callback_query', async (msg) => {
 
 
 
-async function onServiceRequestClick(userBotId, serviceId) {
-    let connection;
-    try {
-        connection = await database.connection.getConnection();
-        const [userChat] = await connection.query(`
-        SELECT sbu.*, ul.driver_group_id groupId FROM services_bot_users sbu
-        LEFT JOIN users_list ul on ul.id = sbu.user_id
-        WHERE chat_id = ?
-        `, [userBotId]);
 
-        const [service] = await connection.query(`
-        SELECT * FROM services WHERE id = ?
-        `, [serviceId]);
 
-        const [insertResult] = await connection.query(`INSERT INTO services_transaction SET userid = ?, service_id = ?, service_name = ?, price_uzs = ?, price_kzs = ?, rate = ?, status = ?, without_subscription = ?`,
-            [
-                userChat[0]?.user_id,
-                service[0]?.id,
-                service[0].name,
-                service[0]?.price_uzs,
-                service[0]?.price_kzs,
-                service[0]?.rate,
-                0,
-                service[0]?.without_subscription ? service[0]?.without_subscription : 0
-            ]
-        );
-        if (insertResult.affectedRows) {
-            return true;
-        } else {
-            return false;
-        }
-    } catch (err) {
-        console.log('Error while requesting service', err)
-        return false;
-    } finally {
-        if (connection) {
-            connection.release();
-        }
-    }
-}
 
-async function onSubscriptionRequestClick(msg) {
-    let connection;
-    try {
-        connection = await database.connection.getConnection();
-        const subscriptionId = msg.data.split('_')[1];
-        const userBotId = msg.from?.id
-
-        const [userChat] = await connection.query(`
-        SELECT sbu.*, ul.driver_group_id groupId, ul.to_subscription FROM services_bot_users sbu
-        LEFT JOIN users_list ul on ul.id = sbu.user_id
-        WHERE chat_id = ?
-        `, [userBotId]);
-
-        if(userChat[0].to_subscription > new Date()) {
-            bot.sendMessage(userBotId, `You have active subscription`);
-            return
-        }
-
-        const balance = await getUserBalance(connection, userChat[0]?.user_id, userChat[0]?.groupId)
-
-        const [subscriptionRequest] = await connection.query(`
-        SELECT * FROM bot_user_subscription_request WHERE user_chat_id = ? AND status = 0
-        `, [userBotId]);
-        if (subscriptionRequest.length) {
-            const [subscription] = await connection.query(`
-            SELECT * FROM subscription WHERE id = ?
-            `, [subscriptionRequest[0].subscription_id]);
-            const keyboard = new InlineKeyboard();
-            keyboard.text('Confirm', `#response_subscription_confirm_${subscriptionRequest[0].id}`);
-            keyboard.text('Cancel', `#response_subscription_cancel_${subscriptionRequest[0].id}`);
-            bot.sendMessage(userBotId, `
-                You have requested subscription "${subscription[0]?.name}" which is status is "Waiting", please complete or cancel this request first in order to request to another one
-            `);
-
-            if (subscription[0]?.value >= balance) {
-                bot.sendMessage(userBotId, `You have "${subscription[0]?.name}" subscription ! \n 
-                Subscription's price is ${subscription[0]?.value} \n
-                Your balance is ${balance} \n
-                You have to pay ${Number(subscription[0]?.value) - Number(balance)} in order to buy subscription\n
-                Can you confirm to complete ?`, { reply_markup: keyboard });
-            } else {
-                bot.sendMessage(userBotId, `You have "${subscription[0]?.name}" subscription ! 
-                \nSubscription's price is ${subscription[0]?.value}
-                \nYour balance is ${balance}
-                \nAfter buying subscription you will have ${Number(balance) - Number(subscription[0]?.value)}
-                \nCan you confirm to complete ?`, { reply_markup: keyboard });
-            }
-            return;
-        }
-
-        const [subscription] = await connection.query(`
-        SELECT * FROM subscription WHERE id = ?
-        `, [subscriptionId]);
-
-        const [insertResult] = await connection.query(`
-            INSERT INTO bot_user_subscription_request 
-            SET user_chat_id = ?, subscription_id = ?
-        `, [userBotId, subscriptionId]);
-
-        if (insertResult.affectedRows) {
-            const keyboard = new InlineKeyboard();
-            keyboard.text('Confirm', `#response_subscription_confirm_${insertResult.insertId}`);
-            keyboard.text('Cancel', `#response_subscription_cancel_${insertResult.insertId}`);
-            if (subscription[0]?.value >= balance) {
-                bot.sendMessage(userBotId, `You chose "${subscription[0]?.name}" subscription ! \n 
-                Subscription's price is ${subscription[0]?.value} \n
-                Your balance is ${balance} \n
-                You have to pay ${Number(subscription[0]?.value) - Number(balance)} in order to buy subscription\n
-                Can you confirm to continue ?`, { reply_markup: keyboard });
-            } else {
-                bot.sendMessage(userBotId, `You chose "${subscription[0]?.name}" subscription ! 
-                \nSubscription's price is ${subscription[0]?.value}
-                \nYour balance is ${balance}
-                \nAfter buying subscription you will have ${Number(balance) - Number(subscription[0]?.value)}
-                \nCan you confirm to continue ?`, { reply_markup: keyboard });
-            }
-        } else {
-            console.log('Create bot subs trans failed: ', insertResult);
-            bot.sendMessage(userBotId, `Submission failed, please retry later !`)
-        }
-
-    } catch (err) {
-        console.log('Error while requesting subscription', err)
-        bot.sendMessage(userBotId, `Submission failed, please retry later !`)
-        return false;
-    } finally {
-        if (connection) {
-            connection.release();
-        }
-    }
-}
 
 async function onSubscriptionResponseClick(msg) {
     let connection, balance;
@@ -517,82 +384,7 @@ async function onSubscriptionResponseClick(msg) {
     }
 }
 
-async function checkForWaitingServiceRequest(userBotId) {
-    let connection;
-    try {
-        connection = await database.connection.getConnection();
-        const [userChat] = await connection.query(`
-        SELECT sbu.*, ul.driver_group_id groupId FROM services_bot_users sbu
-        LEFT JOIN users_list ul on ul.id = sbu.user_id
-        WHERE chat_id = ?
-        `, [userBotId]);
 
-        const [service] = await connection.query(`
-        SELECT 
-        id,
-        service_name,
-        status,
-        amount
-        FROM services_transaction
-        WHERE userid = ? AND status = 0 OR status = 1
-        `, [userChat[0]?.user_id]);
-
-        if (service.length) {
-            console.log(service)
-            if(service[0]?.status  == 0) {
-                const keyboard = new InlineKeyboard();
-                keyboard.text('Confirm', `#response_service_confirm_${service[0]?.id}`);
-                keyboard.text('Cancel', `#response_service_cancel_${service[0]?.id}`);
-                bot.sendMessage(userBotId, `You have "${service[0]?.service_name}" service in proccess! 
-                    \nPlease share required documents
-                    \nIf you haven't got documents list yet or shared required documents, wait admin's response`, { reply_markup: keyboard });
-
-            } else if(service[0]?.status  == 1) {
-                const balance = await getUserBalance(connection, userChat[0]?.user_id, userChat[0]?.groupId)
-                if(service[0]?.amount > balance) {
-
-                    const base64 = Buffer.from("m=636ca5172cfb25761a99e6af;ac.UserID=" + userChat[0]?.user_id + ";a=" + Number(service[0]?.amount) - Number(balance) + "00").toString('base64');
-                    const paymePaymentUrl = 'https://checkout.paycom.uz/' + base64;
-                    const clickUrl = `https://my.click.uz/services/pay?service_id=24721&merchant_id=17235&amount=${Number(service[0]?.amount) - Number(balance)}&transaction_param=${userChat[0]?.user_id}`
-                    const keyboard = {
-                        inline_keyboard: [
-                            [{ text: 'Pay with Click', url: clickUrl }],
-                            [{ text: 'Pay with Payme', url: paymePaymentUrl }],
-                            [{ text: 'Cancel service', callback_data: 'cancel_request' }] 
-                        ]
-                    };
-                    bot.sendMessage(userBotId, `You have "${service[0]?.service_name}" service priced! 
-                    \nYou don't have enough amount in your blance 
-                    \nYour balance is ${balance} 
-                    \nService price is ${service[0]?.amount} 
-                    \nPlease toup your balance for ${Number(service[0]?.amount) - Number(balance)} 
-                    `, { reply_markup: JSON.stringify({
-                        inline_keyboard: keyboard.inline_keyboard.map(row => row.map(button => ({
-                            ...button,
-                            text: button.text 
-                        })))
-                    })});
-
-                } else {
-                    bot.sendMessage(userBotId, `You have "${service[0]?.service_name}" service priced! 
-                    \nPlease topup your balance
-                    \nIf you have already  topuped your balance, wait admin's response`);
-                }
-
-            }
-            return true;
-        } else {
-            return false;
-        }
-    } catch (err) {
-        console.log('Error while requesting service', err)
-        return null;
-    } finally {
-        if (connection) {
-            connection.release();
-        }
-    }
-}
 
 async function saveMessageToDatabase(data) {
     const connection = await database.connection.getConnection();
