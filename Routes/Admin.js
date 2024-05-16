@@ -5098,24 +5098,33 @@ admin.get("/driver-group/balance", async (req, res) => {
   }
 });
 
-admin.post("/remove-driver-subscription", async (req, res) => {
+admin.post("/remove-driver-subscription", async (req, res) => {  
   let connect,
-    { user_id } = req.body,
-    appData = { status: false };
+  { user_id } = req.body,
+  appData = { status: false };
   let userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
-  userInfo.id = 6197;
-  try {
-    if (!user_id) {
+  userInfo.id = 6197
+try {
+  if(!user_id) {
+    appData.status = false;
+    appData.error = 'user_id id required';
+    res.status(400).json(appData)
+  } else {
+  connect = await database.connection.getConnection();
+  await connect.beginTransaction();
+  const [user] = await connect.query(`SELECT to_subscription from users_list WHERE id = ${user_id}`);
+  if(!user.length) {
+    appData.status = false;
+    appData.error = 'Пользователь не найден'
+    res.status(400).json(appData)
+  } else {
+    if(!user[0].to_subscription) {
       appData.status = false;
-      appData.error = "user_id id required";
-      res.status(400).json(appData);
+      appData.error = 'У водителя нет подписки'
+      res.status(400).json(appData)
     } else {
-      connect = await database.connection.getConnection();
-      await connect.beginTransaction();
-      const [user] = await connect.query(
-        `SELECT to_subscription from users_list WHERE id = ${user_id}`
-      );
-      if (!user.length) {
+      const [subTrans] = await connect.query(`SELECT id, agent_id, agent_trans_id from subscription_transaction WHERE deleted = 0 AND userid = ${user_id} ORDER BY created_at DESC LIMIT 1`);
+      if(!subTrans.length) {
         appData.status = false;
         appData.error = 'User doesn\'t have subscription transaction'
         res.status(400).json(appData)
@@ -5123,42 +5132,51 @@ admin.post("/remove-driver-subscription", async (req, res) => {
         const [agentTrans] = await connect.query(`SELECT id, agent_id from agent_transaction WHERE id = ${subTrans[0].agent_trans_id}`);
         if(agentTrans.length) {
           const [response] = await connect.query(`UPDATE agent_transaction set deleted = true, deleted_by = ${userInfo.id} WHERE id = ${subTrans[0].agent_trans_id}`);
+          console.log('response', response.affectedRows)
           if(response.affectedRows) {
             const [response] = await connect.query(`UPDATE subscription_transaction set deleted = true, deleted_by = ${userInfo.id} WHERE id = ${subTrans[0].id}`);
+            console.log('response2', response.affectedRows)
             if(!response.affectedRows) {
               throw new Error()
             }
-          } else {
-            const [sRes] = await connect.query(
-              `UPDATE subscription_transaction set deleted = true, deleted_by = ${userInfo.id} WHERE id = ${subTrans[0].id}`
-            );
-            if (!sRes.affectedRows) {
-              throw new Error();
-            }
-            const [usRes] = await connect.query(
-              `UPDATE users_list set to_subscription = null, from_subscription = null WHERE id = ${user_id}`
-            );
-            if (!usRes.affectedRows) {
-              throw new Error();
+            const [uRes] = await connect.query(`UPDATE users_list set to_subscription = null, from_subscription = null WHERE id = ${user_id}`);
+            console.log('uRes', uRes.affectedRows)
+            if(!uRes.affectedRows) {
+              throw new Error()
             }
             appData.status = true;
-            res.status(200).json(appData);
+            res.status(200).json(appData)
           }
         }
+      } else {
+        const [sRes] = await connect.query(`UPDATE subscription_transaction set deleted = true, deleted_by = ${userInfo.id} WHERE id = ${subTrans[0].id}`);
+        console.log('sRes', sRes.affectedRows)
+        if(!sRes.affectedRows) {
+          throw new Error()
+        }
+        const [usRes] = await connect.query(`UPDATE users_list set to_subscription = null, from_subscription = null WHERE id = ${user_id}`);
+        console.log('usRes', usRes.affectedRows)
+        if(!usRes.affectedRows) {
+          throw new Error()
+        }
+        appData.status = true;
+        res.status(200).json(appData)
       }
-      await connect.commit();
-    }
-  } catch (err) {
-    console.log(err);
-    await connect.rollback();
-    appData.status = false;
-    appData.error = err.message;
-    res.status(400).json(appData);
-  } finally {
-    if (connect) {
-      connect.release();
     }
   }
+  await connect.commit();
+  }
+} catch(err) {
+  console.log(err)
+  await connect.rollback();
+  appData.status = false;
+  appData.error = err.message
+  res.status(400).json(appData)
+} finally {
+  if(connect) {
+    connect.release()
+  }
+}
 });
 
 admin.post("/message/bot-user", async (req, res) => {
