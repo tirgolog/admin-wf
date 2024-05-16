@@ -5117,9 +5117,16 @@ admin.post("/remove-driver-subscription", async (req, res) => {
       );
       if (!user.length) {
         appData.status = false;
-        appData.error = 'User doesn\'t have subscription transaction'
+        appData.error = 'Пользователь не найден'
         res.status(400).json(appData)
-      } else if(subTrans[0].agent_trans_id) {
+        return
+      } else if (!user[0].to_subscription || !user[0].to_subscription < new Date()) {
+        appData.status = false;
+        appData.error = 'У пользователя нет подписки'
+        res.status(400).json(appData)
+        return
+      } else {
+        const [subTrans] = await connect.query(`SELECT * FROM subscription_transaction WHERE userid = ${user_id} AND deleted = 0`);
         const [agentTrans] = await connect.query(`SELECT id, agent_id from agent_transaction WHERE id = ${subTrans[0].agent_trans_id}`);
         if(agentTrans.length) {
           const [response] = await connect.query(`UPDATE agent_transaction set deleted = true, deleted_by = ${userInfo.id} WHERE id = ${subTrans[0].agent_trans_id}`);
@@ -5145,6 +5152,7 @@ admin.post("/remove-driver-subscription", async (req, res) => {
             res.status(200).json(appData);
           }
         }
+
       }
       await connect.commit();
     }
