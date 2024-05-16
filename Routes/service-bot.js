@@ -244,7 +244,7 @@ bot.on('callback_query', async (msg) => {
     const callbackData = msg.data;
 
     if (callbackData === '#services') {
-        await sendServicesListToBotUser(connection, msg.from?.id);
+        await sendServicesListToBotUser(bot, connection, msg.from?.id);
     } else if (callbackData.startsWith('#service_request')) {
         const canRequest = await checkUserServiceRequests(bot, connection, chatId);
         if (canRequest) {
