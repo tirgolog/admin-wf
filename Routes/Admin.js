@@ -4514,7 +4514,7 @@ admin.post("/services-transaction/status/to-priced", async (req, res) => {
       )
       let balance;
       if (user[0]?.groupId) {
-        const [result] = await connection.query(`
+        const [result] = await connect.query(`
         SELECT 
             (COALESCE(
               (SELECT SUM(amount) FROM driver_group_transaction WHERE driver_group_id = ${groupId} AND type = 'Пополнение'), 0) -
@@ -4528,7 +4528,7 @@ admin.post("/services-transaction/status/to-priced", async (req, res) => {
         `);
         balance = result[0]?.balance;
     } else {
-        const [result] = await connection.query(`
+        const [result] = await connect.query(`
         SELECT 
             COALESCE(
               (SELECT SUM(amount) from secure_transaction where dirverid = ${userId} and status = 2), 0) +
