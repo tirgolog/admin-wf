@@ -46,13 +46,11 @@ merchant.post("/refreshToken", async (req, res) => {
       return res
         .status(401)
         .json({ status: false, error: "Требуется токен обновления." });
-      console.log(refreshTokenFromRequest);
        connect = await database.connection.getConnection();
       const [rows] = await connect.query(
         "SELECT * FROM users_list WHERE refresh_token = ?",
         [refreshTokenFromRequest]
       );
-  
       if (rows.length === 0) {
         return res
           .status(403)
