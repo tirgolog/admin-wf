@@ -11,7 +11,7 @@ const crypto = require("crypto");
 const socket = require("../Modules/Socket");
 const amqp = require("amqplib");
 const axios = require("axios");
-const {sendServiceBotMessageToUser, replyServiceBotMessageToUser, deleteMessageFromBotChat, editMessageInBotChat} = require("./service-bot");
+const {sendServiceBotMessageToUser, replyServiceBotMessageToUser, deleteMessageFromBotChat, editMessageInBotChat, sendServiceBotMessageToUserAfterPrice} = require("./service-bot");
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
@@ -4470,7 +4470,8 @@ admin.post("/services-transaction/status/by", async (req, res) => {
 
       const [user] = await connect.query(
         `SELECT sbu.chat_id, st.service_name FROM services_transaction st
-        LEFT JOIN services_bot_users sbu on sbu.user_id = st.userid`
+        LEFT JOIN services_bot_users sbu on sbu.user_id = st.userid
+        WHERE id = ${id}`
       );
       if(status == 2 && user.length) {
         await sendServiceBotMessageToUser(user[0]?.chat_id, `Service "${user[0]?.service_name}" is issued to you`)
@@ -4503,7 +4504,51 @@ admin.post("/services-transaction/status/to-priced", async (req, res) => {
       "UPDATE services_transaction SET status = 1, amount = ? WHERE id = ?",
       [amount, id]
     );
-    if (updateResult.affectedRows > 0) {
+    if (updateResult.affectedRows) {
+
+      const [user] = await connect.query( `
+      SELECT sbu.chat_id, ul.id user_id, ul.driver_group_id groupId FROM services_transaction st
+      LEFT JOIN services_bot_users sbu on sbu.user_id = st.userid
+      LEFT JOIN users_list ul on ul.id = st.userid
+      WHERE id = ${id}`
+      )
+      let balance;
+      if (user[0]?.groupId) {
+        const [result] = await connection.query(`
+        SELECT 
+            (COALESCE(
+              (SELECT SUM(amount) FROM driver_group_transaction WHERE driver_group_id = ${groupId} AND type = 'Пополнение'), 0) -
+            COALESCE(
+              (SELECT SUM(amount) FROM driver_group_transaction WHERE driver_group_id = ${groupId} AND type = 'Вывод'), 0)) -
+    
+            (COALESCE(
+              (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND group_id = ${groupId}), 0) +
+            COALESCE(
+              (SELECT SUM(amount) FROM services_transaction WHERE group_id = ${groupId} AND status In(2, 3)), 0)) as balance;
+        `);
+        balance = result[0]?.balance;
+    } else {
+        const [result] = await connection.query(`
+        SELECT 
+            COALESCE(
+              (SELECT SUM(amount) from secure_transaction where dirverid = ${userId} and status = 2), 0) +
+
+            COALESCE(
+              (SELECT SUM(amount) FROM payment WHERE userid = ${userId} and status = 1 and date_cancel_time IS NULL), 0) -
+
+            COALESCE(
+              (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND userid = ${userId} AND agent_id = 0 AND (admin_id <> 0 OR admin_id IS NULL)), 0) -
+
+            COALESCE(
+              (SELECT SUM(amount) from driver_withdrawal where driver_id = ${userId}) , 
+              0) as balance;
+        `);
+        balance = result[0]?.balance;
+    }
+
+    if(balance < amount) {
+      await sendServiceBotMessageToUserAfterPrice(user[0]?.chat_id, user[0]?.user_id, id, amount, balance)
+    }
       appData.status = true;
       res.status(200).json(appData);
     } else {

@@ -329,6 +329,29 @@ async function sendServiceBotMessageToUser(chatId, text) {
     return await bot.sendMessage(chatId, text);
 }
 
+async function sendServiceBotMessageToUserAfterPrice(chatId, userId, serviceId, price, balance) {
+    const base64 = Buffer.from("m=636ca5172cfb25761a99e6af;ac.UserID=" + userId + ";a=" + Number(price) - Number(balance) + "00").toString('base64');
+    const paymePaymentUrl = 'https://checkout.paycom.uz/' + base64;
+    const clickUrl = `https://my.click.uz/services/pay?service_id=24721&merchant_id=17235&amount=${Number(price) - Number(balance)}&transaction_param=${userId}`
+    const keyboard = {
+        inline_keyboard: [
+            [{ text: 'Pay with Click', url: clickUrl }],
+            [{ text: 'Pay with Payme', url: paymePaymentUrl }],
+            [{ text: 'Cancel service', callback_data: `#cancel_service_request_${serviceId}` }] 
+        ]
+    };
+    bot.sendMessage(chatId, `Your service is priced
+    Srvice's price is ${price} \n
+    Your balance is ${balance} \n
+    You have to pay ${price - Number(balance)} in order to buy subscription\n
+    Can you confirm to continue ?`, { reply_markup: JSON.stringify({
+        inline_keyboard: keyboard.inline_keyboard.map(row => row.map(button => ({
+            ...button,
+            text: button.text 
+        })))
+    })});
+}
+
 async function sendBotMessageToUser(chatId, text) {
     return await bot.sendMessage(chatId, 'Код для логин: ' + text);
   }
@@ -428,4 +451,4 @@ async function editMessageInBotChat(chatId, messageId, newText) {
     }
 }
 
-module.exports = { sendServiceBotMessageToUser, replyServiceBotMessageToUser, deleteMessageFromBotChat, editMessageInBotChat, sendBotMessageToUser };
+module.exports = { sendServiceBotMessageToUser, replyServiceBotMessageToUser, deleteMessageFromBotChat, editMessageInBotChat, sendBotMessageToUser, sendServiceBotMessageToUserAfterPrice };
