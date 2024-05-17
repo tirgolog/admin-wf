@@ -6338,4 +6338,78 @@ admin.post("/report/active-user-activity-average", async (req, res) => {
   }
 });
 
+admin.get("/payments/subscription-service", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  const { pageIndex, pageSize } = req.query;
+  try {
+    let index = parseInt(pageIndex) || 0;
+    let size = parseInt(pageSize) || 10;
+    connect = await database.connection.getConnection();
+
+    const [payment] = await connect.query(`
+      SELECT p.id, u.name, p.amount, p.pay_method, p.date  
+      FROM payment p 
+      INNER JOIN users_list u ON p.userid = u.id
+      ORDER BY p.date DESC
+      LIMIT ?, ?
+    `, [index * size, size]);
+
+    appData.data = payment;
+
+    const [rows_count] = await connect.query(
+      "SELECT COUNT(*) as allcount FROM payment"
+    );
+
+    appData.data_count = rows_count[0].allcount;
+    appData.status = true;
+    res.status(200).json(appData);
+  } catch (e) {
+    console.log("ERROR payment:", e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/payments/alpha-payment-service", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  const { pageIndex, pageSize } = req.query;
+  try {
+    let index = parseInt(pageIndex) || 0;
+    let size = parseInt(pageSize) || 10;
+    connect = await database.connection.getConnection();
+
+    const [payment] = await connect.query(`
+      SELECT p.id, u.name, p.amount, p.pay_method, p.date  
+      FROM alpha_payment p 
+      INNER JOIN users_list u ON p.userid = u.id
+      ORDER BY p.date DESC
+      LIMIT ?, ?
+    `, [index * size, size]);
+
+    appData.data = payment;
+
+    const [rows_count] = await connect.query(
+      "SELECT COUNT(*) as allcount FROM alpha_payment"
+    );
+
+    appData.data_count = rows_count[0].allcount;
+    appData.status = true;
+    res.status(200).json(appData);
+  } catch (e) {
+    console.log("ERROR payment:", e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 module.exports = admin;
