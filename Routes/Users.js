@@ -832,17 +832,17 @@ users.post("/refreshToken", async (req, res) => {
         appData.token = token;
         appData.refreshToken = refreshToken;
         res.status(200).json(appData);
-        await connect.query(
-          "INSERT INTO users_activity SET userid = ?, text = ?",
-          [
-            userInfo.id,
-            "Произведен вход " +
-              req.headers["user-agent"].split("(")[1].replace(")", "") +
-              ", IP: " +
-              parseIp(req).replace("::ffff:", ""),
-          ]
-        );
-        socket.updateActivity("update-activity", "1");
+        // await connect.query(
+        //   "INSERT INTO users_activity SET userid = ?, text = ?",
+        //   [
+        //     userInfo.id,
+        //     "Произведен вход " +
+        //       req.headers["user-agent"].split("(")[1].replace(")", "") +
+        //       ", IP: " +
+        //       parseIp(req).replace("::ffff:", ""),
+        //   ]
+        // );
+        // socket.updateActivity("update-activity", "1");
       } else {
         appData.error = "Данные для входа введены неверно";
         appData.status = false;

@@ -155,40 +155,40 @@ admin.post("/refreshToken", async (req, res) => {
     }
 });
 
-admin.use((req, res, next) => {
-  let token =
-    req.body.token ||
-    req.headers["token"] ||
-    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-  let appData = {};
-  if (token && token !== undefined &&token!=='undefined') {
-    jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
-      if (err) {
-        if (err.name === 'TokenExpiredError') {
-          appData["error"] = "Token has expired";
-          return res.status(401).json(appData);
-        } else {
-          console.error("JWT Verification Error:", err);
-          appData["error"] = "Token is invalid";
-          return res.status(401).json(appData);
-        }
-      } else {
-        // Check if token has expired
-        const currentTimestamp = Math.floor(Date.now() / 1000);
-        if (decoded.exp < currentTimestamp) {
-          appData["data"] = "Token has expired";
-          return res.status(401).json(appData);
-        }
-        // Attach user information from the decoded token to the request
-        req.user = decoded;
-        next();
-      }
-    });
-  } else {
-    appData["error"] = "Token is null";
-    res.status(401).json(appData);
-  }
-});
+// admin.use((req, res, next) => {
+//   let token =
+//     req.body.token ||
+//     req.headers["token"] ||
+//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+//   let appData = {};
+//   if (token && token !== undefined &&token!=='undefined') {
+//     jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
+//       if (err) {
+//         if (err.name === 'TokenExpiredError') {
+//           appData["error"] = "Token has expired";
+//           return res.status(401).json(appData);
+//         } else {
+//           console.error("JWT Verification Error:", err);
+//           appData["error"] = "Token is invalid";
+//           return res.status(401).json(appData);
+//         }
+//       } else {
+//         // Check if token has expired
+//         const currentTimestamp = Math.floor(Date.now() / 1000);
+//         if (decoded.exp < currentTimestamp) {
+//           appData["data"] = "Token has expired";
+//           return res.status(401).json(appData);
+//         }
+//         // Attach user information from the decoded token to the request
+//         req.user = decoded;
+//         next();
+//       }
+//     });
+//   } else {
+//     appData["error"] = "Token is null";
+//     res.status(401).json(appData);
+//   }
+// });
 
 admin.get("/getAllAgent", async (req, res) => {
   let connect,
@@ -6264,6 +6264,80 @@ admin.post("/report/active-user-activity-average", async (req, res) => {
     appData.data = data;
     res.status(200).json(appData);
   } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/payments/subscription-service", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  const { pageIndex, pageSize } = req.query;
+  try {
+    let index = parseInt(pageIndex) || 0;
+    let size = parseInt(pageSize) || 10;
+    connect = await database.connection.getConnection();
+
+    const [payment] = await connect.query(`
+      SELECT p.id, u.name, p.amount, p.pay_method, p.date  
+      FROM payment p 
+      INNER JOIN users_list u ON p.userid = u.id
+      ORDER BY p.date DESC
+      LIMIT ?, ?
+    `, [index * size, size]);
+
+    appData.data = payment;
+
+    const [rows_count] = await connect.query(
+      "SELECT COUNT(*) as allcount FROM payment"
+    );
+
+    appData.data_count = rows_count[0].allcount;
+    appData.status = true;
+    res.status(200).json(appData);
+  } catch (e) {
+    console.log("ERROR payment:", e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/payments/alpha-payment-service", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  const { pageIndex, pageSize } = req.query;
+  try {
+    let index = parseInt(pageIndex) || 0;
+    let size = parseInt(pageSize) || 10;
+    connect = await database.connection.getConnection();
+
+    const [payment] = await connect.query(`
+      SELECT p.id, u.name, p.amount, p.pay_method, p.date  
+      FROM alpha_payment p 
+      INNER JOIN users_list u ON p.userid = u.id
+      ORDER BY p.date DESC
+      LIMIT ?, ?
+    `, [index * size, size]);
+
+    appData.data = payment;
+
+    const [rows_count] = await connect.query(
+      "SELECT COUNT(*) as allcount FROM alpha_payment"
+    );
+
+    appData.data_count = rows_count[0].allcount;
+    appData.status = true;
+    res.status(200).json(appData);
+  } catch (e) {
+    console.log("ERROR payment:", e);
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
