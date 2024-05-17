@@ -6348,7 +6348,7 @@ admin.get("/payments/subscription-service", async (req, res) => {
     connect = await database.connection.getConnection();
 
     const [payment] = await connect.query(`
-      SELECT p.id, u.name, p.amount, p.pay_method, p.date  
+      SELECT p.id, u.id as userid,  u.name, p.amount, p.pay_method, p.date  
       FROM payment p 
       INNER JOIN users_list u ON p.userid = u.id
       ORDER BY p.date DESC
@@ -6385,7 +6385,7 @@ admin.get("/payments/alpha-payment-service", async (req, res) => {
     connect = await database.connection.getConnection();
 
     const [payment] = await connect.query(`
-      SELECT p.id, u.name, p.amount, p.pay_method, p.date  
+      SELECT p.id, u.id as userid, u.name, p.amount, p.pay_method, p.date  
       FROM alpha_payment p 
       INNER JOIN users_list u ON p.userid = u.id
       ORDER BY p.date DESC
