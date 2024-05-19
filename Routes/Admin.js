@@ -11,7 +11,7 @@ const crypto = require("crypto");
 const socket = require("../Modules/Socket");
 const amqp = require("amqplib");
 const axios = require("axios");
-const {sendServiceBotMessageToUser, replyServiceBotMessageToUser, deleteMessageFromBotChat, editMessageInBotChat, sendServiceBotMessageToUserAfterPrice} = require("./service-bot");
+const { sendServiceBotMessageToUser, replyServiceBotMessageToUser, deleteMessageFromBotChat, editMessageInBotChat, sendServiceBotMessageToUserAfterPrice } = require("./service-bot");
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
@@ -86,73 +86,73 @@ admin.post("/loginAdmin", async (req, res) => {
 
 admin.post("/refreshToken", async (req, res) => {
   let connect,
-  appData = { status: false },
-  refreshTokenFromRequest = req.body.refreshToken;
+    appData = { status: false },
+    refreshTokenFromRequest = req.body.refreshToken;
   if (!refreshTokenFromRequest)
     return res
       .status(401)
       .json({ status: false, error: "Требуется токен обновления." });
-     connect = await database.connection.getConnection();
-    const [rows] = await connect.query(
-      "SELECT * FROM users_list WHERE refresh_token = ?",
-      [refreshTokenFromRequest]
-    );
+  connect = await database.connection.getConnection();
+  const [rows] = await connect.query(
+    "SELECT * FROM users_list WHERE refresh_token = ?",
+    [refreshTokenFromRequest]
+  );
 
-    if (rows.length === 0) {
-      return res
-        .status(403)
-        .json({ status: false, error: "Неверный токен обновления" });
-    }
-    const token = jwt.sign({ id: rows[0].id }, process.env.SECRET_KEY, {
-      expiresIn: "1440m",
-    });
-    const refreshToken = jwt.sign({ id: rows[0].id }, process.env.SECRET_KEY);
-    await connect.query(
-      "UPDATE users_list SET refresh_token = ? WHERE id = ?",
-      [refreshToken, rows[0].id]
-    );
-    appData.status = true;
-    appData.token = token;
-    appData.refreshToken = refreshToken;
-    res.status(200).json(appData);
+  if (rows.length === 0) {
+    return res
+      .status(403)
+      .json({ status: false, error: "Неверный токен обновления" });
+  }
+  const token = jwt.sign({ id: rows[0].id }, process.env.SECRET_KEY, {
+    expiresIn: "1440m",
+  });
+  const refreshToken = jwt.sign({ id: rows[0].id }, process.env.SECRET_KEY);
+  await connect.query(
+    "UPDATE users_list SET refresh_token = ? WHERE id = ?",
+    [refreshToken, rows[0].id]
+  );
+  appData.status = true;
+  appData.token = token;
+  appData.refreshToken = refreshToken;
+  res.status(200).json(appData);
 });
 
 admin.post("/refreshToken", async (req, res) => {
   let connect,
-  appData = { status: false },
-  userInfo = jwt.decode(req.headers.authorization.split(" ")[1]),
-  refreshTokenFromRequest = req.body.refreshToken;
+    appData = { status: false },
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]),
+    refreshTokenFromRequest = req.body.refreshToken;
   if (!refreshTokenFromRequest)
     return res
       .status(401)
       .json({ status: false, error: "Требуется токен обновления." });
-     connect = await database.connection.getConnection();
-    const [users_list] = await connect.query(
-      "SELECT refresh_token FROM users_list WHERE id = ?",
-      [userInfo.id]
+  connect = await database.connection.getConnection();
+  const [users_list] = await connect.query(
+    "SELECT refresh_token FROM users_list WHERE id = ?",
+    [userInfo.id]
+  );
+  if (users_list[0].refresh_token !== refreshTokenFromRequest) {
+    return res
+      .status(403)
+      .json({ status: false, error: "Неверный токен обновления" });
+  } else {
+    const token = jwt.sign({ id: userInfo.id }, process.env.SECRET_KEY, { expiresIn: '1440m' });
+    const refreshToken = jwt.sign({ id: userInfo.id }, process.env.SECRET_KEY);
+    const [setToken] = await connect.query(
+      "UPDATE users_list SET date_last_login = ?, refresh_token = ? WHERE id = ?",
+      [new Date(), refreshToken, userInfo.id]
     );
-    if (users_list[0].refresh_token !== refreshTokenFromRequest) {
-      return res
-        .status(403)
-        .json({ status: false, error: "Неверный токен обновления" });
-    }else{
-      const token = jwt.sign({id: userInfo.id}, process.env.SECRET_KEY, { expiresIn: '1440m' });
-      const refreshToken = jwt.sign({id: userInfo.id}, process.env.SECRET_KEY);
-      const [setToken] = await connect.query(
-        "UPDATE users_list SET date_last_login = ?, refresh_token = ? WHERE id = ?",
-        [new Date(), refreshToken, userInfo.id]
-      );
-      if (setToken.affectedRows > 0) {
-        appData.status = true;
-        appData.token = token;
-        appData.refreshToken = refreshToken;
-        res.status(200).json(appData);
-      } else {
-        appData.error = "Данные для входа введены неверно";
-        appData.status = false;
-        res.status(403).json(appData);
-      }
+    if (setToken.affectedRows > 0) {
+      appData.status = true;
+      appData.token = token;
+      appData.refreshToken = refreshToken;
+      res.status(200).json(appData);
+    } else {
+      appData.error = "Данные для входа введены неверно";
+      appData.status = false;
+      res.status(403).json(appData);
     }
+  }
 });
 
 admin.use((req, res, next) => {
@@ -161,9 +161,11 @@ admin.use((req, res, next) => {
     req.headers["token"] ||
     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
   let appData = {};
-  if (token && token !== undefined &&token!=='undefined') {
+  console.log('Admin middleware', token && token !== undefined && token !== 'undefined')
+  if (token && token !== undefined && token !== 'undefined') {
     jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
       if (err) {
+        console.log('Admin middleware error', err.name)
         if (err.name === 'TokenExpiredError') {
           appData["error"] = "Token has expired";
           return res.status(401).json(appData);
@@ -175,6 +177,8 @@ admin.use((req, res, next) => {
       } else {
         // Check if token has expired
         const currentTimestamp = Math.floor(Date.now() / 1000);
+        console.log('Admin middleware currentTimestamp', decoded.exp < currentTimestamp)
+        console.log(decoded)
         if (decoded.exp < currentTimestamp) {
           appData["data"] = "Token has expired";
           return res.status(401).json(appData);
@@ -343,53 +347,53 @@ admin.post("/agent-service/add-to-driver", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
-    
-        const [editUser] = await connect.query(
-          "UPDATE users_list SET is_service = 1  WHERE id = ?",
-          [user_id]
-        );
-        if (editUser.affectedRows > 0) {
-          const insertValues = await Promise.all(
-            services.map(async (service) => {
-              try {
-                const [result] = await connect.query(
-                  "SELECT * FROM services WHERE id = ?",
-                  [service.service_id]
+
+      const [editUser] = await connect.query(
+        "UPDATE users_list SET is_service = 1  WHERE id = ?",
+        [user_id]
+      );
+      if (editUser.affectedRows > 0) {
+        const insertValues = await Promise.all(
+          services.map(async (service) => {
+            try {
+              const [result] = await connect.query(
+                "SELECT * FROM services WHERE id = ?",
+                [service.service_id]
+              );
+              if (result.length === 0) {
+                throw new Error(
+                  `Service with ID ${service.service_id} not found.`
                 );
-                if (result.length === 0) {
-                  throw new Error(
-                    `Service with ID ${service.service_id} not found.`
-                  );
-                }
-                return [
-                  user_id,
-                  service.service_id,
-                  result[0].name,
-                  service.price_uzs,
-                  service.price_kzs,
-                  service.rate,
-                  0,
-                  userInfo.id,
-                  true,
-                ];
-              } catch (error) {
-                console.error("Error occurred while fetching service:", error);
               }
-            })
-          );
-          const sql =
-            "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, created_by_id, is_agent) VALUES ?";
-          const [result] = await connect.query(sql, [insertValues]);
-          if (result.affectedRows > 0) {
-            appData.status = true;
-            socket.updateAllMessages("update-alpha-balance", "1");
-            res.status(200).json(appData);
-          }
-        } else {
-          appData.error = "Пользователь не может обновить";
-          appData.status = false;
-          res.status(400).json(appData);
+              return [
+                user_id,
+                service.service_id,
+                result[0].name,
+                service.price_uzs,
+                service.price_kzs,
+                service.rate,
+                0,
+                userInfo.id,
+                true,
+              ];
+            } catch (error) {
+              console.error("Error occurred while fetching service:", error);
+            }
+          })
+        );
+        const sql =
+          "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, created_by_id, is_agent) VALUES ?";
+        const [result] = await connect.query(sql, [insertValues]);
+        if (result.affectedRows > 0) {
+          appData.status = true;
+          socket.updateAllMessages("update-alpha-balance", "1");
+          res.status(200).json(appData);
         }
+      } else {
+        appData.error = "Пользователь не может обновить";
+        appData.status = false;
+        res.status(400).json(appData);
+      }
     }
   } catch (e) {
     appData.error = e.message;
@@ -625,13 +629,13 @@ admin.get("/agent-service-transactions", async (req, res) => {
           LEFT JOIN users_list adl on adl.id = st.userid AND adl.user_type = 1
           LEFT JOIN services s on s.id = st.service_id
           where ${rowWhereClause} ORDER BY ${sortByDate ? 'st.created_at' : 'st.id'} ${sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?`,
-            [+from, +limit]
-          );
-          [row] = await connect.query(
-            `SELECT Count(id) as count FROM services_transaction where created_by_id = ${agentId} AND status In(2, 3)`,
-            []
-          );
-      } 
+          [+from, +limit]
+        );
+        [row] = await connect.query(
+          `SELECT Count(id) as count FROM services_transaction where created_by_id = ${agentId} AND status In(2, 3)`,
+          []
+        );
+      }
 
       if (!transactionType || transactionType == "service_balance") {
         if (!driverId) {
@@ -639,10 +643,8 @@ admin.get("/agent-service-transactions", async (req, res) => {
             `SELECT *, adl.name as "adminName", al.name as "agentName", 'at' as 'rawType' FROM agent_transaction at
           LEFT JOIN users_list al on al.id = at.agent_id
           LEFT JOIN users_list adl on adl.id = at.admin_id
-          WHERE at.agent_id = ${agentId} AND type = 'service_balance' ORDER BY ${
-              sortByDate ? "at.created_at" : "at.id"
-            } ${
-              sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
+          WHERE at.agent_id = ${agentId} AND type = 'service_balance' ORDER BY ${sortByDate ? "at.created_at" : "at.id"
+            } ${sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
             } LIMIT ?, ?`,
             [+from, +limit]
           );
@@ -821,10 +823,8 @@ admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
         `SELECT at.*, al.name as "agentName", adl.name as "adminName" FROM agent_transaction  at
         LEFT JOIN users_list al on al.id = at.agent_id
         LEFT JOIN users_list adl on adl.id = at.admin_id
-        WHERE type = 'tirgo_balance' AND at.agent_id = ${agentId} ORDER BY ${
-          sortByDate ? "created_at" : "id"
-        } ${
-          sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
+        WHERE type = 'tirgo_balance' AND at.agent_id = ${agentId} ORDER BY ${sortByDate ? "created_at" : "id"
+        } ${sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
         } LIMIT ?, ?;`,
         [+from, +limit]
       );
@@ -844,8 +844,7 @@ admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
         `SELECT st.*, al.name as "agentName", ul.name as "driverName", 'subscription' as "type" FROM subscription_transaction st
         LEFT JOIN users_list ul on ul.id = st.userid
         LEFT JOIN users_list al on al.id = st.agent_id
-        WHERE ${whereClause} ORDER BY ${sortByDate ? "created_at" : "id"} ${
-          sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
+        WHERE ${whereClause} ORDER BY ${sortByDate ? "created_at" : "id"} ${sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
         } LIMIT ?, ?;`,
         [+from, +limit]
       );
@@ -976,16 +975,16 @@ admin.post("/getAllUsers", async (req, res) => {
           let newUser = row;
           newUser.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-              "tirgo/clients/" +
-              row.id +
-              "/" +
-              row.avatar
+            "tirgo/clients/" +
+            row.id +
+            "/" +
+            row.avatar
           )
             ? process.env.SERVER_URL +
-              "tirgo/clients/" +
-              row.id +
-              "/" +
-              row.avatar
+            "tirgo/clients/" +
+            row.id +
+            "/" +
+            row.avatar
             : null;
           const [contacts] = await connect.query(
             "SELECT * FROM users_contacts WHERE user_id = ?",
@@ -1021,16 +1020,16 @@ admin.post("/getAllDrivers", async (req, res) => {
           let newUser = row;
           newUser.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-              "tirgo/drivers/" +
-              row.id +
-              "/" +
-              row.avatar
+            "tirgo/drivers/" +
+            row.id +
+            "/" +
+            row.avatar
           )
             ? process.env.SERVER_URL +
-              "tirgo/drivers/" +
-              row.id +
-              "/" +
-              row.avatar
+            "tirgo/drivers/" +
+            row.id +
+            "/" +
+            row.avatar
             : null;
           const [files] = await connect.query(
             "SELECT * FROM users_list_files WHERE user_id = ?",
@@ -1041,16 +1040,16 @@ admin.post("/getAllDrivers", async (req, res) => {
               let newFile = file;
               newFile.preview = fs.existsSync(
                 process.env.FILES_PATCH +
-                  "tirgo/drivers/" +
-                  row.id +
-                  "/" +
-                  file.name
+                "tirgo/drivers/" +
+                row.id +
+                "/" +
+                file.name
               )
                 ? process.env.SERVER_URL +
-                  "tirgo/drivers/" +
-                  row.id +
-                  "/" +
-                  file.name
+                "tirgo/drivers/" +
+                row.id +
+                "/" +
+                file.name
                 : null;
               return newFile;
             })
@@ -1071,16 +1070,16 @@ admin.post("/getAllDrivers", async (req, res) => {
                   let docks = filetruck;
                   docks.preview = fs.existsSync(
                     process.env.FILES_PATCH +
-                      "tirgo/drivers/" +
-                      row.id +
-                      "/" +
-                      filetruck.name
+                    "tirgo/drivers/" +
+                    row.id +
+                    "/" +
+                    filetruck.name
                   )
                     ? process.env.SERVER_URL +
-                      "tirgo/drivers/" +
-                      row.id +
-                      "/" +
-                      filetruck.name
+                    "tirgo/drivers/" +
+                    row.id +
+                    "/" +
+                    filetruck.name
                     : null;
                   return docks;
                 })
@@ -2068,16 +2067,16 @@ admin.post("/getAllOrders", async (req, res) => {
               let newItemUsers = item2;
               newItemUsers.avatar = fs.existsSync(
                 process.env.FILES_PATCH +
-                  "tirgo/drivers/" +
-                  item2.id +
-                  "/" +
-                  item2.avatar
+                "tirgo/drivers/" +
+                item2.id +
+                "/" +
+                item2.avatar
               )
                 ? process.env.SERVER_URL +
-                  "tirgo/drivers/" +
-                  item2.id +
-                  "/" +
-                  item2.avatar
+                "tirgo/drivers/" +
+                item2.id +
+                "/" +
+                item2.avatar
                 : null;
               return newItemUsers;
             })
@@ -2177,16 +2176,16 @@ admin.get("/getAllMessages", async (req, res) => {
           let newItem = item;
           newItem.avatar = fs.existsSync(
             process.env.FILES_PATCH +
-              "tirgo/drivers/" +
-              item.user_id +
-              "/" +
-              item.avatar
+            "tirgo/drivers/" +
+            item.user_id +
+            "/" +
+            item.avatar
           )
             ? process.env.SERVER_URL +
-              "tirgo/drivers/" +
-              item.user_id +
-              "/" +
-              item.avatar
+            "tirgo/drivers/" +
+            item.user_id +
+            "/" +
+            item.avatar
             : null;
           const [messages] = await connect.query(
             "SELECT * FROM chat_support WHERE user_id = ? ORDER BY id",
@@ -3969,51 +3968,51 @@ admin.post("/addDriverServices", async (req, res) => {
       res.status(400).json(appData);
     } else {
 
-        const [editUser] = await connect.query(
-          "UPDATE users_list SET is_service = 1  WHERE id = ?",
-          [user_id]
-        );
-        if (editUser.affectedRows > 0) {
-          const insertValues = await Promise.all(
-            services.map(async (service) => {
-              try {
-                const [result] = await connect.query(
-                  "SELECT * FROM services WHERE id = ?",
-                  [service.service_id]
+      const [editUser] = await connect.query(
+        "UPDATE users_list SET is_service = 1  WHERE id = ?",
+        [user_id]
+      );
+      if (editUser.affectedRows > 0) {
+        const insertValues = await Promise.all(
+          services.map(async (service) => {
+            try {
+              const [result] = await connect.query(
+                "SELECT * FROM services WHERE id = ?",
+                [service.service_id]
+              );
+              if (result.length === 0) {
+                throw new Error(
+                  `Service with ID ${service.service_id} not found.`
                 );
-                if (result.length === 0) {
-                  throw new Error(
-                    `Service with ID ${service.service_id} not found.`
-                  );
-                }
-                return [
-                  user_id,
-                  service.service_id,
-                  result[0].name,
-                  service.price_uzs,
-                  service.price_kzs,
-                  service.rate,
-                  0,
-                  userInfo.id,
-                ];
-              } catch (error) {
-                console.error("Error occurred while fetching service:", error);
               }
-            })
-          );
-          const sql =
-            "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, created_by_id) VALUES ?";
-          const [result] = await connect.query(sql, [insertValues]);
-          if (result.affectedRows > 0) {
-            appData.status = true;
-            socket.updateAllMessages("update-alpha-balance", "1");
-            res.status(200).json(appData);
-          }
-        } else {
-          appData.error = "Пользователь не может обновить";
-          appData.status = false;
-          res.status(400).json(appData);
+              return [
+                user_id,
+                service.service_id,
+                result[0].name,
+                service.price_uzs,
+                service.price_kzs,
+                service.rate,
+                0,
+                userInfo.id,
+              ];
+            } catch (error) {
+              console.error("Error occurred while fetching service:", error);
+            }
+          })
+        );
+        const sql =
+          "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, created_by_id) VALUES ?";
+        const [result] = await connect.query(sql, [insertValues]);
+        if (result.affectedRows > 0) {
+          appData.status = true;
+          socket.updateAllMessages("update-alpha-balance", "1");
+          res.status(200).json(appData);
         }
+      } else {
+        appData.error = "Пользователь не может обновить";
+        appData.status = false;
+        res.status(400).json(appData);
+      }
 
     }
   } catch (e) {
@@ -4251,7 +4250,7 @@ admin.get("/services-transaction", async (req, res) => {
       LEFT JOIN users_list adl ON adl.id = st.created_by_id AND adl.user_type = 3
       LEFT JOIN services s ON s.id = st.service_id`;
 
-      let countQuery = `SELECT COUNT(id) as count FROM services_transaction st`;
+    let countQuery = `SELECT COUNT(id) as count FROM services_transaction st`;
     if (queryConditions.length > 0) {
       query += " WHERE " + queryConditions.join(" AND ");
       countQuery += " WHERE " + queryConditions.join(" AND ");
@@ -4383,7 +4382,7 @@ admin.get("/curence/course", async (req, res) => {
   let appData = { status: false, timestamp: new Date().getTime() };
   try {
     const axiosConfig = {
-      timeout: 5000 
+      timeout: 5000
     };
 
     let result = await axios.get(
@@ -4473,7 +4472,7 @@ admin.post("/services-transaction/status/by", async (req, res) => {
         LEFT JOIN services_bot_users sbu on sbu.user_id = st.userid
         WHERE id = ${id}`
       );
-      if(status == 2 && user.length) {
+      if (status == 2 && user.length) {
         await sendServiceBotMessageToUser(user[0]?.chat_id, `Service "${user[0]?.service_name}" is issued to you`)
       }
 
@@ -4506,7 +4505,7 @@ admin.post("/services-transaction/status/to-priced", async (req, res) => {
     );
     if (updateResult.affectedRows) {
 
-      const [user] = await connect.query( `
+      const [user] = await connect.query(`
       SELECT sbu.chat_id, ul.id user_id, ul.driver_group_id groupId FROM services_transaction st
       LEFT JOIN services_bot_users sbu on sbu.user_id = st.userid
       LEFT JOIN users_list ul on ul.id = st.userid
@@ -4527,7 +4526,7 @@ admin.post("/services-transaction/status/to-priced", async (req, res) => {
               (SELECT SUM(amount) FROM services_transaction WHERE group_id = ${groupId} AND status In(2, 3)), 0)) as balance;
         `);
         balance = result[0]?.balance;
-    } else {
+      } else {
         const [result] = await connect.query(`
         SELECT 
             COALESCE(
@@ -4544,11 +4543,11 @@ admin.post("/services-transaction/status/to-priced", async (req, res) => {
               0) as balance;
         `);
         balance = result[0]?.balance;
-    }
+      }
 
-    if(balance < amount) {
-      await sendServiceBotMessageToUserAfterPrice(user[0]?.chat_id, user[0]?.user_id, id, amount, balance)
-    }
+      if (balance < amount) {
+        await sendServiceBotMessageToUserAfterPrice(user[0]?.chat_id, user[0]?.user_id, id, amount, balance)
+      }
       appData.status = true;
       res.status(200).json(appData);
     } else {
@@ -5005,52 +5004,52 @@ admin.post("/driver-group/add-services", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
-        const [editUser] = await connect.query(
-          "UPDATE users_list SET is_service = 1  WHERE id = ?",
-          [user_id]
-        );
-        if (editUser.affectedRows > 0) {
-          const insertValues = await Promise.all(
-            services.map(async (service) => {
-              try {
-                const [result] = await connect.query(
-                  "SELECT * FROM services WHERE id = ?",
-                  [service.service_id]
+      const [editUser] = await connect.query(
+        "UPDATE users_list SET is_service = 1  WHERE id = ?",
+        [user_id]
+      );
+      if (editUser.affectedRows > 0) {
+        const insertValues = await Promise.all(
+          services.map(async (service) => {
+            try {
+              const [result] = await connect.query(
+                "SELECT * FROM services WHERE id = ?",
+                [service.service_id]
+              );
+              if (result.length === 0) {
+                throw new Error(
+                  `Service with ID ${service.service_id} not found.`
                 );
-                if (result.length === 0) {
-                  throw new Error(
-                    `Service with ID ${service.service_id} not found.`
-                  );
-                }
-                return [
-                  user_id,
-                  service.service_id,
-                  result[0].name,
-                  service.price_uzs,
-                  service.price_kzs,
-                  service.rate,
-                  0,
-                  group_id,
-                  true,
-                ];
-              } catch (error) {
-                console.error("Error occurred while fetching service:", error);
               }
-            })
-          );
-          const sql =
-            "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, group_id, is_group) VALUES ?";
-          const [result] = await connect.query(sql, [insertValues]);
-          if (result.affectedRows > 0) {
-            appData.status = true;
-            socket.updateAllMessages("update-alpha-balance", "1");
-            res.status(200).json(appData);
-          }
-        } else {
-          appData.error = "Пользователь не может обновить";
-          appData.status = false;
-          res.status(400).json(appData);
+              return [
+                user_id,
+                service.service_id,
+                result[0].name,
+                service.price_uzs,
+                service.price_kzs,
+                service.rate,
+                0,
+                group_id,
+                true,
+              ];
+            } catch (error) {
+              console.error("Error occurred while fetching service:", error);
+            }
+          })
+        );
+        const sql =
+          "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, group_id, is_group) VALUES ?";
+        const [result] = await connect.query(sql, [insertValues]);
+        if (result.affectedRows > 0) {
+          appData.status = true;
+          socket.updateAllMessages("update-alpha-balance", "1");
+          res.status(200).json(appData);
         }
+      } else {
+        appData.error = "Пользователь не может обновить";
+        appData.status = false;
+        res.status(400).json(appData);
+      }
     }
   } catch (e) {
     appData.error = e.message;
@@ -5152,85 +5151,85 @@ admin.get("/driver-group/balance", async (req, res) => {
   }
 });
 
-admin.post("/remove-driver-subscription", async (req, res) => {  
+admin.post("/remove-driver-subscription", async (req, res) => {
   let connect,
-  { user_id } = req.body,
-  appData = { status: false };
+    { user_id } = req.body,
+    appData = { status: false };
   let userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   userInfo.id = 6197
-try {
-  if(!user_id) {
-    appData.status = false;
-    appData.error = 'user_id id required';
-    res.status(400).json(appData)
-  } else {
-  connect = await database.connection.getConnection();
-  await connect.beginTransaction();
-  const [user] = await connect.query(`SELECT to_subscription from users_list WHERE id = ${user_id}`);
-  if(!user.length) {
-    appData.status = false;
-    appData.error = 'Пользователь не найден'
-    res.status(400).json(appData)
-  } else {
-    if(!user[0].to_subscription) {
+  try {
+    if (!user_id) {
       appData.status = false;
-      appData.error = 'У водителя нет подписки'
+      appData.error = 'user_id id required';
       res.status(400).json(appData)
     } else {
-      const [subTrans] = await connect.query(`SELECT id, agent_id, agent_trans_id from subscription_transaction WHERE deleted = 0 AND userid = ${user_id} ORDER BY created_at DESC LIMIT 1`);
-      if(!subTrans.length) {
+      connect = await database.connection.getConnection();
+      await connect.beginTransaction();
+      const [user] = await connect.query(`SELECT to_subscription from users_list WHERE id = ${user_id}`);
+      if (!user.length) {
         appData.status = false;
-        appData.error = 'User doesn\'t have subscription transaction'
+        appData.error = 'Пользователь не найден'
         res.status(400).json(appData)
-      } else if(subTrans[0].agent_trans_id) {
-        const [agentTrans] = await connect.query(`SELECT id, agent_id from agent_transaction WHERE id = ${subTrans[0].agent_trans_id}`);
-        if(agentTrans.length) {
-          const [response] = await connect.query(`UPDATE agent_transaction set deleted = true, deleted_by = ${userInfo.id} WHERE id = ${subTrans[0].agent_trans_id}`);
-          console.log('response', response.affectedRows)
-          if(response.affectedRows) {
-            const [response] = await connect.query(`UPDATE subscription_transaction set deleted = true, deleted_by = ${userInfo.id} WHERE id = ${subTrans[0].id}`);
-            console.log('response2', response.affectedRows)
-            if(!response.affectedRows) {
+      } else {
+        if (!user[0].to_subscription) {
+          appData.status = false;
+          appData.error = 'У водителя нет подписки'
+          res.status(400).json(appData)
+        } else {
+          const [subTrans] = await connect.query(`SELECT id, agent_id, agent_trans_id from subscription_transaction WHERE deleted = 0 AND userid = ${user_id} ORDER BY created_at DESC LIMIT 1`);
+          if (!subTrans.length) {
+            appData.status = false;
+            appData.error = 'User doesn\'t have subscription transaction'
+            res.status(400).json(appData)
+          } else if (subTrans[0].agent_trans_id) {
+            const [agentTrans] = await connect.query(`SELECT id, agent_id from agent_transaction WHERE id = ${subTrans[0].agent_trans_id}`);
+            if (agentTrans.length) {
+              const [response] = await connect.query(`UPDATE agent_transaction set deleted = true, deleted_by = ${userInfo.id} WHERE id = ${subTrans[0].agent_trans_id}`);
+              console.log('response', response.affectedRows)
+              if (response.affectedRows) {
+                const [response] = await connect.query(`UPDATE subscription_transaction set deleted = true, deleted_by = ${userInfo.id} WHERE id = ${subTrans[0].id}`);
+                console.log('response2', response.affectedRows)
+                if (!response.affectedRows) {
+                  throw new Error()
+                }
+                const [uRes] = await connect.query(`UPDATE users_list set to_subscription = null, from_subscription = null WHERE id = ${user_id}`);
+                console.log('uRes', uRes.affectedRows)
+                if (!uRes.affectedRows) {
+                  throw new Error()
+                }
+                appData.status = true;
+                res.status(200).json(appData)
+              }
+            }
+          } else {
+            const [sRes] = await connect.query(`UPDATE subscription_transaction set deleted = true, deleted_by = ${userInfo.id} WHERE id = ${subTrans[0].id}`);
+            console.log('sRes', sRes.affectedRows)
+            if (!sRes.affectedRows) {
               throw new Error()
             }
-            const [uRes] = await connect.query(`UPDATE users_list set to_subscription = null, from_subscription = null WHERE id = ${user_id}`);
-            console.log('uRes', uRes.affectedRows)
-            if(!uRes.affectedRows) {
+            const [usRes] = await connect.query(`UPDATE users_list set to_subscription = null, from_subscription = null WHERE id = ${user_id}`);
+            console.log('usRes', usRes.affectedRows)
+            if (!usRes.affectedRows) {
               throw new Error()
             }
             appData.status = true;
             res.status(200).json(appData)
           }
         }
-      } else {
-        const [sRes] = await connect.query(`UPDATE subscription_transaction set deleted = true, deleted_by = ${userInfo.id} WHERE id = ${subTrans[0].id}`);
-        console.log('sRes', sRes.affectedRows)
-        if(!sRes.affectedRows) {
-          throw new Error()
-        }
-        const [usRes] = await connect.query(`UPDATE users_list set to_subscription = null, from_subscription = null WHERE id = ${user_id}`);
-        console.log('usRes', usRes.affectedRows)
-        if(!usRes.affectedRows) {
-          throw new Error()
-        }
-        appData.status = true;
-        res.status(200).json(appData)
       }
+      await connect.commit();
+    }
+  } catch (err) {
+    console.log(err)
+    await connect.rollback();
+    appData.status = false;
+    appData.error = err.message
+    res.status(400).json(appData)
+  } finally {
+    if (connect) {
+      connect.release()
     }
   }
-  await connect.commit();
-  }
-} catch(err) {
-  console.log(err)
-  await connect.rollback();
-  appData.status = false;
-  appData.error = err.message
-  res.status(400).json(appData)
-} finally {
-  if(connect) {
-    connect.release()
-  }
-}
 });
 
 admin.post("/message/bot-user", async (req, res) => {
@@ -5307,31 +5306,31 @@ admin.post("/message/bot-user", async (req, res) => {
 admin.delete("/message/bot-user", async (req, res) => {
   let appData = { status: false };
   let connect;
-  let { 
+  let {
     messageId,
     receiverUserId,
   } = req.body;
-    
+
   try {
     connect = await database.connection.getConnection();
-    
+
     const [botUser] = await connect.query(`
     SELECT user_id, chat_id FROM services_bot_users WHERE user_id = ${receiverUserId}`);
     // senderBotId,
-    if(!botUser.length) {
+    if (!botUser.length) {
       appData.error = 'User not registered in bot'
       appData.status = false;
       res.status(400).json(appData);
     } else {
       let receiverBotId = botUser[0]?.chat_id;
-      const response = await deleteMessageFromBotChat(receiverBotId, messageId);      
-      if(response) {
+      const response = await deleteMessageFromBotChat(receiverBotId, messageId);
+      if (response) {
         appData.status = true;
         res.status(200).json(appData);
       } else {
-       appData.error = 'Удалить сообщение не удалось'
-       appData.status = false;
-       res.status(400).json(appData);
+        appData.error = 'Удалить сообщение не удалось'
+        appData.status = false;
+        res.status(400).json(appData);
       }
     }
   } catch (e) {
@@ -5348,33 +5347,33 @@ admin.delete("/message/bot-user", async (req, res) => {
 admin.put("/message/bot-user", async (req, res) => {
   let appData = { status: false };
   let connect;
-  let { 
+  let {
     messageId,
     messageType,
     message,
     receiverUserId,
   } = req.body;
-    
+
   try {
     connect = await database.connection.getConnection();
-    
+
     const [botUser] = await connect.query(`
     SELECT user_id, chat_id FROM services_bot_users WHERE user_id = ${receiverUserId}`);
     // senderBotId,
-    if(!botUser.length) {
+    if (!botUser.length) {
       appData.error = 'User not registered in bot'
       appData.status = false;
       res.status(400).json(appData);
     } else {
       let receiverBotId = botUser[0]?.chat_id;
-      const response = await editMessageInBotChat(receiverBotId, messageId, message);      
-      if(response) {
+      const response = await editMessageInBotChat(receiverBotId, messageId, message);
+      if (response) {
         appData.status = true;
         res.status(200).json(appData);
       } else {
-       appData.error = 'Удалить сообщение не удалось'
-       appData.status = false;
-       res.status(400).json(appData);
+        appData.error = 'Удалить сообщение не удалось'
+        appData.status = false;
+        res.status(400).json(appData);
       }
     }
   } catch (e) {
@@ -5391,18 +5390,18 @@ admin.put("/message/bot-user", async (req, res) => {
 admin.post("/reply-message/bot-user", async (req, res) => {
   let appData = { status: false };
   let connect;
-  let { 
+  let {
     messageType,
     message,
     receiverUserId,
     replyMessageId,
     replyMessage
   } = req.body;
-    
+
   let userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   try {
     connect = await database.connection.getConnection();
-    if( !messageType || !message || !receiverUserId || !replyMessageId || !replyMessage) {
+    if (!messageType || !message || !receiverUserId || !replyMessageId || !replyMessage) {
       appData.status = false;
       appData.error = 'All fields are required!'
       res.status(400).json(appData);
@@ -5411,7 +5410,7 @@ admin.post("/reply-message/bot-user", async (req, res) => {
     const [botUser] = await connect.query(`
     SELECT user_id, chat_id FROM services_bot_users WHERE user_id = ${receiverUserId}`);
     // senderBotId,
-    if(!botUser.length) {
+    if (!botUser.length) {
       appData.error = 'User not registered in bot'
       appData.status = false;
       res.status(400).json(appData);
@@ -5419,7 +5418,7 @@ admin.post("/reply-message/bot-user", async (req, res) => {
       let receiverBotId = botUser[0]?.chat_id;
       const senderType = 'admin';
       const senderUserId = userInfo.id;
-  
+
       const insertResult = await connect.query(`
       INSERT INTO service_bot_message set 
         message_type = ?,
@@ -5432,32 +5431,32 @@ admin.post("/reply-message/bot-user", async (req, res) => {
         replied_message_id = ?,
         replied_message = ?
       `, [
-          messageType, 
-          message, 
-          senderType, 
-          senderUserId,
-          receiverUserId,
-          receiverBotId,
-          true,
-          replyMessageId,
-          replyMessage
-        ]);
-        if(insertResult[0].affectedRows) {
-          const botRes = await replyServiceBotMessageToUser(receiverBotId, message, replyMessageId)
-          if(botRes) {
-            const [edit] = await connect.query(
-              "UPDATE service_bot_message SET bot_message_id = ? WHERE id = ?",
-              [botRes.message_id, insertResult[0].insertId]
-            );
-          }
+        messageType,
+        message,
+        senderType,
+        senderUserId,
+        receiverUserId,
+        receiverBotId,
+        true,
+        replyMessageId,
+        replyMessage
+      ]);
+      if (insertResult[0].affectedRows) {
+        const botRes = await replyServiceBotMessageToUser(receiverBotId, message, replyMessageId)
+        if (botRes) {
+          const [edit] = await connect.query(
+            "UPDATE service_bot_message SET bot_message_id = ? WHERE id = ?",
+            [botRes.message_id, insertResult[0].insertId]
+          );
+        }
 
         appData.data = insertResult;
         appData.status = true;
         res.status(200).json(appData);
-        }else {
-          appData.status = false;
-          res.status(400).json(appData);
-        }
+      } else {
+        appData.status = false;
+        res.status(400).json(appData);
+      }
     }
   } catch (e) {
     console.log(e);
@@ -5473,18 +5472,18 @@ admin.post("/reply-message/bot-user", async (req, res) => {
 admin.post("/message/send-documents-list", async (req, res) => {
   let appData = { status: false };
   let connect;
-  let { 
+  let {
     messageType,
     message,
     receiverUserId,
     replyMessageId,
     replyMessage
   } = req.body;
-    
+
   let userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   try {
     connect = await database.connection.getConnection();
-    if( !messageType || !message || !receiverUserId || !replyMessageId || !replyMessage) {
+    if (!messageType || !message || !receiverUserId || !replyMessageId || !replyMessage) {
       appData.status = false;
       appData.error = 'All fields are required!'
       res.status(400).json(appData);
@@ -5493,7 +5492,7 @@ admin.post("/message/send-documents-list", async (req, res) => {
     const [botUser] = await connect.query(`
     SELECT user_id, chat_id FROM services_bot_users WHERE user_id = ${receiverUserId}`);
     // senderBotId,
-    if(!botUser.length) {
+    if (!botUser.length) {
       appData.error = 'User not registered in bot'
       appData.status = false;
       res.status(400).json(appData);
@@ -5501,7 +5500,7 @@ admin.post("/message/send-documents-list", async (req, res) => {
       let receiverBotId = botUser[0]?.chat_id;
       const senderType = 'admin';
       const senderUserId = userInfo.id;
-  
+
       const insertResult = await connect.query(`
       INSERT INTO service_bot_message set 
         message_type = ?,
@@ -5514,32 +5513,32 @@ admin.post("/message/send-documents-list", async (req, res) => {
         replied_message_id = ?,
         replied_message = ?
       `, [
-          messageType, 
-          message, 
-          senderType, 
-          senderUserId,
-          receiverUserId,
-          receiverBotId,
-          true,
-          replyMessageId,
-          replyMessage
-        ]);
-        if(insertResult[0].affectedRows) {
-          const botRes = await replyServiceBotMessageToUser(receiverBotId, message, replyMessageId)
-          if(botRes) {
-            const [edit] = await connect.query(
-              "UPDATE service_bot_message SET bot_message_id = ? WHERE id = ?",
-              [botRes.message_id, insertResult[0].insertId]
-            );
-          }
+        messageType,
+        message,
+        senderType,
+        senderUserId,
+        receiverUserId,
+        receiverBotId,
+        true,
+        replyMessageId,
+        replyMessage
+      ]);
+      if (insertResult[0].affectedRows) {
+        const botRes = await replyServiceBotMessageToUser(receiverBotId, message, replyMessageId)
+        if (botRes) {
+          const [edit] = await connect.query(
+            "UPDATE service_bot_message SET bot_message_id = ? WHERE id = ?",
+            [botRes.message_id, insertResult[0].insertId]
+          );
+        }
 
         appData.data = insertResult;
         appData.status = true;
         res.status(200).json(appData);
-        }else {
-          appData.status = false;
-          res.status(400).json(appData);
-        }
+      } else {
+        appData.status = false;
+        res.status(400).json(appData);
+      }
     }
   } catch (e) {
     console.log(e);
@@ -5576,9 +5575,9 @@ admin.get("/messages/bot-users", async (req, res) => {
     ORDER BY lastMessageDate DESC;
   `);
 
-      appData.status = true;
-      appData.data = rows;
-      res.status(200).json(appData);
+    appData.status = true;
+    appData.data = rows;
+    res.status(200).json(appData);
   } catch (err) {
     console.log(err);
     appData.error = err.message;
@@ -5627,9 +5626,9 @@ admin.get("/messages/by-bot-user", async (req, res) => {
       ORDER BY created_at ASC LIMIT ${from}, ${limit}
     `);
 
-    for(let row of rows) {
-      if(row.messageType == 'photo') {
-        const [res] = await connect.query(`
+      for (let row of rows) {
+        if (row.messageType == 'photo') {
+          const [res] = await connect.query(`
         SELECT 
         id,
         width,
@@ -5640,21 +5639,22 @@ admin.get("/messages/by-bot-user", async (req, res) => {
         FROM service_bot_photo_details
         WHERE bot_message_id = ${row.botMessageId}
       `);
-        row.files = res;
+          row.files = res;
+        }
       }
+      if (rows.length) {
+        appData.status = true;
+        appData.data = rows;
+        res.status(200).json(appData)
+      } else {
+        res.error = 'No data'
+        res.status(400).json(appData)
       }
-    if(rows.length) {
-      appData.status = true;
-      appData.data = rows;
-      res.status(200).json(appData)
-    } else {
-      res.error = 'No data'
-      res.status(400).json(appData)
     }
+  } catch (err) {
+    console.log(err)
   }
-  }  catch (err) {
-   console.log(err)
-  }})
+})
 
 admin.get("/excel/agent-tirgo-balance-transactions", async (req, res) => {
   let connect,
@@ -5673,8 +5673,7 @@ admin.get("/excel/agent-tirgo-balance-transactions", async (req, res) => {
         `SELECT at.*, al.name as "Agent", adl.name as "Admin" FROM agent_transaction  at
       LEFT JOIN users_list al on al.id = at.agent_id
       LEFT JOIN users_list adl on adl.id = at.admin_id
-      WHERE type = 'tirgo_balance' AND at.agent_id = ${agentId} ORDER BY ${
-          sortByDate ? "created_at" : "id"
+      WHERE type = 'tirgo_balance' AND at.agent_id = ${agentId} ORDER BY ${sortByDate ? "created_at" : "id"
         } ${sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"} ;`
       );
 
@@ -5693,8 +5692,7 @@ admin.get("/excel/agent-tirgo-balance-transactions", async (req, res) => {
         `SELECT st.*, al.name as "Agent", ul.name as "DriverName", 'subscription' as "Type" FROM subscription_transaction st
       LEFT JOIN users_list ul on ul.id = st.userid
       LEFT JOIN users_list al on al.id = st.agent_id
-      WHERE ${whereClause} ORDER BY ${sortByDate ? "created_at" : "id"} ${
-          sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
+      WHERE ${whereClause} ORDER BY ${sortByDate ? "created_at" : "id"} ${sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
         } ;`
       );
 
@@ -5829,8 +5827,7 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
           LEFT JOIN users_list al on al.id = st.created_by_id AND al.user_type = 4
           LEFT JOIN users_list adl on adl.id = st.userid AND adl.user_type = 1
           LEFT JOIN services s on s.id = st.service_id
-          where ${rowWhereClause} ORDER BY ${
-            sortByDate ? "st.created_at" : "st.id"
+          where ${rowWhereClause} ORDER BY ${sortByDate ? "st.created_at" : "st.id"
           } ${sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"} `
         );
         [row] = await connect.query(
@@ -5845,8 +5842,7 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
             `SELECT *, adl.name as "adminName", al.name as "agentName", 'at' as 'rawType' FROM agent_transaction at
           LEFT JOIN users_list al on al.id = at.agent_id
           LEFT JOIN users_list adl on adl.id = at.admin_id
-          WHERE at.agent_id = ${agentId} AND type = 'service_balance' ORDER BY ${
-              sortByDate ? "at.created_at" : "at.id"
+          WHERE at.agent_id = ${agentId} AND type = 'service_balance' ORDER BY ${sortByDate ? "at.created_at" : "at.id"
             } ${sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"} `
           );
 
@@ -6214,11 +6210,11 @@ admin.post("/report/user-activity", async (req, res) => {
           ul.user_type`,
       [from_date, to_date]
     );
-    if (rows.length>0) {
+    if (rows.length > 0) {
       appData.status = true;
       appData.data = rows;
       res.status(200).json(appData);
-    }else{
+    } else {
       appData.status = false;
       appData.error = "Отчет не найден";
       res.status(200).json(appData);
@@ -6315,7 +6311,7 @@ admin.post("/report/active-user-activity-average", async (req, res) => {
       ua.date BETWEEN ? AND DATE_ADD(?, INTERVAL 1 DAY)
   GROUP BY 
       ul.user_type`,
-  [from_date, to_date]
+      [from_date, to_date]
     );
     let data = userCountRows.map((activity) => ({
       user_type: activity.user_type,
