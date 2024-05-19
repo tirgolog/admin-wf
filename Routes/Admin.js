@@ -4471,7 +4471,7 @@ admin.post("/services-transaction/status/by", async (req, res) => {
       const [user] = await connect.query(
         `SELECT sbu.chat_id, st.service_name FROM services_transaction st
         LEFT JOIN services_bot_users sbu on sbu.user_id = st.userid
-        WHERE id = ${id}`
+        WHERE st.id = ${id}`
       );
       if(status == 2 && user.length) {
         await sendServiceBotMessageToUser(user[0]?.chat_id, `Service "${user[0]?.service_name}" is issued to you`)
@@ -4517,30 +4517,30 @@ admin.post("/services-transaction/status/to-priced", async (req, res) => {
         const [result] = await connect.query(`
         SELECT 
             (COALESCE(
-              (SELECT SUM(amount) FROM driver_group_transaction WHERE driver_group_id = ${groupId} AND type = 'Пополнение'), 0) -
+              (SELECT SUM(amount) FROM driver_group_transaction WHERE driver_group_id = ${user[0]?.groupId} AND type = 'Пополнение'), 0) -
             COALESCE(
-              (SELECT SUM(amount) FROM driver_group_transaction WHERE driver_group_id = ${groupId} AND type = 'Вывод'), 0)) -
+              (SELECT SUM(amount) FROM driver_group_transaction WHERE driver_group_id = ${user[0]?.groupId} AND type = 'Вывод'), 0)) -
     
             (COALESCE(
-              (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND group_id = ${groupId}), 0) +
+              (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND group_id = ${user[0]?.groupId}), 0) +
             COALESCE(
-              (SELECT SUM(amount) FROM services_transaction WHERE group_id = ${groupId} AND status In(2, 3)), 0)) as balance;
+              (SELECT SUM(amount) FROM services_transaction WHERE group_id = ${user[0]?.groupId} AND status In(2, 3)), 0)) as balance;
         `);
         balance = result[0]?.balance;
     } else {
         const [result] = await connect.query(`
         SELECT 
             COALESCE(
-              (SELECT SUM(amount) from secure_transaction where dirverid = ${userId} and status = 2), 0) +
+              (SELECT SUM(amount) from secure_transaction where dirverid = ${user[0]?.user_id} and status = 2), 0) +
 
             COALESCE(
-              (SELECT SUM(amount) FROM payment WHERE userid = ${userId} and status = 1 and date_cancel_time IS NULL), 0) -
+              (SELECT SUM(amount) FROM payment WHERE userid = ${user[0]?.user_id} and status = 1 and date_cancel_time IS NULL), 0) -
 
             COALESCE(
-              (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND userid = ${userId} AND agent_id = 0 AND (admin_id <> 0 OR admin_id IS NULL)), 0) -
+              (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND userid = ${user[0]?.user_id} AND agent_id = 0 AND (admin_id <> 0 OR admin_id IS NULL)), 0) -
 
             COALESCE(
-              (SELECT SUM(amount) from driver_withdrawal where driver_id = ${userId}) , 
+              (SELECT SUM(amount) from driver_withdrawal where driver_id = ${user[0]?.user_id}) , 
               0) as balance;
         `);
         balance = result[0]?.balance;
