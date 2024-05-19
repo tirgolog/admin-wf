@@ -185,7 +185,10 @@ admin.use((req, res, next) => {
         }
         // Attach user information from the decoded token to the request
         req.user = decoded;
+        console.log(req.user)
+        console.log('next1')
         next();
+        console.log('next2')
       }
     });
   } else {
@@ -5552,11 +5555,11 @@ admin.post("/message/send-documents-list", async (req, res) => {
 });
 
 admin.get("/messages/bot-users", async (req, res) => {
+  console.log('messages/bot-users')
   let connect,
     appData = { status: false };
   try {
     connect = await database.connection.getConnection();
-
     const [rows] = await connect.query(`
     SELECT 
       sbu.id,
