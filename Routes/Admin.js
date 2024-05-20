@@ -4506,7 +4506,7 @@ admin.post("/services-transaction/status/by", async (req, res) => {
         `);
         balance = result[0]?.balance;
       }
-      if(balance < user[0]?.serviceAmount) {
+      if(Number(balance) < Number(user[0]?.serviceAmount)) {
         appData.error = "Недостаточно средств в балансе";
         res.status(400).json(appData);
         return;
@@ -4591,8 +4591,7 @@ admin.post("/services-transaction/status/to-priced", async (req, res) => {
         `);
         balance = result[0]?.balance;
       }
-
-      if (balance < amount) {
+      if (Number(balance) < Number(amount)) {
         await sendServiceBotMessageToUserAfterPrice(user[0]?.chat_id, user[0]?.user_id, id, amount, balance)
       }
       appData.status = true;
