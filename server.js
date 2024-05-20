@@ -29,6 +29,7 @@ const
     Admin = require('./Routes/Admin'),
     Reborn = require('./Routes/Reborn'),
     Merchant = require('./Routes/Merchant'),
+    bot = require('./Routes/service-bot'),
     port = 7790;
 
 process.env.SECRET_KEY = "tirgoserverkey";
@@ -106,11 +107,13 @@ app.get('/download/:filename', (req, res) => {
         }
     });
 });
+
 app.use('/users', Users);
 app.use('/api', Payme);
 app.use('/admin', Admin);
 app.use('/reborn', Reborn);
 app.use('/merchant', Merchant);
+app.use(`/bot${bot.botToken}`, bot.router);
 require('./Routes/rabbit.js')
 
 
