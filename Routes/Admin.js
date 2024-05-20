@@ -4823,10 +4823,18 @@ admin.post("/add-driver-to-group", async (req, res) => {
     `);
     if (query[0]?.id) {
       const [user] = await connect.query(`
-      SELECT id from users_list where id = ${userId};
+      SELECT id, driver_group_id from users_list where id = ${userId};
     `);
 
       if (user[0]?.id) {
+
+        if(user[0]?.driver_group_id) {
+          appData.status = false;
+          appData.message = 'Пользователь уже добавлен в группу';
+          res.status(400).json(appData);
+          return
+        }
+
         const [row] = await connect.query(
           `UPDATE users_list SET driver_group_id = ${groupId} WHERE id = ${userId}`
         );
