@@ -5701,7 +5701,7 @@ admin.get("/messages/by-bot-user", async (req, res) => {
         appData.data = rows;
         res.status(200).json(appData)
       } else {
-        res.error = 'No data'
+        appData.error = 'No data'
         res.status(400).json(appData)
       }
     }

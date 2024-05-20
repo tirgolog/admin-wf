@@ -145,9 +145,15 @@ async function onContactReceived(msg) {
 
 
         const [user] = await connection.query(`
-      SELECT * FROM users_contacts WHERE text = ?
+      SELECT * FROM users_contacts WHERE text = ? AND user_type = 1
     `, [phoneNumber]);
-
+       if (!user.length) { 
+           await bot.sendMessage(
+               chatId,
+               `Дорогой ${chatFirstName}! Пожалуйста, зарегистрируйтесь в приложении по <a href="https://play.google.com/store/apps/details?id=io.tirgo.drive&pcampaignid=web_share">ссылке</a>.`,
+               { parse_mode: "HTML" },
+           );
+       }
         const [userChat] = await connection.query(`
       SELECT * FROM services_bot_users WHERE phone_number = ?
     `, [phoneNumber]);
@@ -176,7 +182,6 @@ async function onContactReceived(msg) {
 
         // Send a notification to the user
         if (res[0].affectedRows) {
-            if (user[0]) {
                 const keyboard = new InlineKeyboard()
                     .text('Типы услуг', '#services')
                 await bot.sendMessage(chatId, `Дорогой ${chatFirstName}! Вы успешно зарегистрировались.`, { reply_markup: keyboard });
@@ -185,13 +190,6 @@ async function onContactReceived(msg) {
                     { command: "services", description: "Services list" },
                   ]);
                   socket.updateAllMessages("update-service-users-list", JSON.stringify({userId: user[0]?.user_id}));
-            } else {
-                await bot.sendMessage(
-                    chatId,
-                    `Дорогой ${chatFirstName}! Пожалуйста, зарегистрируйтесь в приложении по <a href="YOUR_LINK_HERE">ссылке</a>.`,
-                    { parse_mode: "HTML" },
-                );
-            }
         } else {
             await bot.sendMessage(chatId, `Дорогой ${chatFirstName}! Регистрация не удалась. Пожалуйста, попробуйте позднее.`);
         }
