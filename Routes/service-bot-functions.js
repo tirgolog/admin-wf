@@ -404,7 +404,7 @@ async function checkUserServiceRequests(bot, connection, userBotId) {
         status,
         amount
         FROM services_transaction
-        WHERE userid = ? AND status = 0 OR status = 1
+        WHERE userid = ? AND (status = 0 OR status = 1)
         `, [userChat[0]?.user_id]);
 
         if (service.length) {
