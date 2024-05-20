@@ -328,9 +328,10 @@ async function sendServiceBotMessageToUser(chatId, text) {
 }
 
 async function sendServiceBotMessageToUserAfterPrice(chatId, userId, serviceId, price, balance) {
-    const base64 = Buffer.from("m=65dc59df3c319dec9d8c3953;ac.UserID=" + userId + ";a=" + Number(price) - Number(balance) + "00").toString('base64');
+    const amount = Number(price) - Number(balance) > 999 ? Number(price) - Number(balance) : 1000;
+    const base64 = Buffer.from("m=65dc59df3c319dec9d8c3953;ac.UserID=" + userId + ";a=" + amount + "00").toString('base64');
     const paymePaymentUrl = 'https://checkout.paycom.uz/' + base64;
-    const clickUrl = `https://my.click.uz/services/pay?service_id=32406&merchant_id=24561&amount=${Number(price) - Number(balance)}&transaction_param=${userId}`
+    const clickUrl = `https://my.click.uz/services/pay?service_id=32406&merchant_id=24561&amount=${amount}&transaction_param=${userId}`
     const keyboard = {
         inline_keyboard: [
             [{ text: 'Pay with Click', url: clickUrl }],
