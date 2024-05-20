@@ -43,7 +43,7 @@ async function middleware(msg) {
 //send user services list;
 async function sendServicesListToBotUser(bot, connection, chatId) {
     try {
-        const [services] = await connection.query('SELECT * FROM services');
+        const [services] = await connection.query('SELECT * FROM services WHERE without_subscription = 0');
         if (services && services.length) {
             const keyboard = { inline_keyboard: [] };
             for (let service of services) {
@@ -404,7 +404,7 @@ async function checkUserServiceRequests(bot, connection, userBotId) {
         status,
         amount
         FROM services_transaction
-        WHERE without_subscription = 0 AND userid = ? AND (status = 0 OR status = 1)
+        WHERE userid = ? AND (status = 0 OR status = 1)
         `, [userChat[0]?.user_id]);
 
         if (service.length) {
