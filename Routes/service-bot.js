@@ -220,7 +220,7 @@ async function onTextReceived(msg) {
 
     if (botUser?.length && !msg.contact) {
         let data = {
-            msgId: msg.message_id,
+            messageId: msg.message_id,
             senderType: 'user',
             senderUserId: botUser[0]?.user_id,
             senderBotId: msg.from?.id,
