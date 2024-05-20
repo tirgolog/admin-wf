@@ -6411,4 +6411,168 @@ admin.get("/payments/alpha-payment-service", async (req, res) => {
   }
 });
 
+admin.get("/excel/payments/subscription-service", async (req, res) => {
+  let connect;
+  const appData = { status: false, timestamp: new Date().getTime() };
+  try {
+    connect = await database.connection.getConnection();
+    const [payments] = await connect.query(`
+      SELECT p.id, u.id as userid, u.name, p.amount, p.pay_method, p.date  
+      FROM payment p 
+      INNER JOIN users_list u ON p.userid = u.id
+      ORDER BY p.date DESC
+    `);
+
+    const formattedPayments = payments.map((el) => ({
+      id: el.id,
+      userid: el.userid,
+      name: el.name,
+      amount: el.amount,
+      pay_method: el.pay_method,
+      date: new Date(el.date).toLocaleString("ru-RU", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    }));
+
+    if (formattedPayments.length) {
+      const ws = XLSX.utils.json_to_sheet(formattedPayments);
+      ws["!cols"] = [
+        { wch: 10 },
+        { wch: 10 },
+        { wch: 30 },
+        { wch: 15 },
+        { wch: 20 },
+        { wch: 20 },
+      ];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+      ws["A1"].v = "ID";
+      ws["B1"].v = "UserID";
+      ws["C1"].v = "Name";
+      ws["D1"].v = "Amount";
+      ws["E1"].v = "Payment Method";
+      ws["F1"].v = "Date";
+
+      formattedPayments.forEach((item, index) => {
+        const rowIndex = index + 2; 
+        ws[`D${rowIndex}`] = { v: item.amount, t: "n" };
+        ws[`E${rowIndex}`] = {
+          v: item.pay_method === "payme_merchant" ? "Payme" : "Click",
+          t: "s",
+        };
+      });
+
+      const wopts = { bookType: "xlsx", bookSST: false, type: "buffer" };
+      const wbout = XLSX.write(wb, wopts);
+
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=services-transaction.xlsx"
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.end(wbout);
+      appData.status = true;
+    } else {
+      res.status(204).send();
+    }
+  } catch (e) {
+    console.error("ERROR payment:", e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/excel/payments/alpha-payment-service", async (req, res) => {
+  let connect;
+  const appData = { status: false, timestamp: new Date().getTime() };
+  try {
+    connect = await database.connection.getConnection();
+    const [payments] = await connect.query(`
+      SELECT p.id, u.id as userid, u.name, p.amount, p.pay_method, p.date  
+      FROM alpha_payment p 
+      INNER JOIN users_list u ON p.userid = u.id
+      ORDER BY p.date DESC
+    `);
+
+    const formattedPayments = payments.map((el) => ({
+      id: el.id,
+      userid: el.userid,
+      name: el.name,
+      amount: el.amount,
+      pay_method: el.pay_method,
+      date: new Date(el.date).toLocaleString("ru-RU", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    }));
+
+    if (formattedPayments.length) {
+      const ws = XLSX.utils.json_to_sheet(formattedPayments);
+      ws["!cols"] = [
+        { wch: 10 },
+        { wch: 10 },
+        { wch: 30 },
+        { wch: 15 },
+        { wch: 20 },
+        { wch: 20 },
+      ];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+      ws["A1"].v = "ID";
+      ws["B1"].v = "UserID";
+      ws["C1"].v = "Name";
+      ws["D1"].v = "Amount";
+      ws["E1"].v = "Payment Method";
+      ws["F1"].v = "Date";
+
+      formattedPayments.forEach((item, index) => {
+        const rowIndex = index + 2; 
+        ws[`D${rowIndex}`] = { v: item.amount, t: "n" };
+        ws[`E${rowIndex}`] = {
+          v: item.pay_method === "payme_merchant" ? "Payme" : "Click",
+          t: "s",
+        };
+      });
+
+      const wopts = { bookType: "xlsx", bookSST: false, type: "buffer" };
+      const wbout = XLSX.write(wb, wopts);
+
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=services-transaction.xlsx"
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.end(wbout);
+      appData.status = true;
+    } else {
+      res.status(204).send();
+    }
+  } catch (e) {
+    console.error("ERROR payment:", e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 module.exports = admin;
