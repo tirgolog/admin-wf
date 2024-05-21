@@ -1026,7 +1026,7 @@ users.post("/loginClient", async (req, res) => {
 users.post("/codeverify", async (req, res) => {
   let connect,
     appData = { status: false },
-    phone = req.body.phone.replace(/[^0-9, ]/g, "").replace(/ /g, ""),
+    phone = req.body.phone?.replace(/[^0-9, ]/g, "")?.replace(/ /g, ""),
     code = req.body.code;
   try {
     connect = await database.connection.getConnection();
@@ -1055,9 +1055,9 @@ users.post("/codeverify", async (req, res) => {
           [
             rows[0].user_id,
             "Произведен вход " +
-              req.headers["user-agent"].split("(")[1].replace(")", "") +
+              req.headers["user-agent"].split("(")[1]?.replace(")", "") +
               ", IP: " +
-              parseIp(req).replace("::ffff:", ""),
+              parseIp(req)?.replace("::ffff:", ""),
           ]
         );
         socket.updateActivity("update-activity", "1");
@@ -1073,6 +1073,7 @@ users.post("/codeverify", async (req, res) => {
       return
     }
   } catch (err) {
+    console.log(err)
     appData.status = false;
     appData.error = err;
     res.status(403).json(appData);
