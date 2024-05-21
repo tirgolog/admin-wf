@@ -11,7 +11,6 @@ const crypto = require("crypto");
 const socket = require("../Modules/Socket");
 const amqp = require("amqplib");
 const axios = require("axios");
-const { sendServiceBotMessageToUser, replyServiceBotMessageToUser, deleteMessageFromBotChat, editMessageInBotChat, sendServiceBotMessageToUserAfterPrice } = require("./service-bot");
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
@@ -4520,7 +4519,7 @@ admin.post("/services-transaction/status/by", async (req, res) => {
     if (updateResult.affectedRows > 0) {
 
       if (status == 2 && user.length) {
-        await sendServiceBotMessageToUser(user[0]?.chat_id, `Service "${user[0]?.service_name}" is issued to you`)
+        socket.emit(14, 'service-issued', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Service "${user[0]?.service_name}" is issued to you` }));
       }
 
       appData.status = true;
@@ -4591,9 +4590,7 @@ admin.post("/services-transaction/status/to-priced", async (req, res) => {
         `);
         balance = result[0]?.balance;
       }
-      if (Number(balance) < Number(amount)) {
-        await sendServiceBotMessageToUserAfterPrice(user[0]?.chat_id, user[0]?.user_id, id, amount, balance)
-      }
+        socket.emit(14, 'service-priced', JSON.stringify({ userChatId: user[0]?.chat_id, userId: user[0]?.user_id, amount, balance }));
       appData.status = true;
       res.status(200).json(appData);
     } else {
@@ -5327,10 +5324,7 @@ admin.post("/message/bot-user", async (req, res) => {
         ]
       );
       if (insertResult[0].affectedRows) {
-        const botRes = await sendServiceBotMessageToUser(
-          receiverBotId,
-          message
-        );
+        socket.emit(14, 'user-text', JSON.stringify({ userChatId: receiverBotId, text: message }));
         if (botRes) {
           const [edit] = await connect.query(
             "UPDATE service_bot_message SET bot_message_id = ? WHERE id = ?",
@@ -5377,18 +5371,12 @@ admin.delete("/message/bot-user", async (req, res) => {
       res.status(400).json(appData);
     } else {
       let receiverBotId = botUser[0]?.chat_id;
-      const response = await deleteMessageFromBotChat(receiverBotId, messageId);
-      if (response) {
+      socket.emit(14, 'user-delete-message', JSON.stringify({ userChatId: receiverBotId, messageId }));
         appData.status = true;
         res.status(200).json(appData);
-      } else {
-        appData.error = 'Удалить сообщение не удалось'
-        appData.status = false;
-        res.status(400).json(appData);
       }
-    }
-  } catch (e) {
-    console.log(e);
+    } catch (e) {
+      console.log(e);
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
@@ -5420,15 +5408,9 @@ admin.put("/message/bot-user", async (req, res) => {
       res.status(400).json(appData);
     } else {
       let receiverBotId = botUser[0]?.chat_id;
-      const response = await editMessageInBotChat(receiverBotId, messageId, message);
-      if (response) {
-        appData.status = true;
-        res.status(200).json(appData);
-      } else {
-        appData.error = 'Удалить сообщение не удалось'
-        appData.status = false;
-        res.status(400).json(appData);
-      }
+      socket.emit(14, 'user-edit-message', JSON.stringify({ userChatId: receiverBotId, text: message, messageId }));
+      appData.status = true;
+      res.status(200).json(appData);
     }
   } catch (e) {
     console.log(e);
@@ -5496,13 +5478,11 @@ admin.post("/reply-message/bot-user", async (req, res) => {
         replyMessage
       ]);
       if (insertResult[0].affectedRows) {
-        const botRes = await replyServiceBotMessageToUser(receiverBotId, message, replyMessageId)
-        if (botRes) {
+        socket.emit(14, 'user-reply', JSON.stringify({ userChatId: receiverBotId, text: message, replyMessageId }));
           const [edit] = await connect.query(
             "UPDATE service_bot_message SET bot_message_id = ? WHERE id = ?",
             [botRes.message_id, insertResult[0].insertId]
           );
-        }
 
         appData.data = insertResult;
         appData.status = true;
@@ -5578,13 +5558,11 @@ admin.post("/message/send-documents-list", async (req, res) => {
         replyMessage
       ]);
       if (insertResult[0].affectedRows) {
-        const botRes = await replyServiceBotMessageToUser(receiverBotId, message, replyMessageId)
-        if (botRes) {
+        socket.emit(14, 'user-reply', JSON.stringify({ userChatId: receiverBotId, text: message, replyMessageId }));
           const [edit] = await connect.query(
             "UPDATE service_bot_message SET bot_message_id = ? WHERE id = ?",
             [botRes.message_id, insertResult[0].insertId]
           );
-        }
 
         appData.data = insertResult;
         appData.status = true;
