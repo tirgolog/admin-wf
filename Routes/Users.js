@@ -1070,6 +1070,7 @@ users.post("/codeverify", async (req, res) => {
       appData.error = "Проверочный код введен не верно";
       appData.status = false;
       res.status(403).json(appData);
+      return
     }
   } catch (err) {
     appData.status = false;
