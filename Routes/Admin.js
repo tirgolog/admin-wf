@@ -5325,12 +5325,10 @@ admin.post("/message/bot-user", async (req, res) => {
       );
       if (insertResult[0].affectedRows) {
         socket.emit(14, 'user-text', JSON.stringify({ userChatId: receiverBotId, text: message }));
-        if (botRes) {
           const [edit] = await connect.query(
             "UPDATE service_bot_message SET bot_message_id = ? WHERE id = ?",
             [botRes.message_id, insertResult[0].insertId]
           );
-        }
 
         appData.data = insertResult;
         appData.status = true;
