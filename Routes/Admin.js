@@ -4590,7 +4590,7 @@ admin.post("/services-transaction/status/to-priced", async (req, res) => {
         `);
         balance = result[0]?.balance;
       }
-        socket.emit(14, 'service-priced', JSON.stringify({ userChatId: user[0]?.chat_id, userId: user[0]?.user_id, amount, balance }));
+        socket.emit(14, 'service-priced', JSON.stringify({ userChatId: user[0]?.chat_id, userId: user[0]?.user_id, serviceId: id, amount, balance }));
       appData.status = true;
       res.status(200).json(appData);
     } else {
