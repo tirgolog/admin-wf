@@ -5594,7 +5594,7 @@ admin.get("/messages/by-bot-user", async (req, res) => {
         appData.data = rows;
         appData.from = from;
         appData.limit = limit;
-        appData.totalCount;
+        appData.totalCount = rowsCount;
         res.status(200).json(appData)
       } else {
         appData.error = 'No data'
