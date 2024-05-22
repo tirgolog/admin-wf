@@ -5563,7 +5563,7 @@ admin.get("/messages/by-bot-user", async (req, res) => {
       created_at createdAt
       FROM service_bot_message
       WHERE sender_user_id = ${userId} OR receiver_user_id = ${userId}
-      ORDER BY created_at ASC LIMIT ${from}, ${limit}
+      ORDER BY created_at DESC LIMIT ${from}, ${limit}
     `);
 
     const [rowsCount] = await connect.query(`
