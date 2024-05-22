@@ -5566,6 +5566,13 @@ admin.get("/messages/by-bot-user", async (req, res) => {
       ORDER BY created_at ASC LIMIT ${from}, ${limit}
     `);
 
+    const [rowsCount] = await connect.query(`
+    SELECT 
+    COUNT(id)
+    FROM service_bot_message
+    WHERE sender_user_id = ${userId} OR receiver_user_id = ${userId}
+  `);
+
       for (let row of rows) {
         if (row.messageType == 'photo') {
           const [res] = await connect.query(`
@@ -5585,6 +5592,9 @@ admin.get("/messages/by-bot-user", async (req, res) => {
       if (rows.length) {
         appData.status = true;
         appData.data = rows;
+        appData.from = from;
+        appData.limit = limit;
+        appData.totalCount;
         res.status(200).json(appData)
       } else {
         appData.error = 'No data'
