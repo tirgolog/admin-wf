@@ -5568,7 +5568,7 @@ admin.get("/messages/by-bot-user", async (req, res) => {
 
     const [rowsCount] = await connect.query(`
     SELECT 
-    COUNT(id)
+    COUNT(id) count
     FROM service_bot_message
     WHERE sender_user_id = ${userId} OR receiver_user_id = ${userId}
   `);
@@ -5594,7 +5594,7 @@ admin.get("/messages/by-bot-user", async (req, res) => {
         appData.data = rows;
         appData.from = from;
         appData.limit = limit;
-        appData.totalCount = rowsCount;
+        appData.totalCount = rowsCount[0]?.count;
         res.status(200).json(appData)
       } else {
         appData.error = 'No data'
