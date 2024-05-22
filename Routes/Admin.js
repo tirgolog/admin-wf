@@ -5496,7 +5496,9 @@ admin.get("/messages/bot-users", async (req, res) => {
   let connect,
     appData = { status: false };
   try {
-    connect = await database.connection.getConnection();
+      console.log(1, new Date().getTime())
+      connect = await database.connection.getConnection();
+      console.log(2, new Date().getTime())
     const [rows] = await connect.query(`
     SELECT 
       sbu.id,
