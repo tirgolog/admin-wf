@@ -86,42 +86,10 @@ admin.post("/loginAdmin", async (req, res) => {
 admin.post("/refreshToken", async (req, res) => {
   let connect,
     appData = { status: false },
-    refreshTokenFromRequest = req.body.refreshToken;
-  if (!refreshTokenFromRequest)
-    return res
-      .status(401)
-      .json({ status: false, error: "Требуется токен обновления." });
-  connect = await database.connection.getConnection();
-  const [rows] = await connect.query(
-    "SELECT * FROM users_list WHERE refresh_token = ?",
-    [refreshTokenFromRequest]
-  );
-
-  if (rows.length === 0) {
-    return res
-      .status(403)
-      .json({ status: false, error: "Неверный токен обновления" });
-  }
-  const token = jwt.sign({ id: rows[0].id }, process.env.SECRET_KEY, {
-    expiresIn: "1440m",
-  });
-  const refreshToken = jwt.sign({ id: rows[0].id }, process.env.SECRET_KEY);
-  await connect.query(
-    "UPDATE users_list SET refresh_token = ? WHERE id = ?",
-    [refreshToken, rows[0].id]
-  );
-  appData.status = true;
-  appData.token = token;
-  appData.refreshToken = refreshToken;
-  res.status(200).json(appData);
-});
-
-admin.post("/refreshToken", async (req, res) => {
-  let connect,
-    appData = { status: false },
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]),
     refreshTokenFromRequest = req.body.refreshToken;
-  if (!refreshTokenFromRequest)
+  try {
+    if (!refreshTokenFromRequest)
     return res
       .status(401)
       .json({ status: false, error: "Требуется токен обновления." });
@@ -150,6 +118,13 @@ admin.post("/refreshToken", async (req, res) => {
       appData.error = "Данные для входа введены неверно";
       appData.status = false;
       res.status(403).json(appData);
+    }
+  }
+  } catch(err) {
+    console.log('Error in refreshtoken', err)
+  } finally {
+    if(connect) {
+      connect.release()
     }
   }
 });
@@ -3079,6 +3054,10 @@ admin.delete("/subscription/:id", async (req, res) => {
     console.log(err);
     appData.error = "Internal error";
     res.status(403).json(appData);
+  } finally {
+    if(connect) {
+      connect.release()
+    }
   }
 });
 
@@ -3871,6 +3850,10 @@ admin.delete("/services/:id", async (req, res) => {
     console.log(err);
     appData.error = "Internal error";
     res.status(403).json(appData);
+  } finally {
+    if(connect) {
+      connect.release()
+    }
   }
 });
 
@@ -5605,6 +5588,10 @@ admin.get("/messages/by-bot-user", async (req, res) => {
     }
   } catch (err) {
     console.log(err)
+  } finally {
+    if(connect) {
+      connect.release();
+    }
   }
 })
 
