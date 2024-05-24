@@ -5484,6 +5484,7 @@ admin.get("/messages/bot-users", async (req, res) => {
       console.log(2, new Date().getTime())
     const [rows] = await connect.query(`
     SELECT 
+      ul.to_subscription,
       sbu.id,
       sbu.first_name firstName,
       sbu.last_name lastName,
