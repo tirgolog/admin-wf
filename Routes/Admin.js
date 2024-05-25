@@ -5495,7 +5495,10 @@ admin.get("/messages/bot-users", async (req, res) => {
       sbu.unread_count unReadCount,
        (SELECT created_at from service_bot_message 
         WHERE sender_user_id = ul.id OR receiver_user_id = ul.id 
-        ORDER BY created_at DESC LIMIT 1) as lastMessageDate
+        ORDER BY created_at DESC LIMIT 1) as lastMessageDate,
+      (SELECT COUNT(*) 
+      FROM service_bot_message 
+      WHERE (sender_user_id = ul.id OR receiver_user_id = ul.id) AND is_read = false) AS unreadMessagesCount
     FROM services_bot_users sbu
     LEFT JOIN users_list ul on ul.id = sbu.user_id
     ORDER BY lastMessageDate DESC;
@@ -5551,6 +5554,10 @@ admin.get("/messages/by-bot-user", async (req, res) => {
       WHERE sender_user_id = ${userId} OR receiver_user_id = ${userId}
       ORDER BY created_at DESC LIMIT ${from}, ${limit}
     `);
+      await connect.query(`
+        UPDATE service_bot_message
+        SET is_read = true
+      `);
 
     const [rowsCount] = await connect.query(`
     SELECT 
