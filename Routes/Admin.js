@@ -4494,7 +4494,11 @@ admin.post("/services-transaction/status/by", async (req, res) => {
     if (updateResult.affectedRows > 0) {
 
       if (status == 2 && user.length) {
-        socket.emit(14, 'service-issued', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Service "${user[0]?.service_name}" is issued to you` }));
+        socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Ваше заявка обрабатывается, Пожалуйста ожидайте ответа` }));
+      } else if (status == 4) {
+        socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Услуга "${user[0]?.service_name}" отменена` }));
+      } else if (status == 3) {
+        socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Услуга "${user[0]?.service_name}" выполнен` }));
       }
 
       appData.status = true;
