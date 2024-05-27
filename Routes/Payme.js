@@ -11,6 +11,7 @@ const
     allpha_password='aAw@yrup#VbOh6PRP5TMGWaSkQzVg1ZHFysT'
     btoa = require('btoa');
 const socket = require("../Modules/Socket");
+const { tirgoBalanceCurrencyCodes } = require('../constants');
 
 payme.use(cors());
 
@@ -115,7 +116,15 @@ payme.post('/payMeMerchantApi', async function(req, res) {
                             appData.id = id;
                             res.status(200).json(appData);
                             const [insert] = await connect.query('UPDATE users_list SET balance = balance + ? WHERE id = ?', [+checkpay[0].amount,+checkpay[0].userid]);
-                                                     
+                            
+                            const [currency] = await connect.query(`
+                            SELECT * from tirgo_balance_currency WHERE code = ${tirgoBalanceCurrencyCodes.uzs} 
+                            `);
+
+                            await connect.query(`
+                            INSERT INTO exchange_rates set currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, created_by_id = ?
+                            `, [currency[0]?.currency_name, currency[0]?.rate, 0, +checkpay[0].amount, 0, +checkpay[0].amount / currency[0]?.rate, +checkpay[0]?.userid])
+                            
                             if(insert.affectedRows > 0){
                                 const [token] = await connect.query('SELECT * FROM users_list WHERE id = ?', [+checkpay[0].userid]);
                                 if (token.length){
