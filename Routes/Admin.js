@@ -4471,21 +4471,13 @@ admin.post("/services-transaction/status/by", async (req, res) => {
         `);
         balance = result[0]?.balance;
       } else {
-        const [result] = await connect.query(`
-        SELECT 
-            COALESCE(
-              (SELECT SUM(amount) from secure_transaction where dirverid = ${user[0]?.user_id} and status = 2), 0) +
-
-            COALESCE(
-              (SELECT SUM(amount) FROM payment WHERE userid = ${user[0]?.user_id} and status = 1 and date_cancel_time IS NULL), 0) -
-
-            COALESCE(
-              (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND userid = ${user[0]?.user_id} AND agent_id = 0 AND (admin_id <> 0 OR admin_id IS NULL)), 0) -
-
-            COALESCE(
-              (SELECT SUM(amount) from driver_withdrawal where driver_id = ${user[0]?.user_id}) , 
-              0) as balance;
-        `);
+        const [result] = await connect.query(
+          `SELECT 
+          COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE userid = ? AND is_agent = false), 0) - 
+          COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false AND status In(2, 3)), 0)
+          AS balance;`,
+          [user[0]?.user_id, user[0]?.user_id]
+        );
         balance = result[0]?.balance;
       }
       if(Number(balance) < Number(user[0]?.serviceAmount)) {
@@ -4556,21 +4548,13 @@ admin.post("/services-transaction/status/to-priced", async (req, res) => {
         `);
         balance = result[0]?.balance;
       } else {
-        const [result] = await connect.query(`
-        SELECT 
-            COALESCE(
-              (SELECT SUM(amount) from secure_transaction where dirverid = ${user[0]?.user_id} and status = 2), 0) +
-
-            COALESCE(
-              (SELECT SUM(amount) FROM payment WHERE userid = ${user[0]?.user_id} and status = 1 and date_cancel_time IS NULL), 0) -
-
-            COALESCE(
-              (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND userid = ${user[0]?.user_id} AND agent_id = 0 AND (admin_id <> 0 OR admin_id IS NULL)), 0) -
-
-            COALESCE(
-              (SELECT SUM(amount) from driver_withdrawal where driver_id = ${user[0]?.user_id}) , 
-              0) as balance;
-        `);
+        const [result] = await connect.query(
+          `SELECT 
+          COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE userid = ? AND is_agent = false), 0) - 
+          COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false AND status In(2, 3)), 0)
+          AS balance;`,
+          [user[0]?.user_id, user[0]?.user_id]
+        );
         balance = result[0]?.balance;
       }
         socket.emit(14, 'service-priced', JSON.stringify({ userChatId: user[0]?.chat_id, userId: user[0]?.user_id, serviceId: id, amount, balance }));
