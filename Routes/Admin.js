@@ -5479,6 +5479,7 @@ admin.get("/messages/bot-users", async (req, res) => {
       sbu.phone_number phoneNumber,
       sbu.tg_username tgUsername,
       sbu.user_id userId,
+      sbu.chat_id chatId,
       sbu.is_read isRead,
       sbu.unread_count unReadCount,
        (SELECT created_at from service_bot_message 
