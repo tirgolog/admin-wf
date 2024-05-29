@@ -90,6 +90,15 @@ users.post("/completeClickPay", async function (req, res) {
         [rows[0].amount, +req.body.merchant_trans_id]
       );
       if (insert.affectedRows > 0) {
+
+        const [currency] = await connect.query(`
+        SELECT * from tirgo_balance_currency WHERE code = ${tirgoBalanceCurrencyCodes.uzs} 
+        `);
+  
+        await connect.query(`
+        INSERT INTO tir_balance_exchanges set currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo', created_by_id = ?
+        `, [currency[0]?.currency_name, currency[0]?.rate, 0, +checkpay[0].amount, 0, +checkpay[0].amount / currency[0]?.rate, +checkpay[0]?.userid]);
+
         const [token] = await connect.query(
           "SELECT * FROM users_list WHERE id = ?",
           [+req.body.merchant_trans_id]
@@ -227,6 +236,15 @@ users.post("/alphaCompleteClickPay", async function (req, res) {
         "UPDATE users_list SET balance = balance + ? WHERE id = ?",
         [rows[0].amount, +req.body.merchant_trans_id]
       );
+
+      const [currency] = await connect.query(`
+      SELECT * from tirgo_balance_currency WHERE code = ${tirgoBalanceCurrencyCodes.uzs} 
+      `);
+
+      await connect.query(`
+      INSERT INTO tir_balance_exchanges set currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo_service' created_by_id = ?
+      `, [currency[0]?.currency_name, currency[0]?.rate, 0, +checkpay[0].amount, 0, +checkpay[0].amount / currency[0]?.rate, +checkpay[0]?.userid]);
+
       socket.updateAllMessages("update-alpha-balance", "1");
       if (insert.affectedRows > 0) {
         const [token] = await connect.query(

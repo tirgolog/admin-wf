@@ -286,6 +286,15 @@ admin.post("/agent/add-balance-to-driver", async (req, res) => {
     );
 
     if (insertResult) {
+
+      // const [currency] = await connect.query(`
+      // SELECT * from tirgo_balance_currency WHERE code = ${tirgoBalanceCurrencyCodes.uzs} 
+      // `);
+
+      // await connect.query(`
+      // INSERT INTO tir_balance_exchanges set currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo_service' created_by_id = ?
+      // `, [currency[0]?.currency_name, currency[0]?.rate, 0, +checkpay[0].amount, 0, +checkpay[0].amount / currency[0]?.rate, +checkpay[0]?.userid]);
+
       appData.data = insertResult;
       appData.status = true;
       res.status(200).json(appData);
