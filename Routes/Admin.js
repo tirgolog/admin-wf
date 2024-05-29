@@ -135,7 +135,6 @@ admin.use((req, res, next) => {
     req.headers["token"] ||
     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
   let appData = {};
-  console.log('Admin middleware', token && token !== undefined && token !== 'undefined')
   if (token && token !== undefined && token !== 'undefined') {
     jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
       if (err) {
@@ -151,18 +150,13 @@ admin.use((req, res, next) => {
       } else {
         // Check if token has expired
         const currentTimestamp = Math.floor(Date.now() / 1000);
-        console.log('Admin middleware currentTimestamp', decoded.exp < currentTimestamp)
-        console.log(decoded)
         if (decoded.exp < currentTimestamp) {
           appData["data"] = "Token has expired";
           return res.status(401).json(appData);
         }
         // Attach user information from the decoded token to the request
         req.user = decoded;
-        console.log(req.user)
-        console.log('next1')
         next();
-        console.log('next2')
       }
     });
   } else {
@@ -4211,7 +4205,7 @@ admin.get("/services-transaction", async (req, res) => {
       queryConditions.push("st.created_at <= ?");
       queryParams.push(toDate);
     }
-
+ 
     let query = `SELECT 
       st.id,
       st.userid as "driverId",
@@ -4230,6 +4224,10 @@ admin.get("/services-transaction", async (req, res) => {
       al.id as "agentId",
       adl.name as "adminName",
       adl.id as "adminId",
+      CASE 
+      WHEN ul.to_subscription > CURDATE() THEN true
+      ELSE false
+      END AS hasSubscription,
       CASE 
           WHEN al.name IS NOT NULL THEN true
           ELSE false
