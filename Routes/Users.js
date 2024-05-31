@@ -21,6 +21,7 @@ const express = require("express"),
     (req.socket && req.socket.remoteAddress);
 const axios = require("axios");
 const { finishOrderDriver } = require("./rabbit");
+const { userInfo } = require("os");
 // Multer configuration
 // const storage = multer.diskStorage({
 //   destination: function (req, file, cb) {
@@ -96,8 +97,8 @@ users.post("/completeClickPay", async function (req, res) {
         `);
   
         await connect.query(`
-        INSERT INTO tir_balance_exchanges set currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo', created_by_id = ?
-        `, [currency[0]?.currency_name, currency[0]?.rate, 0, +checkpay[0].amount, 0, +checkpay[0].amount / currency[0]?.rate, +checkpay[0]?.userid]);
+        INSERT INTO tir_balance_exchanges SET user_id = ?, currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo', click_id = ?, created_by_id = ?
+        `, [+rows[0]?.userid, currency[0]?.currency_name, currency[0]?.rate, 0, +rows[0].amount, 0, +rows[0].amount / currency[0]?.rate, rows[0].id, +rows[0]?.userid]);
 
         const [token] = await connect.query(
           "SELECT * FROM users_list WHERE id = ?",
@@ -144,16 +145,19 @@ users.post("/completeClickPay", async function (req, res) {
                 [subscription[0].id, new Date(), nextMonth, req.body.merchant_trans_id]
               );
               if (userUpdate.affectedRows == 1) {
-                const subscription_transaction = await connect.query(
-                  "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?",
-                  [
-                    req.body.merchant_trans_id,
-                    subscription[0].id,
-                    users[0].phone,
-                    valueofPayment,
-                  ]
-                );
-                if (subscription_transaction.length > 0) {
+                // const subscription_transaction = await connect.query(
+                //   "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?",
+                //   [
+                //     req.body.merchant_trans_id,
+                //     subscription[0].id,
+                //     users[0].phone,
+                //     valueofPayment,
+                //   ]
+                // );
+                const [subscription_transaction] = await connect.query(`
+                INSERT INTO service_tir_transaction (user_id, subscription_id, created_by_id, transaction_type, amount) VALUES ?
+              `, [req.body.merchant_trans_id, subscription[0].id, req.body.merchant_trans_id, 'subscription', +rows[0].amount / currency[0]?.rate]);
+                if (subscription_transaction.affectedRows) {
                 }
               }
             }
@@ -242,8 +246,8 @@ users.post("/alphaCompleteClickPay", async function (req, res) {
       `);
 
       await connect.query(`
-      INSERT INTO tir_balance_exchanges set currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo_service' created_by_id = ?
-      `, [currency[0]?.currency_name, currency[0]?.rate, 0, +checkpay[0].amount, 0, +checkpay[0].amount / currency[0]?.rate, +checkpay[0]?.userid]);
+      INSERT INTO tir_balance_exchanges SET user_id = ?, currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo_service', click_id = ?, created_by_id = ?
+      `, [+rows[0]?.userid, currency[0]?.currency_name, currency[0]?.rate, 0, +rows[0].amount, 0, +rows[0].amount / currency[0]?.rate, +rows[0]?.id, +rows[0]?.userid]);
 
       socket.updateAllMessages("update-alpha-balance", "1");
       if (insert.affectedRows > 0) {
@@ -5131,6 +5135,7 @@ users.post("/services-transaction/user", async (req, res) => {
 users.post("/addDriverServices", async (req, res) => {
   let connect,
     balance,
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
     appData = { status: false };
   const { user_id, phone, services } = req.body;
   try {
@@ -5139,101 +5144,47 @@ users.post("/addDriverServices", async (req, res) => {
       return res.status(400).json(appData);
     }
     connect = await database.connection.getConnection();
-    const [rows] = await connect.query(
-      "SELECT * FROM users_contacts WHERE text = ? AND verify = 1",
-      [phone]
+    const [user] = await connect.query(
+      "SELECT * FROM users_list WHERE id = ?",
+      [user_id]
     );
-    if (rows.length < 1) {
+    if (user.length < 1) {
       appData.error = " Не найден Пользователь";
       appData.status = false;
       res.status(400).json(appData);
     } else {
-
-      const [user] = await connect.query(
-        "SELECT * FROM users_list WHERE id = ?",
-        [user_id]
-      );
-
-      if(user[0]?.driver_group_id) {
-
-        const [result] = await connect.query(`
-        SELECT 
-            (COALESCE(
-              (SELECT SUM(amount) FROM driver_group_transaction WHERE driver_group_id = ${user[0]?.driver_group_id} AND type = 'Пополнение'), 0) -
-            COALESCE(
-              (SELECT SUM(amount) FROM driver_group_transaction WHERE driver_group_id = ${user[0]?.driver_group_id} AND type = 'Вывод'), 0)) -
-    
-            (COALESCE(
-              (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND group_id = ${user[0]?.driver_group_id}), 0) +
-            COALESCE(
-              (SELECT SUM(amount) FROM services_transaction WHERE group_id = ${user[0]?.driver_group_id} AND status In(2, 3)), 0)) as balance;
-        `);
-        balance = result[0]?.balance;
-      } else {
-        const [paymentUser] = await connect.query(
-          `SELECT 
-          COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE userid = ? AND is_agent = false), 0) - 
-          COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false AND status In(2, 3)), 0)
-          AS balance;`,
-          [userid, userid]
-        );
-        balance = paymentUser[0]?.balance;
-      }
-
 
         const [editUser] = await connect.query(
           "UPDATE users_list SET is_service = 1  WHERE id = ?",
           [user_id]
         );
         if (editUser.affectedRows > 0) {
-          const insertValues = await Promise.all(services.map(async (service) => {
-            try {
-              const [result] = await connect.query(
-                "SELECT * FROM services WHERE id = ?",
-                [service.services_id]
-              );
-              if (result.length === 0) {
-                throw new Error(`Service with ID ${service.services_id} not found.`);
-              }
-              if(user[0]?.driver_group_id) { 
-                return [
-                  user_id,
-                  service.services_id,
-                  result[0].name,
-                  service.price_uzs,
-                  service.price_kzs,
-                  service.rate,
-                  0,
-                  service.without_subscription ? service.without_subscription : 0,
-                  user[0]?.driver_group_id,
-                  true
-                ];
-              } else {
+          const insertValues = services.map((service) => {
               return [
                 user_id,
                 service.services_id,
-                result[0].name,
-                service.price_uzs,
-                service.price_kzs,
-                service.rate,
-                0,
-                service.without_subscription ? service.without_subscription : 0,
+                userInfo.id,
+                'service'
               ];
-            }
-            } catch (error) {
-              console.error("Error occurred while fetching service:", error);
-            }
-          }));
-          let sql;
-          if(user[0]?.driver_group_id) {
-            sql = 'INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, without_subscription, group_id, is_group) VALUES ?';
-          } else {
-            sql = 'INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, without_subscription) VALUES ?';
-          }
-          const [result] = await connect.query(sql, [insertValues]);
+          });
+
+          // let sql;
+          // if(user[0]?.driver_group_id) {
+          //   sql = 'INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, without_subscription, group_id, is_group) VALUES ?';
+          // } else {
+          //   sql = 'INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, without_subscription) VALUES ?';
+          // }
+          // const [result] = await connect.query(sql, [insertValues]);
+          const [result] = await connect.query(`
+            INSERT INTO service_tir_transaction (user_id, service_id, created_by_id, transaction_type) VALUES ?
+          `, [insertValues]);
+
           if (result.affectedRows > 0) {
             appData.status = true;
             res.status(200).json(appData);
+          } else {
+            appData.status = false;
+            res.status(400).json(appData);
           }
         } else {
           appData.error = "Пользователь не может обновить";
@@ -5321,6 +5272,51 @@ users.post("/services-transaction/user/balanse", async (req, res) => {
       res.status(200).json(appData);
     }
   } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+users.get("/tir-coin-balance", async (req, res) => {
+  let connect,
+    appData = { status: false };
+  const { userId } = req.query;
+  try {
+  
+    if(!userId) {
+      appData.status = false;
+      appData.message = 'userId is required';
+      res.status(400).json(appData);
+      return;
+    }
+    
+    connect = await database.connection.getConnection();
+
+    const [user] = await connect.query(`
+      SELECT id FROM users_list WHERE id = ${userId} AND user_type = 1
+    `);
+    if(!user.length) {
+      appData.status = false;
+      appData.message = 'Пользователь не найден';
+      res.status(400).json(appData);
+      return;
+    }
+      const [paymentUser] = await connect.query(
+        `SELECT 
+          COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE user_id = ${userId} AND balance_type = 'tirgo'), 0) -
+          COALESCE((SELECT SUM(amount) FROM service_tir_transaction  WHERE user_id = ${userId} AND transaction_type = 'subscription' AND status = 3), 0) AS tirgoBalance,
+          COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE user_id = ${userId} AND balance_type = 'tirgo_service'), 0) - 
+          COALESCE((SELECT SUM(amount) FROM service_tir_transaction  WHERE user_id = ${userId} AND transaction_type = 'service' AND status = 3), 0) AS serviceBalance;`
+      );
+      appData.status = true;
+      appData.data = paymentUser[0];
+      res.status(200).json(appData);
+  } catch (e) {
+    console.log(e)
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {

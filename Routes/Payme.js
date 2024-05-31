@@ -122,8 +122,8 @@ payme.post('/payMeMerchantApi', async function(req, res) {
                             `);
 
                             await connect.query(`
-                            INSERT INTO tir_balance_exchanges set currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo', created_by_id = ?
-                            `, [currency[0]?.currency_name, currency[0]?.rate, 0, +checkpay[0].amount, 0, +checkpay[0].amount / currency[0]?.rate, +checkpay[0]?.userid]);
+                            INSERT INTO tir_balance_exchanges SET user_id = ?, currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo', payme_id = ?, created_by_id = ?
+                            `, [ +checkpay[0]?.userid, currency[0]?.currency_name, currency[0]?.rate, 0, +checkpay[0].amount, 0, +checkpay[0].amount / currency[0]?.rate, checkpay[0]?.id, +checkpay[0]?.userid]);
                             
                             if(insert.affectedRows > 0){
                                 const [token] = await connect.query('SELECT * FROM users_list WHERE id = ?', [+checkpay[0].userid]);
@@ -383,8 +383,8 @@ payme.post('/payMeMerchantAlpha', async function(req, res) {
                             `);
 
                             await connect.query(`
-                            INSERT INTO tir_balance_exchanges set currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo_service' created_by_id = ?
-                            `, [currency[0]?.currency_name, currency[0]?.rate, 0, +checkpay[0].amount, 0, +checkpay[0].amount / currency[0]?.rate, +checkpay[0]?.userid]);
+                            INSERT INTO tir_balance_exchanges SET user_id currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo_service', payme_id = ?, created_by_id = ?
+                            `, [ +checkpay[0]?.userid, currency[0]?.currency_name, currency[0]?.rate, 0, +checkpay[0].amount, 0, +checkpay[0].amount / currency[0]?.rate, checkpay[0]?.id, +checkpay[0]?.userid]);
                             if(insert.affectedRows > 0){
                                 const [token] = await connect.query('SELECT * FROM users_list WHERE id = ?', [+checkpay[0].userid]);
                                 socket.updateAllMessages("update-alpha-balance", "1");

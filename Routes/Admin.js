@@ -20,6 +20,7 @@ const upload = multer({
 });
 const XLSX = require("xlsx");
 const { Blob } = require("node:buffer");
+const { tirgoBalanceCurrencyCodes } = require("../constants");
 //Beeline
 // const minioClient = new Minio.Client({
 //   endPoint: "185.183.243.223",
@@ -190,29 +191,42 @@ admin.get("/getAllAgent", async (req, res) => {
 admin.put("/changeAgentBalance", async (req, res) => {
   let connect,
     appData = { status: false },
-    agent_id = req.body.agent_id,
-    agent_balance = req.body.agent_balance,
+    agentId = req.body.agentId,
+    amount = req.body.amount,
+    tirCurrencyCode = req.body.tirCurrencyCode
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
 
   try {
     connect = await database.connection.getConnection();
-    const insertResult = await connect.query(
-      "INSERT INTO agent_transaction SET admin_id = ?, agent_id = ?, amount = ?, type = 'tirgo_balance'",
-      [userInfo.id, agent_id, agent_balance]
-    );
+    // const insertResult = await connect.query(
+    //   "INSERT INTO agent_transaction SET admin_id = ?, agent_id = ?, amount = ?, type = 'tirgo_balance'",
+    //   [userInfo.id, agent_id, agent_balance]
+    // );
+    if(tirgoBalanceCurrencyCodes.uzs != tirCurrencyCode) {
+      appData.message = 'Неверный код валюты';
+      appData.status = false;
+      res.status(400).json(appData);
+      return;
+    }
+
+    const [currency] = await connect.query(`
+    SELECT * from tirgo_balance_currency WHERE code = ${tirgoBalanceCurrencyCodes.uzs} 
+    `);
+    const [insertResult] = await connect.query(`
+    INSERT INTO tir_balance_exchanges SET user_id = ?, currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo', agent_id = ?, created_by_id = ?
+    `,[agentId, currency[0]?.currency_name, currency[0]?.rate, 0, amount, 0, amount / currency[0]?.rate, agentId, userInfo?.id]);
 
     // SELECT at.*, u_admin.name AS admin_name, u_agent.name AS agent_name
     // FROM agent_transaction at
     // LEFT JOIN users_list u_admin ON u_admin.id = at.admin_id
     // LEFT JOIN users_list u_agent ON u_agent.id = at.agent_id;
 
-    if (insertResult) {
-      appData.data = insertResult;
+    if (insertResult.affectedRows) {
       appData.status = true;
       res.status(200).json(appData);
     } else {
       appData.status = false;
-      res.status(200).json(appData);
+      res.status(400).json(appData);
     }
   } catch (e) {
     console.log(e);
@@ -230,27 +244,41 @@ admin.post("/agent-service/add-balance", async (req, res) => {
     appData = { status: false },
     agentId = req.body.agentId,
     amount = req.body.amount,
+    tirCurrencyCode = req.body.tirCurrencyCode
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
 
   try {
     connect = await database.connection.getConnection();
-    const insertResult = await connect.query(
-      "INSERT INTO agent_transaction SET admin_id = ?, agent_id = ?, amount = ?, type = 'service_balance'",
-      [userInfo.id, agentId, amount, new Date()]
-    );
+    // const insertResult = await connect.query(
+    //   "INSERT INTO agent_transaction SET admin_id = ?, agent_id = ?, amount = ?, type = 'service_balance'",
+    //   [userInfo.id, agentId, amount, new Date()]
+    // );
+    if(tirgoBalanceCurrencyCodes.uzs != tirCurrencyCode) {
+      appData.message = 'Неверный код валюты';
+      appData.status = false;
+      res.status(400).json(appData);
+      return;
+    }
+
+    const [currency] = await connect.query(`
+    SELECT * from tirgo_balance_currency WHERE code = ${tirgoBalanceCurrencyCodes.uzs} 
+    `);
+    const [insertResult] = await connect.query(`
+    INSERT INTO tir_balance_exchanges SET user_id = ?, currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo_service', agent_id = ?, created_by_id = ?
+    `,[agentId, currency[0]?.currency_name, currency[0]?.rate, 0, amount, 0, amount / currency[0]?.rate, agentId, userInfo?.id]);
+
 
     // SELECT at.*, u_admin.name AS admin_name, u_agent.name AS agent_name
     // FROM agent_transaction at
     // LEFT JOIN users_list u_admin ON u_admin.id = at.admin_id
     // LEFT JOIN users_list u_agent ON u_agent.id = at.agent_id;
 
-    if (insertResult) {
-      appData.data = insertResult;
+    if (insertResult.affectedRows) {
       appData.status = true;
       res.status(200).json(appData);
     } else {
       appData.status = false;
-      res.status(200).json(appData);
+      res.status(400).json(appData);
     }
   } catch (e) {
     console.log(e);
@@ -263,7 +291,7 @@ admin.post("/agent-service/add-balance", async (req, res) => {
   }
 });
 
-admin.post("/agent/add-balance-to-driver", async (req, res) => {
+admin.post("/agent/add-tir-balance-to-driver", async (req, res) => {
   let connect,
     appData = { status: false },
     agentId = req.body.agentId,
@@ -281,13 +309,13 @@ admin.post("/agent/add-balance-to-driver", async (req, res) => {
 
     if (insertResult) {
 
-      // const [currency] = await connect.query(`
-      // SELECT * from tirgo_balance_currency WHERE code = ${tirgoBalanceCurrencyCodes.uzs} 
-      // `);
+      const [currency] = await connect.query(`
+      SELECT * from tirgo_balance_currency WHERE code = ${tirgoBalanceCurrencyCodes.uzs} 
+      `);
 
-      // await connect.query(`
-      // INSERT INTO tir_balance_exchanges set currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo_service' created_by_id = ?
-      // `, [currency[0]?.currency_name, currency[0]?.rate, 0, +checkpay[0].amount, 0, +checkpay[0].amount / currency[0]?.rate, +checkpay[0]?.userid]);
+      await connect.query(`
+      INSERT INTO tir_balance_exchanges SET user_id = ?, currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo_service', agent_id = ?, created_by_id = ?
+      `,[driverId, currency[0]?.currency_name, currency[0]?.rate, 0, amount, 0, amount / currency[0]?.rate, agentId, agentId]);
 
       appData.data = insertResult;
       appData.status = true;
@@ -333,37 +361,20 @@ admin.post("/agent-service/add-to-driver", async (req, res) => {
         [user_id]
       );
       if (editUser.affectedRows > 0) {
-        const insertValues = await Promise.all(
-          services.map(async (service) => {
-            try {
-              const [result] = await connect.query(
-                "SELECT * FROM services WHERE id = ?",
-                [service.service_id]
-              );
-              if (result.length === 0) {
-                throw new Error(
-                  `Service with ID ${service.service_id} not found.`
-                );
-              }
+        const insertValues = services.map((service) => {
               return [
                 user_id,
                 service.service_id,
-                result[0].name,
-                service.price_uzs,
-                service.price_kzs,
-                service.rate,
-                0,
                 userInfo.id,
-                true,
+                'service'
               ];
-            } catch (error) {
-              console.error("Error occurred while fetching service:", error);
-            }
           })
-        );
-        const sql =
-          "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, created_by_id, is_agent) VALUES ?";
-        const [result] = await connect.query(sql, [insertValues]);
+        // const sql =
+        //   "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, created_by_id, is_agent) VALUES ?";
+        // const [result] = await connect.query(sql, [insertValues]);
+        const [result] = await connect.query(`
+        INSERT INTO service_tir_transaction (user_id, service_id, created_by_id, transaction_type) VALUES ?
+      `, [insertValues]);
         if (result.affectedRows > 0) {
           appData.status = true;
           socket.updateAllMessages("update-alpha-balance", "1");
@@ -413,19 +424,26 @@ admin.get("/getAgent/:agent_id", async (req, res) => {
 admin.get("/getAgentBalanse/:agent_id", async (req, res) => {
   let connect,
     appData = { status: false },
-    agent_id = req.params.agent_id;
+    agentId = req.params.agent_id;
   try {
     connect = await database.connection.getConnection();
+    // const [rows] = await connect.query(
+    //   `SELECT 
+    //   COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE deleted = 0 AND agent_id = ? AND type = 'tirgo_balance' ), 0) - 
+    //   COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE deleted = 0 AND agent_id = ? AND type = 'subscription'  AND deleted = 0), 0) AS tirgoBalance,
+    //   COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE deleted = 0 AND agent_id = ? AND type = 'service_balance'), 0) - 
+    //   COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE agent_id = ? AND is_agent = true), 0) - 
+    //   COALESCE((SELECT SUM(amount) FROM services_transaction where created_by_id = ? AND status In(2, 3)), 0) AS serviceBalance      
+    // `,
+    //   [agent_id, agent_id, agent_id, agent_id, agent_id]
+    // );
+
     const [rows] = await connect.query(
       `SELECT 
-      COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE deleted = 0 AND agent_id = ? AND type = 'tirgo_balance' ), 0) - 
-      COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE deleted = 0 AND agent_id = ? AND type = 'subscription'  AND deleted = 0), 0) AS tirgoBalance,
-      COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE deleted = 0 AND agent_id = ? AND type = 'service_balance'), 0) - 
-      COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE agent_id = ? AND is_agent = true), 0) - 
-      COALESCE((SELECT SUM(amount) FROM services_transaction where created_by_id = ? AND status In(2, 3)), 0) AS serviceBalance      
-    `,
-      [agent_id, agent_id, agent_id, agent_id, agent_id]
-    );
+      COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND user_id = ${agentId} AND balance_type = 'tirgo' ), 0)  AS tirgoBalance,
+      COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND user_id = ${agentId} AND balance_type = 'tirgo_service' ), 0)  AS serviceBalance
+    `);
+    
     if (rows.length) {
       appData.status = true;
       appData.data = rows[0];
@@ -2884,7 +2902,7 @@ admin.get("/service-document/:id", async (req, res) => {
     }
   }
 });
-
+ 
 admin.post("/subscription", async (req, res) => {
   let connect,
     name = req.body.name,
@@ -3230,6 +3248,125 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
   }
 });
 
+admin.post("/tir-currency", async (req, res) => {
+  let connect,
+    currencyName = req.body.currencyName,
+    currencyCode = req.body.currencyCode,
+    currencyRate = req.body.currencyRate,
+    userInfo = await jwt.decode(req.headers.authorization.split(" ")[1]),
+    appData = { status: false };
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      "SELECT * FROM tirgo_balance_currency where currency_name = ?",
+      [currencyName]
+    );
+    if (rows.length > 0) {
+      appData.error = "Есть подписка на это имя";
+      res.status(400).json(appData);
+    } else {
+      const [tirCurrency] = await connect.query(
+        `INSERT INTO tirgo_balance_currency SET 
+          currency_name = ?,
+          rate = ?,
+          created_by_id = ?,
+          code = ?`,
+        [currencyName, currencyRate, userInfo.id, currencyCode]
+
+      );
+      appData.status = true;
+      appData.data = tirCurrency;
+      res.status(200).json(appData);
+    }
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.put("/tir-currency", async (req, res) => {
+  let connect,
+    id = req.body.id,
+    currencyName = req.body.currencyName,
+    currencyCode = req.body.currencyCode,
+    currencyRate = req.body.currencyRate,
+    userInfo = await jwt.decode(req.headers.authorization.split(" ")[1]),
+    appData = { status: false };
+  try {
+    connect = await database.connection.getConnection();
+
+      const [tirCurrency] = await connect.query(
+        `UPDATE tirgo_balance_currency SET 
+          currency_name = ?,
+          rate = ?,
+          created_by_id = ?,
+          code = ?
+          WHERE id = ?`,
+        [currencyName, currencyRate, userInfo.id, currencyCode, id]
+
+      );
+      appData.status = true;
+      appData.data = tirCurrency;
+      res.status(200).json(appData);
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.delete("/tir-currency", async (req, res) => {
+  let connect,
+    id = req.body.id,
+    appData = { status: false };
+  try {
+    connect = await database.connection.getConnection();
+      const [tirCurrency] = await connect.query(
+        `DELET FROM tirgo_balance_currency WHERE id = ?`,
+        [id]
+      );
+
+      appData.status = true;
+      appData.data = tirCurrency;
+      res.status(200).json(appData);
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/tir-currencies", async (req, res) => {
+  let connect,
+    userInfo = await jwt.decode(req.headers.authorization.split(" ")[1]),
+    appData = { status: false };
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query("SELECT * FROM tirgo_balance_currency");
+      appData.status = true;
+      appData.data = rows;
+      res.status(200).json(appData);
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+
 admin.get("/payment/:userId", async (req, res) => {
   let connect,
     appData = { status: false };
@@ -3521,7 +3658,7 @@ admin.post("/connectDriverToAgent", async (req, res) => {
   }
 });
 
-admin.post("/addUserByAgent", async (req, res) => {
+admin.post("/agent/add-subscription-to-driver", async (req, res) => {
   let connect,
     { agent_id, subscription_id, user_id, phone } = req.body,
     appData = { status: false };
@@ -3961,36 +4098,21 @@ admin.post("/addDriverServices", async (req, res) => {
         [user_id]
       );
       if (editUser.affectedRows > 0) {
-        const insertValues = await Promise.all(
-          services.map(async (service) => {
-            try {
-              const [result] = await connect.query(
-                "SELECT * FROM services WHERE id = ?",
-                [service.service_id]
-              );
-              if (result.length === 0) {
-                throw new Error(
-                  `Service with ID ${service.service_id} not found.`
-                );
-              }
+        const insertValues = services.map((service) => {
               return [
                 user_id,
                 service.service_id,
-                result[0].name,
-                service.price_uzs,
-                service.price_kzs,
-                service.rate,
-                0,
                 userInfo.id,
+                'service'
               ];
-            } catch (error) {
-              console.error("Error occurred while fetching service:", error);
-            }
           })
-        );
-        const sql =
-          "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, created_by_id) VALUES ?";
-        const [result] = await connect.query(sql, [insertValues]);
+
+        // const sql =
+        //   "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, created_by_id) VALUES ?";
+        // const [result] = await connect.query(sql, [insertValues]);
+        const [result] = await connect.query(`
+        INSERT INTO service_tir_transaction (user_id, service_id, created_by_id, transaction_type) VALUES ?
+      `, [insertValues]);
         if (result.affectedRows > 0) {
           appData.status = true;
           socket.updateAllMessages("update-alpha-balance", "1");
@@ -4046,37 +4168,20 @@ admin.post("/agent/add-services", async (req, res) => {
         [user_id]
       );
       if (editUser.affectedRows > 0) {
-        const insertValues = await Promise.all(
-          services.map(async (service) => {
-            try {
-              const [result] = await connect.query(
-                "SELECT * FROM services WHERE id = ?",
-                [service.service_id]
-              );
-              if (result.length === 0) {
-                throw new Error(
-                  `Service with ID ${service.service_id} not found.`
-                );
-              }
+        const insertValues = services.map((service) => {
               return [
                 user_id,
                 service.service_id,
-                result[0].name,
-                service.price_uzs,
-                service.price_kzs,
-                service.rate,
-                0,
                 userInfo.id,
-                true,
+                'service'
               ];
-            } catch (error) {
-              console.error("Error occurred while fetching service:", error);
-            }
           })
-        );
-        const sql =
-          "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, created_by_id, is_agent) VALUES ?";
-        const [result] = await connect.query(sql, [insertValues]);
+        // const sql =
+        //   "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, created_by_id, is_agent) VALUES ?";
+        // const [result] = await connect.query(sql, [insertValues]);
+        const [result] = await connect.query(`
+        INSERT INTO service_tir_transaction (user_id, service_id, created_by_id, transaction_type) VALUES ?
+      `, [insertValues]);
         if (result.affectedRows > 0) {
           appData.status = true;
           socket.updateAllMessages("update-alpha-balance", "1");
@@ -5016,6 +5121,7 @@ admin.post("/driver-group/add-subscription", async (req, res) => {
 
 admin.post("/driver-group/add-services", async (req, res) => {
   let connect,
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]),
     appData = { status: false };
   const { user_id, phone, services, group_id } = req.body;
   try {
@@ -5038,37 +5144,22 @@ admin.post("/driver-group/add-services", async (req, res) => {
         [user_id]
       );
       if (editUser.affectedRows > 0) {
-        const insertValues = await Promise.all(
-          services.map(async (service) => {
-            try {
-              const [result] = await connect.query(
-                "SELECT * FROM services WHERE id = ?",
-                [service.service_id]
-              );
-              if (result.length === 0) {
-                throw new Error(
-                  `Service with ID ${service.service_id} not found.`
-                );
-              }
+        const insertValues = services.map((service) => {
               return [
                 user_id,
                 service.service_id,
-                result[0].name,
-                service.price_uzs,
-                service.price_kzs,
-                service.rate,
-                0,
-                group_id,
+                userInfo.id, 
                 true,
+                group_id,
+                'service'
               ];
-            } catch (error) {
-              console.error("Error occurred while fetching service:", error);
-            }
           })
-        );
-        const sql =
-          "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, group_id, is_group) VALUES ?";
-        const [result] = await connect.query(sql, [insertValues]);
+        // const sql =
+        //   "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, group_id, is_group) VALUES ?";
+        // const [result] = await connect.query(sql, [insertValues]);
+        const [result] = await connect.query(`
+        INSERT INTO service_tir_transaction (user_id, service_id, created_by_id, is_by_group, group_id, transaction_type) VALUES ?
+      `, [insertValues]);
         if (result.affectedRows > 0) {
           appData.status = true;
           socket.updateAllMessages("update-alpha-balance", "1");
