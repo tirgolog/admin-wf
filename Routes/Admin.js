@@ -91,40 +91,40 @@ admin.post("/refreshToken", async (req, res) => {
     refreshTokenFromRequest = req.body.refreshToken;
   try {
     if (!refreshTokenFromRequest)
-    return res
-      .status(401)
-      .json({ status: false, error: "Требуется токен обновления." });
-  connect = await database.connection.getConnection();
-  const [users_list] = await connect.query(
-    "SELECT refresh_token FROM users_list WHERE id = ?",
-    [userInfo.id]
-  );
-  if (users_list[0].refresh_token !== refreshTokenFromRequest) {
-    return res
-      .status(403)
-      .json({ status: false, error: "Неверный токен обновления" });
-  } else {
-    const token = jwt.sign({ id: userInfo.id }, process.env.SECRET_KEY, { expiresIn: '1440m' });
-    const refreshToken = jwt.sign({ id: userInfo.id }, process.env.SECRET_KEY);
-    const [setToken] = await connect.query(
-      "UPDATE users_list SET date_last_login = ?, refresh_token = ? WHERE id = ?",
-      [new Date(), refreshToken, userInfo.id]
+      return res
+        .status(401)
+        .json({ status: false, error: "Требуется токен обновления." });
+    connect = await database.connection.getConnection();
+    const [users_list] = await connect.query(
+      "SELECT refresh_token FROM users_list WHERE id = ?",
+      [userInfo.id]
     );
-    if (setToken.affectedRows > 0) {
-      appData.status = true;
-      appData.token = token;
-      appData.refreshToken = refreshToken;
-      res.status(200).json(appData);
+    if (users_list[0].refresh_token !== refreshTokenFromRequest) {
+      return res
+        .status(403)
+        .json({ status: false, error: "Неверный токен обновления" });
     } else {
-      appData.error = "Данные для входа введены неверно";
-      appData.status = false;
-      res.status(403).json(appData);
+      const token = jwt.sign({ id: userInfo.id }, process.env.SECRET_KEY, { expiresIn: '1440m' });
+      const refreshToken = jwt.sign({ id: userInfo.id }, process.env.SECRET_KEY);
+      const [setToken] = await connect.query(
+        "UPDATE users_list SET date_last_login = ?, refresh_token = ? WHERE id = ?",
+        [new Date(), refreshToken, userInfo.id]
+      );
+      if (setToken.affectedRows > 0) {
+        appData.status = true;
+        appData.token = token;
+        appData.refreshToken = refreshToken;
+        res.status(200).json(appData);
+      } else {
+        appData.error = "Данные для входа введены неверно";
+        appData.status = false;
+        res.status(403).json(appData);
+      }
     }
-  }
-  } catch(err) {
+  } catch (err) {
     console.log('Error in refreshtoken', err)
   } finally {
-    if(connect) {
+    if (connect) {
       connect.release()
     }
   }
@@ -194,7 +194,7 @@ admin.put("/changeAgentBalance", async (req, res) => {
     agentId = req.body.agentId,
     amount = req.body.amount,
     tirCurrencyCode = req.body.tirCurrencyCode
-    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+  userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
 
   try {
     connect = await database.connection.getConnection();
@@ -202,7 +202,7 @@ admin.put("/changeAgentBalance", async (req, res) => {
     //   "INSERT INTO agent_transaction SET admin_id = ?, agent_id = ?, amount = ?, type = 'tirgo_balance'",
     //   [userInfo.id, agent_id, agent_balance]
     // );
-    if(tirgoBalanceCurrencyCodes.uzs != tirCurrencyCode) {
+    if (tirgoBalanceCurrencyCodes.uzs != tirCurrencyCode) {
       appData.message = 'Неверный код валюты';
       appData.status = false;
       res.status(400).json(appData);
@@ -214,7 +214,7 @@ admin.put("/changeAgentBalance", async (req, res) => {
     `);
     const [insertResult] = await connect.query(`
     INSERT INTO tir_balance_exchanges SET user_id = ?, currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo', agent_id = ?, created_by_id = ?
-    `,[agentId, currency[0]?.currency_name, currency[0]?.rate, 0, amount, 0, amount / currency[0]?.rate, agentId, userInfo?.id]);
+    `, [agentId, currency[0]?.currency_name, currency[0]?.rate, 0, amount, 0, amount / currency[0]?.rate, agentId, userInfo?.id]);
 
     // SELECT at.*, u_admin.name AS admin_name, u_agent.name AS agent_name
     // FROM agent_transaction at
@@ -245,7 +245,7 @@ admin.post("/agent-service/add-balance", async (req, res) => {
     agentId = req.body.agentId,
     amount = req.body.amount,
     tirCurrencyCode = req.body.tirCurrencyCode
-    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+  userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
 
   try {
     connect = await database.connection.getConnection();
@@ -253,7 +253,7 @@ admin.post("/agent-service/add-balance", async (req, res) => {
     //   "INSERT INTO agent_transaction SET admin_id = ?, agent_id = ?, amount = ?, type = 'service_balance'",
     //   [userInfo.id, agentId, amount, new Date()]
     // );
-    if(tirgoBalanceCurrencyCodes.uzs != tirCurrencyCode) {
+    if (tirgoBalanceCurrencyCodes.uzs != tirCurrencyCode) {
       appData.message = 'Неверный код валюты';
       appData.status = false;
       res.status(400).json(appData);
@@ -265,7 +265,7 @@ admin.post("/agent-service/add-balance", async (req, res) => {
     `);
     const [insertResult] = await connect.query(`
     INSERT INTO tir_balance_exchanges SET user_id = ?, currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo_service', agent_id = ?, created_by_id = ?
-    `,[agentId, currency[0]?.currency_name, currency[0]?.rate, 0, amount, 0, amount / currency[0]?.rate, agentId, userInfo?.id]);
+    `, [agentId, currency[0]?.currency_name, currency[0]?.rate, 0, amount, 0, amount / currency[0]?.rate, agentId, userInfo?.id]);
 
 
     // SELECT at.*, u_admin.name AS admin_name, u_agent.name AS agent_name
@@ -315,7 +315,7 @@ admin.post("/agent/add-tir-balance-to-driver", async (req, res) => {
 
       await connect.query(`
       INSERT INTO tir_balance_exchanges SET user_id = ?, currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo_service', agent_id = ?, created_by_id = ?
-      `,[driverId, currency[0]?.currency_name, currency[0]?.rate, 0, amount, 0, amount / currency[0]?.rate, agentId, agentId]);
+      `, [driverId, currency[0]?.currency_name, currency[0]?.rate, 0, amount, 0, amount / currency[0]?.rate, agentId, agentId]);
 
       appData.data = insertResult;
       appData.status = true;
@@ -362,18 +362,18 @@ admin.post("/agent-service/add-to-driver", async (req, res) => {
       );
       if (editUser.affectedRows > 0) {
         const insertValues = services.map((service) => {
-              return [
-                user_id,
-                service.service_id,
-                userInfo.id,
-                'service'
-              ];
-          })
+          return [
+            user_id,
+            service.service_id,
+            userInfo.id,
+            'service'
+          ];
+        })
         // const sql =
         //   "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, created_by_id, is_agent) VALUES ?";
         // const [result] = await connect.query(sql, [insertValues]);
         const [result] = await connect.query(`
-        INSERT INTO service_tir_transaction (user_id, service_id, created_by_id, transaction_type) VALUES ?
+        INSERT INTO tir_balance_transaction (user_id, service_id, created_by_id, transaction_type) VALUES ?
       `, [insertValues]);
         if (result.affectedRows > 0) {
           appData.status = true;
@@ -443,7 +443,7 @@ admin.get("/getAgentBalanse/:agent_id", async (req, res) => {
       COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND user_id = ${agentId} AND balance_type = 'tirgo' ), 0)  AS tirgoBalance,
       COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND user_id = ${agentId} AND balance_type = 'tirgo_service' ), 0)  AS serviceBalance
     `);
-    
+
     if (rows.length) {
       appData.status = true;
       appData.data = rows[0];
@@ -2902,7 +2902,7 @@ admin.get("/service-document/:id", async (req, res) => {
     }
   }
 });
- 
+
 admin.post("/subscription", async (req, res) => {
   let connect,
     name = req.body.name,
@@ -3076,7 +3076,7 @@ admin.delete("/subscription/:id", async (req, res) => {
     appData.error = "Internal error";
     res.status(403).json(appData);
   } finally {
-    if(connect) {
+    if (connect) {
       connect.release()
     }
   }
@@ -3299,19 +3299,19 @@ admin.put("/tir-currency", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
 
-      const [tirCurrency] = await connect.query(
-        `UPDATE tirgo_balance_currency SET 
+    const [tirCurrency] = await connect.query(
+      `UPDATE tirgo_balance_currency SET 
           currency_name = ?,
           rate = ?,
           created_by_id = ?,
           code = ?
           WHERE id = ?`,
-        [currencyName, currencyRate, userInfo.id, currencyCode, id]
+      [currencyName, currencyRate, userInfo.id, currencyCode, id]
 
-      );
-      appData.status = true;
-      appData.data = tirCurrency;
-      res.status(200).json(appData);
+    );
+    appData.status = true;
+    appData.data = tirCurrency;
+    res.status(200).json(appData);
   } catch (e) {
     appData.error = e.message;
     res.status(400).json(appData);
@@ -3328,14 +3328,14 @@ admin.delete("/tir-currency", async (req, res) => {
     appData = { status: false };
   try {
     connect = await database.connection.getConnection();
-      const [tirCurrency] = await connect.query(
-        `DELET FROM tirgo_balance_currency WHERE id = ?`,
-        [id]
-      );
+    const [tirCurrency] = await connect.query(
+      `DELET FROM tirgo_balance_currency WHERE id = ?`,
+      [id]
+    );
 
-      appData.status = true;
-      appData.data = tirCurrency;
-      res.status(200).json(appData);
+    appData.status = true;
+    appData.data = tirCurrency;
+    res.status(200).json(appData);
   } catch (e) {
     appData.error = e.message;
     res.status(400).json(appData);
@@ -3353,9 +3353,9 @@ admin.get("/tir-currencies", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query("SELECT * FROM tirgo_balance_currency");
-      appData.status = true;
-      appData.data = rows;
-      res.status(200).json(appData);
+    appData.status = true;
+    appData.data = rows;
+    res.status(200).json(appData);
   } catch (e) {
     appData.error = e.message;
     res.status(400).json(appData);
@@ -3658,200 +3658,6 @@ admin.post("/connectDriverToAgent", async (req, res) => {
   }
 });
 
-admin.post("/agent/add-subscription-to-driver", async (req, res) => {
-  let connect,
-    { agent_id, subscription_id, user_id, phone } = req.body,
-    appData = { status: false };
-  try {
-    connect = await database.connection.getConnection();
-    phone = phone.replace(/[^0-9, ]/g, "").replace(/ /g, "");
-    const [rows] = await connect.query(
-      "SELECT * FROM users_contacts WHERE text = ? ",
-      [phone]
-    );
-    if (rows.length < 0) {
-      appData.error = "Драйвер не найден";
-      appData.status = false;
-      res.status(400).json(appData);
-    } else {
-      const [user] = await connect.query(
-        "SELECT * FROM users_list WHERE to_subscription > CURDATE() AND id = ?",
-        [user_id]
-      );
-      if (user.length > 0) {
-        appData.error = "Пользователь уже имеет подписку";
-        appData.status = false;
-        res.status(400).json(appData);
-      } else {
-        const [subscription] = await connect.query(
-          "SELECT * FROM subscription where id = ? ",
-          [subscription_id]
-        );
-        const [agentBalance] = await connect.query(
-          `SELECT 
-          COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE deleted = 0 AND agent_id = ? AND type = 'tirgo_balance'), 0) - 
-          COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE deleted = 0 AND agent_id = ? AND type = 'subscription'), 0) AS tirgoBalance
-          `,
-          [agent_id, agent_id]
-        );
-        if (agentBalance.length) {
-          if (subscription[0].duration === 1) {
-            let paymentValue = 80000;
-            if (Number(agentBalance[0].tirgoBalance) >= Number(paymentValue)) {
-              const [insertResult] = await connect.query(
-                "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, type = 'subscription'",
-                [agent_id, paymentValue]
-              );
-              if (insertResult.affectedRows) {
-                let nextthreeMonth = new Date(
-                  new Date().setMonth(
-                    new Date().getMonth() + subscription[0].duration
-                  )
-                );
-                const subscription_transaction = await connect.query(
-                  "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, agent_id = ?, agent_trans_id = ?",
-                  [
-                    user_id,
-                    subscription_id,
-                    phone,
-                    paymentValue,
-                    agent_id,
-                    insertResult?.insertId,
-                  ]
-                );
-
-                if (subscription_transaction.length > 0) {
-                  const [edit] = await connect.query(
-                    "UPDATE users_list SET subscription_id = ? , from_subscription = ? , to_subscription=?  WHERE id =?",
-                    [subscription_id, new Date(), nextthreeMonth, user_id]
-                  );
-                  appData.data = edit;
-                  appData.status = true;
-                  res.status(200).json(appData);
-                } else {
-                  appData.error = "не могу добавить транзакцию подписки";
-                  appData.status = false;
-                  res.status(400).json(appData);
-                }
-              } else {
-                appData.error = "не могу добавить транзакцию подписки";
-                appData.status = false;
-                res.status(400).json(appData);
-              }
-            } else {
-              appData.error = "Баланса недостаточно";
-              appData.status = false;
-              res.status(400).json(appData);
-            }
-          } else if (subscription[0].duration === 3) {
-            let paymentValue = 180000;
-            if (Number(agentBalance[0].tirgoBalance) >= Number(paymentValue)) {
-              const [insertResult] = await connect.query(
-                "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, type = 'subscription'",
-                [agent_id, paymentValue]
-              );
-              if (insertResult.affectedRows) {
-                let nextthreeMonth = new Date(
-                  new Date().setMonth(
-                    new Date().getMonth() + subscription[0].duration
-                  )
-                );
-                const subscription_transaction = await connect.query(
-                  "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, agent_id = ?, agent_trans_id = ?",
-                  [
-                    user_id,
-                    subscription_id,
-                    phone,
-                    paymentValue,
-                    agent_id,
-                    insertResult?.insertId,
-                  ]
-                );
-                if (subscription_transaction.length > 0) {
-                  const [edit] = await connect.query(
-                    "UPDATE users_list SET subscription_id = ? , from_subscription = ? , to_subscription=?  WHERE id =?",
-                    [subscription_id, new Date(), nextthreeMonth, user_id]
-                  );
-                  appData.data = edit;
-                  appData.status = true;
-                  res.status(200).json(appData);
-                } else {
-                  appData.error = "не могу добавить транзакцию подписки";
-                  appData.status = false;
-                  res.status(400).json(appData);
-                }
-              } else {
-                appData.error = "не могу добавить транзакцию подписки";
-                appData.status = false;
-                res.status(400).json(appData);
-              }
-            } else {
-              appData.error = "Баланса недостаточно";
-              appData.status = false;
-              res.status(400).json(appData);
-            }
-          } else if (subscription[0].duration === 12) {
-            let paymentValue = 570000;
-            if (Number(agentBalance[0].tirgoBalance) >= Number(paymentValue)) {
-              const [insertResult] = await connect.query(
-                "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, type = 'subscription'",
-                [agent_id, paymentValue]
-              );
-              if (insertResult.affectedRows) {
-                let nextthreeMonth = new Date(
-                  new Date().setMonth(
-                    new Date().getMonth() + subscription[0].duration
-                  )
-                );
-                const subscription_transaction = await connect.query(
-                  "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, agent_id = ?, agent_trans_id = ?",
-                  [
-                    user_id,
-                    subscription_id,
-                    phone,
-                    paymentValue,
-                    agent_id,
-                    insertResult?.insertId,
-                  ]
-                );
-                if (subscription_transaction.length > 0) {
-                  const [edit] = await connect.query(
-                    "UPDATE users_list SET subscription_id = ? , from_subscription = ? , to_subscription=? WHERE id =?",
-                    [subscription_id, new Date(), nextthreeMonth, user_id]
-                  );
-                  appData.data = edit;
-                  appData.status = true;
-                  res.status(200).json(appData);
-                } else {
-                  appData.error = "не могу добавить транзакцию подписки";
-                  appData.status = false;
-                  res.status(400).json(appData);
-                }
-              } else {
-                appData.error = "не могу добавить транзакцию подписки";
-                appData.status = false;
-                res.status(400).json(appData);
-              }
-            } else {
-              appData.error = "Баланса недостаточно";
-              appData.status = false;
-              res.status(400).json(appData);
-            }
-          }
-        }
-      }
-    }
-    // res.status(200).json(appData);
-  } catch (e) {
-    appData.error = e.message;
-    res.status(400).json(appData);
-  } finally {
-    if (connect) {
-      connect.release();
-    }
-  }
-});
-
 admin.post("/subscription-history", async (req, res) => {
   let connect,
     appData = { status: false };
@@ -3991,7 +3797,7 @@ admin.delete("/services/:id", async (req, res) => {
     appData.error = "Internal error";
     res.status(403).json(appData);
   } finally {
-    if(connect) {
+    if (connect) {
       connect.release()
     }
   }
@@ -4099,19 +3905,19 @@ admin.post("/addDriverServices", async (req, res) => {
       );
       if (editUser.affectedRows > 0) {
         const insertValues = services.map((service) => {
-              return [
-                user_id,
-                service.service_id,
-                userInfo.id,
-                'service'
-              ];
-          })
+          return [
+            user_id,
+            service.service_id,
+            userInfo.id,
+            'service'
+          ];
+        })
 
         // const sql =
         //   "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, created_by_id) VALUES ?";
         // const [result] = await connect.query(sql, [insertValues]);
         const [result] = await connect.query(`
-        INSERT INTO service_tir_transaction (user_id, service_id, created_by_id, transaction_type) VALUES ?
+        INSERT INTO tir_balance_transaction (user_id, service_id, created_by_id, transaction_type) VALUES ?
       `, [insertValues]);
         if (result.affectedRows > 0) {
           appData.status = true;
@@ -4169,18 +3975,18 @@ admin.post("/agent/add-services", async (req, res) => {
       );
       if (editUser.affectedRows > 0) {
         const insertValues = services.map((service) => {
-              return [
-                user_id,
-                service.service_id,
-                userInfo.id,
-                'service'
-              ];
-          })
+          return [
+            user_id,
+            service.service_id,
+            userInfo.id,
+            'service'
+          ];
+        })
         // const sql =
         //   "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, created_by_id, is_agent) VALUES ?";
         // const [result] = await connect.query(sql, [insertValues]);
         const [result] = await connect.query(`
-        INSERT INTO service_tir_transaction (user_id, service_id, created_by_id, transaction_type) VALUES ?
+        INSERT INTO tir_balance_transaction (user_id, service_id, created_by_id, transaction_type) VALUES ?
       `, [insertValues]);
         if (result.affectedRows > 0) {
           appData.status = true;
@@ -4195,6 +4001,88 @@ admin.post("/agent/add-services", async (req, res) => {
     }
   } catch (e) {
     console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.post("/agent/add-subscription-to-driver", async (req, res) => {
+  let connect,
+    { agent_id, subscription_id, user_id, phone } = req.body,
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+    appData = { status: false };
+  try {
+    connect = await database.connection.getConnection();
+    phone = phone.replace(/[^0-9, ]/g, "").replace(/ /g, "");
+    const [rows] = await connect.query(
+      "SELECT * FROM users_contacts WHERE text = ? ",
+      [phone]
+    );
+    if (rows.length < 0) {
+      appData.error = "Драйвер не найден";
+      appData.status = false;
+      res.status(400).json(appData);
+    } else {
+      const [user] = await connect.query(
+        "SELECT * FROM users_list WHERE to_subscription > CURDATE() AND id = ?",
+        [user_id]
+      );
+      if (user.length > 0) {
+        appData.error = "Пользователь уже имеет подписку";
+        appData.status = false;
+        res.status(400).json(appData);
+      } else {
+        const [subscription] = await connect.query(
+          "SELECT * FROM subscription where id = ? ",
+          [subscription_id]
+        );
+        const [agentBalance] = await connect.query(
+          `SELECT 
+          COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agent_id} AND user_id = ${agent_id} AND balance_type = 'tirgo' ), 0)  AS tirgoBalance
+        `);
+        if (agentBalance.length) {
+          console.log(Number(agentBalance[0].tirgoBalance),  Number(subscription[0]?.value))
+            if (Number(agentBalance[0].tirgoBalance) >= Number(subscription[0]?.value)) {
+
+           const [insertResult] = await connect.query(`
+              INSERT INTO tir_balance_transaction SET user_id = ?, subscription_id = ?, amount_tir = ?, created_by_id = ?, transaction_type = ?
+            `, [user_id, subscription_id, subscription[0]?.value, +userInfo?.id, 'subscription']);
+
+              if (insertResult.affectedRows) {
+                let nextthreeMonth = new Date(
+                  new Date().setMonth(
+                    new Date().getMonth() + subscription[0].duration
+                  )
+                );
+                const [edit] = await connect.query(
+                  "UPDATE users_list SET subscription_id = ? , from_subscription = ? , to_subscription=?  WHERE id =?",
+                  [subscription_id, new Date(), nextthreeMonth, user_id]
+                );
+                appData.data = edit;
+                appData.status = true;
+                res.status(200).json(appData);
+
+              } else {
+                appData.error = "не могу добавить транзакцию подписки";
+                appData.status = false;
+                res.status(400).json(appData);
+              }
+
+            } else {
+              appData.error = "Баланса недостаточно";
+              appData.status = false;
+              res.status(400).json(appData);
+            }
+        }
+      }
+    }
+    // res.status(200).json(appData);
+  } catch (e) {
+    console.log(e)
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
@@ -4310,7 +4198,7 @@ admin.get("/services-transaction", async (req, res) => {
       queryConditions.push("st.created_at <= ?");
       queryParams.push(toDate);
     }
- 
+
     let query = `SELECT 
       st.id,
       st.userid as "driverId",
@@ -4559,7 +4447,7 @@ admin.post("/services-transaction/status/by", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     let user;
-    if(status == 2) {
+    if (status == 2) {
 
       [user] = await connect.query(
         `SELECT sbu.chat_id, st.service_name, ul.id user_id, st.amount serviceAmount, ul.driver_group_id groupId FROM services_transaction st
@@ -4592,7 +4480,7 @@ admin.post("/services-transaction/status/by", async (req, res) => {
         );
         balance = result[0]?.balance;
       }
-      if(Number(balance) < Number(user[0]?.serviceAmount)) {
+      if (Number(balance) < Number(user[0]?.serviceAmount)) {
         appData.error = "Недостаточно средств в балансе";
         res.status(400).json(appData);
         return;
@@ -4673,7 +4561,7 @@ admin.post("/services-transaction/status/to-priced", async (req, res) => {
         );
         balance = result[0]?.balance;
       }
-        socket.emit(14, 'service-priced', JSON.stringify({ userChatId: user[0]?.chat_id, userId: user[0]?.user_id, serviceId: id, amount, balance }));
+      socket.emit(14, 'service-priced', JSON.stringify({ userChatId: user[0]?.chat_id, userId: user[0]?.user_id, serviceId: id, amount, balance }));
       appData.status = true;
       res.status(200).json(appData);
     } else {
@@ -4908,7 +4796,7 @@ admin.post("/add-driver-to-group", async (req, res) => {
 
       if (user[0]?.id) {
 
-        if(user[0]?.driver_group_id) {
+        if (user[0]?.driver_group_id) {
           appData.status = false;
           appData.message = 'Пользователь уже добавлен в группу';
           res.status(400).json(appData);
@@ -5145,20 +5033,20 @@ admin.post("/driver-group/add-services", async (req, res) => {
       );
       if (editUser.affectedRows > 0) {
         const insertValues = services.map((service) => {
-              return [
-                user_id,
-                service.service_id,
-                userInfo.id, 
-                true,
-                group_id,
-                'service'
-              ];
-          })
+          return [
+            user_id,
+            service.service_id,
+            userInfo.id,
+            true,
+            group_id,
+            'service'
+          ];
+        })
         // const sql =
         //   "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, group_id, is_group) VALUES ?";
         // const [result] = await connect.query(sql, [insertValues]);
         const [result] = await connect.query(`
-        INSERT INTO service_tir_transaction (user_id, service_id, created_by_id, is_by_group, group_id, transaction_type) VALUES ?
+        INSERT INTO tir_balance_transaction (user_id, service_id, created_by_id, is_by_group, group_id, transaction_type) VALUES ?
       `, [insertValues]);
         if (result.affectedRows > 0) {
           appData.status = true;
@@ -5393,7 +5281,7 @@ admin.post("/message/bot-user", async (req, res) => {
         ]
       );
       if (insertResult[0].affectedRows) {
-        socket.emit(14, 'user-text', JSON.stringify({ userChatId: receiverBotId, text: message, insertId: insertResult[0].insertId}));
+        socket.emit(14, 'user-text', JSON.stringify({ userChatId: receiverBotId, text: message, insertId: insertResult[0].insertId }));
         appData.data = insertResult;
         appData.status = true;
         res.status(200).json(appData);
@@ -5434,11 +5322,11 @@ admin.delete("/message/bot-user", async (req, res) => {
     } else {
       let receiverBotId = botUser[0]?.chat_id;
       socket.emit(14, 'user-delete-message', JSON.stringify({ userChatId: receiverBotId, messageId }));
-        appData.status = true;
-        res.status(200).json(appData);
-      }
-    } catch (e) {
-      console.log(e);
+      appData.status = true;
+      res.status(200).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
@@ -5565,9 +5453,9 @@ admin.get("/messages/bot-users", async (req, res) => {
   let connect,
     appData = { status: false };
   try {
-      console.log(1, new Date().getTime())
-      connect = await database.connection.getConnection();
-      console.log(2, new Date().getTime())
+    console.log(1, new Date().getTime())
+    connect = await database.connection.getConnection();
+    console.log(2, new Date().getTime())
     const [rows] = await connect.query(`
     SELECT 
       ul.to_subscription,
@@ -5646,7 +5534,7 @@ admin.get("/messages/by-bot-user", async (req, res) => {
         SET is_read = true
       `);
 
-    const [rowsCount] = await connect.query(`
+      const [rowsCount] = await connect.query(`
     SELECT 
     COUNT(id) count
     FROM service_bot_message
@@ -5684,7 +5572,7 @@ admin.get("/messages/by-bot-user", async (req, res) => {
   } catch (err) {
     console.log(err)
   } finally {
-    if(connect) {
+    if (connect) {
       connect.release();
     }
   }
@@ -6489,7 +6377,7 @@ admin.get("/excel/payments/subscription-service", async (req, res) => {
       ws["F1"].v = "Date";
 
       formattedPayments.forEach((item, index) => {
-        const rowIndex = index + 2; 
+        const rowIndex = index + 2;
         ws[`D${rowIndex}`] = { v: item.amount, t: "n" };
         ws[`E${rowIndex}`] = {
           v: item.pay_method === "payme_merchant" ? "Payme" : "Click",
@@ -6571,7 +6459,7 @@ admin.get("/excel/payments/alpha-payment-service", async (req, res) => {
       ws["F1"].v = "Date";
 
       formattedPayments.forEach((item, index) => {
-        const rowIndex = index + 2; 
+        const rowIndex = index + 2;
         ws[`D${rowIndex}`] = { v: item.amount, t: "n" };
         ws[`E${rowIndex}`] = {
           v: item.pay_method === "payme_merchant" ? "Payme" : "Click",

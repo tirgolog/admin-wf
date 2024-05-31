@@ -155,7 +155,7 @@ users.post("/completeClickPay", async function (req, res) {
                 //   ]
                 // );
                 const [subscription_transaction] = await connect.query(`
-                INSERT INTO service_tir_transaction (user_id, subscription_id, created_by_id, transaction_type, amount) VALUES ?
+                INSERT INTO tir_balance_transaction (user_id, subscription_id, created_by_id, transaction_type, amount) VALUES ?
               `, [req.body.merchant_trans_id, subscription[0].id, req.body.merchant_trans_id, 'subscription', +rows[0].amount / currency[0]?.rate]);
                 if (subscription_transaction.affectedRows) {
                 }
@@ -5176,7 +5176,7 @@ users.post("/addDriverServices", async (req, res) => {
           // }
           // const [result] = await connect.query(sql, [insertValues]);
           const [result] = await connect.query(`
-            INSERT INTO service_tir_transaction (user_id, service_id, created_by_id, transaction_type) VALUES ?
+            INSERT INTO tir_balance_transaction (user_id, service_id, created_by_id, transaction_type) VALUES ?
           `, [insertValues]);
 
           if (result.affectedRows > 0) {
@@ -5308,9 +5308,9 @@ users.get("/tir-coin-balance", async (req, res) => {
       const [paymentUser] = await connect.query(
         `SELECT 
           COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE user_id = ${userId} AND balance_type = 'tirgo'), 0) -
-          COALESCE((SELECT SUM(amount) FROM service_tir_transaction  WHERE user_id = ${userId} AND transaction_type = 'subscription' AND status = 3), 0) AS tirgoBalance,
+          COALESCE((SELECT SUM(amount) FROM tir_balance_transaction  WHERE user_id = ${userId} AND transaction_type = 'subscription' AND status = 3), 0) AS tirgoBalance,
           COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE user_id = ${userId} AND balance_type = 'tirgo_service'), 0) - 
-          COALESCE((SELECT SUM(amount) FROM service_tir_transaction  WHERE user_id = ${userId} AND transaction_type = 'service' AND status = 3), 0) AS serviceBalance;`
+          COALESCE((SELECT SUM(amount) FROM tir_balance_transaction  WHERE user_id = ${userId} AND transaction_type = 'service' AND status = 3), 0) AS serviceBalance;`
       );
       appData.status = true;
       appData.data = paymentUser[0];
