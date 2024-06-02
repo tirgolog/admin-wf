@@ -297,33 +297,39 @@ admin.post("/agent/add-tir-balance-to-driver", async (req, res) => {
     agentId = req.body.agentId,
     driverId = req.body.driverId,
     amount = req.body.amount,
+    currencyCode = req.body.currencyCode,
+    response,
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
 
   try {
     connect = await database.connection.getConnection();
-    const [insertResult] = await connect.query(
-      `
-     INSERT INTO alpha_payment SET userid = ?, date_timestamp = ?, amount = ?, agent_id = ?, is_agent = true`,
-      [driverId, new Date(), amount, agentId]
-    );
-
-    if (insertResult) {
-
+  
       const [currency] = await connect.query(`
-      SELECT * from tirgo_balance_currency WHERE code = ${tirgoBalanceCurrencyCodes.uzs} 
+      SELECT * from tirgo_balance_currency WHERE code = ${currencyCode} 
       `);
+    
+      if(tirgoBalanceCurrencyCodes.uzs == currencyCode) {
+       [response] = await connect.query(`
+        INSERT INTO tir_balance_exchanges SET user_id = ?, currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo_service', agent_id = ?, created_by_id = ?
+        `, [driverId, currency[0]?.currency_name, currency[0]?.rate, 0, amount, 0, amount / currency[0]?.rate, agentId, agentId]);
+      } else if(tirgoBalanceCurrencyCodes.kzt == currencyCode) {
+        [response] = await connect.query(`
+        INSERT INTO tir_balance_exchanges SET user_id = ?, currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo_service', agent_id = ?, created_by_id = ?
+        `, [driverId, currency[0]?.currency_name, 0, currency[0]?.rate, 0, amount, amount / currency[0]?.rate, agentId, agentId]);
+      } else {
+        appData.status = false;
+        appData.message = 'Invalid currency code'
+        res.status(400).json(appData);
+        return;
+      }
 
-      await connect.query(`
-      INSERT INTO tir_balance_exchanges SET user_id = ?, currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo_service', agent_id = ?, created_by_id = ?
-      `, [driverId, currency[0]?.currency_name, currency[0]?.rate, 0, amount, 0, amount / currency[0]?.rate, agentId, agentId]);
-
-      appData.data = insertResult;
-      appData.status = true;
-      res.status(200).json(appData);
-    } else {
-      appData.status = false;
-      res.status(200).json(appData);
-    }
+      if(response.affectedRows) {
+        appData.status = true;
+        res.status(200).json(appData);
+      } else {
+        appData.status = false;
+        res.status(400).json(appData);
+      }
   } catch (e) {
     console.log(e);
     appData.error = e.message;
@@ -366,14 +372,16 @@ admin.post("/agent-service/add-to-driver", async (req, res) => {
             user_id,
             service.service_id,
             userInfo.id,
-            'service'
+            'service',
+            userInfo.id,
+            true
           ];
         })
         // const sql =
         //   "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, created_by_id, is_agent) VALUES ?";
         // const [result] = await connect.query(sql, [insertValues]);
         const [result] = await connect.query(`
-        INSERT INTO tir_balance_transaction (user_id, service_id, created_by_id, transaction_type) VALUES ?
+        INSERT INTO tir_balance_transaction (user_id, service_id, created_by_id, transaction_type, agent_id, is_by_agent) VALUES ?
       `, [insertValues]);
         if (result.affectedRows > 0) {
           appData.status = true;
@@ -431,6 +439,7 @@ admin.get("/getAgentBalanse/:agent_id", async (req, res) => {
     //   `SELECT 
     //   COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE deleted = 0 AND agent_id = ? AND type = 'tirgo_balance' ), 0) - 
     //   COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE deleted = 0 AND agent_id = ? AND type = 'subscription'  AND deleted = 0), 0) AS tirgoBalance,
+    
     //   COALESCE((SELECT SUM(amount) FROM agent_transaction WHERE deleted = 0 AND agent_id = ? AND type = 'service_balance'), 0) - 
     //   COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE agent_id = ? AND is_agent = true), 0) - 
     //   COALESCE((SELECT SUM(amount) FROM services_transaction where created_by_id = ? AND status In(2, 3)), 0) AS serviceBalance      
@@ -440,8 +449,10 @@ admin.get("/getAgentBalanse/:agent_id", async (req, res) => {
 
     const [rows] = await connect.query(
       `SELECT 
-      COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND user_id = ${agentId} AND balance_type = 'tirgo' ), 0)  AS tirgoBalance,
-      COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND user_id = ${agentId} AND balance_type = 'tirgo_service' ), 0)  AS serviceBalance
+      COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND user_id = ${agentId} AND balance_type = 'tirgo' ), 0)  -
+      COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE created_by_id = ${agentId} AND transaction_type = 'subscription'), 0) AS tirgoBalance,
+      COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND user_id = ${agentId} AND balance_type = 'tirgo_service' ), 0) -
+      COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND created_by_id = ${agentId} AND balance_type = 'tirgo_service' ), 0)  AS serviceBalance
     `);
 
     if (rows.length) {
@@ -905,17 +916,18 @@ admin.get("/sumOfDriversSubcription/:agent_id", async (req, res) => {
   agent_id = req.params.agent_id;
   try {
     connect = await database.connection.getConnection();
+    // const [rows] = await connect.query(
+    //   `SELECT amount FROM subscription_transaction WHERE deleted = 0 AND agent_id = ?`,
+    //   [agent_id]
+    // );
+    
     const [rows] = await connect.query(
-      `SELECT amount FROM subscription_transaction WHERE deleted = 0 AND agent_id = ?`,
+      `SELECT SUM(amount_tir) totalTirAmount FROM tir_balance_transaction WHERE created_by_id = ? AND transaction_type = 'subscription'`,
       [agent_id]
-    );
-    const total_sum = rows.reduce(
-      (accumulator, secure) => accumulator + +Number(secure.amount),
-      0
     );
     if (rows.length) {
       appData.status = true;
-      appData.data = { total_sum: total_sum };
+      appData.data = { total_sum: rows[0]?.totalTirAmount };
     }
     res.status(200).json(appData);
   } catch (e) {
@@ -935,17 +947,14 @@ admin.get("/agent-services/transations-total-amount", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      `SELECT SUM(amount) as "totalAmount" FROM services_transaction WHERE created_by_id = ? AND status IN(2, 3)`,
+      `SELECT SUM(amount_tir) totalTirAmount FROM tir_balance_transaction WHERE created_by_id = ? AND transaction_type = 'service' AND status = 3`,
       [agentId]
     );
-    const [alphaRows] = await connect.query(
-      `SELECT SUM(amount) as "totalAmount" FROM alpha_payment WHERE agent_id = ?`,
-      [agentId]
-    );
+
     if (rows.length) {
       appData.status = true;
       appData.data = {
-        totalAmount: +rows[0].totalAmount + +alphaRows[0].totalAmount,
+        totalAmount: +rows[0].totalTirAmount,
       };
     }
     res.status(200).json(appData);
@@ -4907,93 +4916,48 @@ admin.post("/driver-group/add-subscription", async (req, res) => {
         appData.message = "subscription not found";
         res.status(400).json(appData);
       } else {
-        let valueofPayment;
-        if (subscription[0].duration == 1) {
-          valueofPayment = 80000;
-        }
-        if (subscription[0].duration == 3) {
-          valueofPayment = 180000;
-        }
-        if (subscription[0].duration == 12) {
-          valueofPayment = 570000;
-        }
-        const [withdrawals] = await connect.query(
-          `SELECT amount from driver_withdrawal where driver_id = ?`,
-          [userId]
-        );
-        const [activeBalance] = await connect.query(
-          `SELECT amount from secure_transaction where dirverid = ? and status = 2`,
-          [userId]
-        );
-        const [subscriptionPayment] = await connect.query(
-          `SELECT id, amount from subscription_transaction where deleted = 0 AND userid = ? `,
-          [userId]
-        );
-        const [payments] = await connect.query(
-          "SELECT amount FROM payment WHERE userid = ? and status = 1 and date_cancel_time IS NULL",
-          [userId]
-        );
-        const totalWithdrawalAmount = withdrawals.reduce(
-          (accumulator, secure) => accumulator + +Number(secure.amount),
-          0
-        );
-        const totalActiveAmount = activeBalance.reduce(
-          (accumulator, secure) => accumulator + +Number(secure.amount),
-          0
-        );
-        const totalPayments = payments.reduce(
-          (accumulator, secure) => accumulator + +Number(secure.amount),
-          0
-        );
-        const totalSubscriptionPayment = subscriptionPayment.reduce(
-          (accumulator, subPay) => {
-            return accumulator + Number(subPay.amount);
-          },
-          0
-        );
-        let balance =
-          totalActiveAmount +
-          (totalPayments - totalSubscriptionPayment) -
-          totalWithdrawalAmount;
+        
+        const [driverGroupBalance] = await connect.query(
+          `SELECT 
+          COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE group_id = ${groupId} AND user_id = ${groupId} AND balance_type = 'tirgo' ), 0) -
+          COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE group_id = ${groupId} AND is_by_group = 1 AND transaction_type = 'subscription' ), 0)  AS tirgoBalance
+        `);
+        console.log(driverGroupBalance)
+        if (driverGroupBalance.length) {
 
-        // paymentUser active balance
-        if (Number(balance) >= Number(valueofPayment)) {
-          let nextMonth = new Date(
-            new Date().setMonth(
-              new Date().getMonth() + subscription[0].duration
-            )
-          );
-          const [userUpdate] = await connect.query(
-            "UPDATE users_list SET subscriptionId = ?, from_subscription = ? , to_subscription=?  WHERE id = ?",
-            [subscriptionId, new Date(), nextMonth, userId]
-          );
-          if (userUpdate.affectedRows == 1) {
-            const subscription_transaction = await connect.query(
-              "INSERT INTO subscription_transaction SET userid = ?, subscriptionId = ?, phone = ?, amount = ?, admin_id = ?, group_id = ?, is_group = ?",
-              [
-                userId,
-                subscriptionId,
-                phone,
-                valueofPayment,
-                userInfo.id,
-                groupId,
-                true,
-              ]
-            );
-            if (subscription_transaction.length > 0) {
-              appData.status = true;
-              res.status(200).json(appData);
+            if (Number(driverGroupBalance[0].tirgoBalance) >= Number(subscription[0]?.value)) {
+
+           const [insertResult] = await connect.query(`
+              INSERT INTO tir_balance_transaction SET user_id = ?, subscription_id = ?, amount_tir = ?, created_by_id = ?, transaction_type = ?, is_by_group = ?, group_id = ?
+            `, [user_id, subscription_id, subscription[0]?.value, +userInfo?.id, 'subscription', true, groupId]);
+
+              if (insertResult.affectedRows) {
+                let nextthreeMonth = new Date(
+                  new Date().setMonth(
+                    new Date().getMonth() + subscription[0].duration
+                  )
+                );
+                const [edit] = await connect.query(
+                  "UPDATE users_list SET subscription_id = ? , from_subscription = ? , to_subscription=?  WHERE id =?",
+                  [subscription_id, new Date(), nextthreeMonth, user_id]
+                );
+                appData.data = edit;
+                appData.status = true;
+                res.status(200).json(appData);
+
+              } else {
+                appData.error = "не могу добавить транзакцию подписки";
+                appData.status = false;
+                res.status(400).json(appData);
+              }
+
+            } else {
+              appData.error = "Баланса недостаточно";
+              appData.status = false;
+              res.status(400).json(appData);
             }
-          } else {
-            appData.error = "Невозможно обновить данные пользователя";
-            appData.status = false;
-            res.status(400).json(appData);
-          }
-        } else {
-          appData.error = "Недостаточно средств на балансе";
-          appData.status = false;
-          res.status(400).json(appData);
         }
+
       }
     }
   } catch (e) {
@@ -5072,18 +5036,48 @@ admin.post("/driver-group/add-services", async (req, res) => {
 admin.post("/driver-group/add-balance", async (req, res) => {
   let connect,
     appData = { status: false },
-    group_id = req.body.groupId,
+    groupId = req.body.groupId,
     amount = req.body.amount,
+    currencyCode = req.body.currencyCode,
+    balanceType = req.body.balanceType,
+    insertResult,
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   try {
     connect = await database.connection.getConnection();
-    const insertResult = await connect.query(
-      "INSERT INTO driver_group_transaction SET admin_id = ?, driver_group_id = ?, amount = ?, created_at = ?, type = 'Пополнение'",
-      [userInfo.id, group_id, amount, new Date()]
-    );
+    // const insertResult = await connect.query(
+    //   "INSERT INTO driver_group_transaction SET admin_id = ?, driver_group_id = ?, amount = ?, created_at = ?, type = 'Пополнение'",
+    //   [userInfo.id, groupId, amount, new Date()]
+    // );
 
-    if (insertResult) {
-      appData.data = insertResult;
+    if(balanceType != 'tirgo_service' && balanceType != 'tirgo') {
+      appData.status = false;
+      appData.message = 'Неверный тип баланса';
+      res.status(400).json(appData);
+      return;
+    }
+
+    if(currencyCode != tirgoBalanceCurrencyCodes.uzs && currencyCode != tirgoBalanceCurrencyCodes.kzt) {
+      appData.status = false;
+      appData.message = 'Неверный код валюты';
+      res.status(400).json(appData);
+      return;
+    }
+    const [currency] = await connect.query(`
+    SELECT * from tirgo_balance_currency WHERE code = ${currencyCode} 
+    `);
+
+    if(tirgoBalanceCurrencyCodes.uzs == currencyCode) {
+      [insertResult] = await connect.query(`
+       INSERT INTO tir_balance_exchanges SET user_id = ?, currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = ?, group_id = ?, created_by_id = ?
+       `, [groupId, currency[0]?.currency_name, currency[0]?.rate, 0, amount, 0, amount / currency[0]?.rate, balanceType, groupId, userInfo?.id]);
+     } else if(tirgoBalanceCurrencyCodes.kzt == currencyCode) {
+       [insertResult] = await connect.query(`
+       INSERT INTO tir_balance_exchanges SET user_id = ?, currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = ?, group_id = ?, created_by_id = ?
+       `, [groupId, currency[0]?.currency_name, 0, currency[0]?.rate, 0, amount, amount / currency[0]?.rate, balanceType, groupId, userInfo?.id]);
+     }
+
+
+    if (insertResult.affectedRows) {
       appData.status = true;
       res.status(200).json(appData);
     } else {
@@ -5104,48 +5098,23 @@ admin.post("/driver-group/add-balance", async (req, res) => {
 admin.get("/driver-group/balance", async (req, res) => {
   let connect,
     appData = { status: false },
-    group_id = req.query.groupId;
+    groupId = req.query.groupId;
   try {
     connect = await database.connection.getConnection();
+    const [driverGroupBalance] = await connect.query(
+      `SELECT 
+      COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE group_id = ${groupId} AND user_id = ${groupId} AND balance_type = 'tirgo' ), 0) -
+      COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE group_id = ${groupId} AND is_by_group = 1 AND transaction_type = 'subscription' ), 0)  AS tirgoBalance,
 
-    const [topUpTransactions] = await connect.query(
-      `SELECT * from driver_group_transaction where driver_group_id = ${group_id} AND type = 'Пополнение'`
-    );
-
-    const [withdrawTransactions] = await connect.query(
-      `SELECT * from driver_group_transaction where driver_group_id = ${group_id} AND type = 'Вывод'`
-    );
-
-    const [subTransactions] = await connect.query(
-      `SELECT * from subscription_transaction where deleted = 0 AND group_id = ${group_id}`
-    );
-
-    const [serviceTransactions] = await connect.query(
-      `SELECT * from services_transaction where group_id = ${group_id} AND status In(2, 3)`
-    );
-
-    const totalTopUpTransactions = topUpTransactions.reduce(
-      (accumulator, secure) => accumulator + +Number(secure.amount),
-      0
-    );
-    const totalWithdrawTransactions = withdrawTransactions.reduce(
-      (accumulator, secure) => accumulator + +Number(secure.amount),
-      0
-    );
-    const totalTSubransactions = subTransactions.reduce(
-      (accumulator, secure) => accumulator + +Number(secure.amount),
-      0
-    );
-    const totalTServiceransactions = serviceTransactions.reduce(
-      (accumulator, secure) => accumulator + +Number(secure.amount),
-      0
-    );
+      COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE group_id = ${groupId} AND user_id = ${groupId} AND balance_type = 'tirgo_service' ), 0) -
+      COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE group_id = ${groupId} AND is_by_group = 1 AND transaction_type = 'service' ), 0) AS serviceBalance
+    `);
+    
     appData.data = {
-      balance:
-        totalTopUpTransactions -
-        totalWithdrawTransactions -
-        (totalTSubransactions + totalTServiceransactions),
+      tirgoBalance: driverGroupBalance[0]?.tirgoBalance,
+      serviceBalance: driverGroupBalance[0]?.serviceBalance
     };
+
     appData.status = true;
     res.status(200).json(appData);
   } catch (e) {
