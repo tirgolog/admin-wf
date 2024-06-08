@@ -11,6 +11,7 @@ const
     allpha_password='aAw@yrup#VbOh6PRP5TMGWaSkQzVg1ZHFysT'
     btoa = require('btoa');
 const socket = require("../Modules/Socket");
+const { tirgoBalanceCurrencyCodes } = require('../constants');
 
 payme.use(cors());
 
@@ -94,7 +95,11 @@ payme.post('/payMeMerchantApi', async function(req, res) {
                     }
 
                 }else if(method === 'PerformTransaction'){
-                    const [checkpay] = await connect.query('SELECT * FROM payment WHERE payid = ? LIMIT 1', [params.id]);
+                    const [checkpay] = await connect.query(
+                        `SELECT p.*, su.chat_id FROM payment p
+                        LEFT JOIN services_bot_users su on su.user_id = p.userid
+                        WHERE p.payid = ? LIMIT 1`, [params.id]
+                    );
                     if (checkpay.length){
                         let performtime = new Date().getTime().toString();
                         if (checkpay[0].status_pay_me === 2){
@@ -115,35 +120,52 @@ payme.post('/payMeMerchantApi', async function(req, res) {
                             appData.id = id;
                             res.status(200).json(appData);
                             const [insert] = await connect.query('UPDATE users_list SET balance = balance + ? WHERE id = ?', [+checkpay[0].amount,+checkpay[0].userid]);
-                                                     
+                            
+                            const [currency] = await connect.query(`
+                            SELECT * from tirgo_balance_currency WHERE code = ${tirgoBalanceCurrencyCodes.uzs} 
+                            `);
+
+                            await connect.query(`
+                            INSERT INTO tir_balance_exchanges SET user_id = ?, currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo', payme_id = ?, created_by_id = ?
+                            `, [ +checkpay[0]?.userid, currency[0]?.currency_name, currency[0]?.rate, 0, +checkpay[0].amount, 0, +checkpay[0].amount / currency[0]?.rate, checkpay[0]?.id, +checkpay[0]?.userid]);
+                            
                             if(insert.affectedRows > 0){
                                 const [token] = await connect.query('SELECT * FROM users_list WHERE id = ?', [+checkpay[0].userid]);
+                            
+                                socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: checkpay[0].chat_id, text: `Вы пополнили Tirgo баланс на\n${checkpay[0].amount} ${currency[0]?.currency_name}\n${+checkpay[0].amount / currency[0]?.rate} tir` }));
+
+                            
                                 if (token.length){
                                     if(token[0].token !== '' && token[0].token !== null){
                                         push.send(token[0].token, "Пополнение баланса","Ваш баланс успешно пополнен на сумму "+checkpay[0].amount,'','');
                                     }
-                                    let valueofPayment;
-                                    let duration = 1;
-                                    if (180000>Number(checkpay[0].amount) >=80000) {
-                                        valueofPayment = 80000;
-                                        duration =1;
-                                      } else if (570000>Number(checkpay[0].amount) >=180000) {
-                                        duration =3;
-                                        valueofPayment = 180000;
-                                      }
-                                      if (Number(checkpay[0].amount) >=570000) {
-                                        duration =12;
-                                        valueofPayment = 570000;
-                                      }
-                                    const [subscription] = await connect.query(
-                                        "SELECT * FROM subscription where duration = ?",
-                                        [duration]
+                                    let valueofPayment = 0;
+                                    let duration = 0;
+                                    const [paymentUser] = await connect.query(
+                                        `SELECT 
+                                          COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE user_id = ${+checkpay[0]?.userid} AND balance_type = 'tirgo'), 0) -
+                                          COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction  WHERE deleted = 0 AND user_id = ${+checkpay[0]?.userid} AND transaction_type = 'subscription' AND status = 3), 0) AS tirgoBalance`
                                       );
+                                    const tirCurrency = await database.query(`SELECT id, currency_name, rate, code FROM tirgo_balance_currency WHERE code = ${tirgoBalanceCurrencyCodes.uzs}`);
+                                    const [subscriptions] = await connect.query("SELECT * FROM subscription");
+                                    const payAmount = +checkpay[0].amount + (+paymentUser[0]?.tirgoBalance * +tirCurrency[0]?.rate);
+                                    let subscriptionId;
+
+                                    for(let sub of subscriptions) {
+                                        const subValue = +sub.value * +tirCurrency[0]?.rate;
+                                        if(payAmount >= subValue  && subValue > valueofPayment) {
+                                            valueofPayment = subValue;
+                                            duration = sub.duration;
+                                            subscriptionId = sub.id;
+                                        }
+                                    }
+
+
                                       const [users] = await connect.query(
                                         "SELECT * FROM users_list where id = ?",
                                         [checkpay[0].userid]
                                       );
-                                    if (checkpay[0].amount > valueofPayment) {
+                                    if (payAmount >= valueofPayment) {
                                         let nextMonth = new Date(
                                           new Date().setMonth(
                                             new Date().getMonth() + subscription[0].duration
@@ -151,13 +173,14 @@ payme.post('/payMeMerchantApi', async function(req, res) {
                                         );
                                         const [userUpdate] = await connect.query(
                                           "UPDATE users_list SET subscription_id = ?, from_subscription = ? , to_subscription=?  WHERE id = ?",
-                                          [subscription[0].id, new Date(), nextMonth, checkpay[0].userid]
+                                          [subscriptionId, new Date(), nextMonth, checkpay[0].userid]
                                         );
                                         if (userUpdate.affectedRows == 1) {
-                                            const [subscription_transaction] = await connect.query(
-                                             "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?",
-                                             [checkpay[0].userid, subscription[0].id, users[0].phone, valueofPayment]
-                                             );
+
+                                            const [subscription_transaction] = await connect.query(`
+                                            INSERT INTO tir_balance_transaction SET user_id = ?, subscription_id = ?, created_by_id = ?, transaction_type = ?
+                                          `, [checkpay[0].userid, subscriptionId, checkpay[0].userid, 'subscription']);
+
                                              const [userChat] = await connect.query(`
                                               SELECT chat_id FROM services_bot_users
                                               WHERE user_id = ?
@@ -347,7 +370,12 @@ payme.post('/payMeMerchantAlpha', async function(req, res) {
                     }
 
                 }else if(method === 'PerformTransaction'){
-                    const [checkpay] = await connect.query('SELECT * FROM alpha_payment WHERE payid = ? LIMIT 1', [params.id]);
+                    const [checkpay] = await connect.query(`
+                    SELECT ap.*, su.chat_id FROM alpha_payment ap
+                    LEFT JOIN services_bot_users su on su.user_id = ap.userid
+                    WHERE ap.payid = ? LIMIT 1
+                    `, [params.id]);
+                    
                     if (checkpay.length){
                         let performtime = new Date().getTime().toString();
                         if (checkpay[0].status_pay_me === 2){
@@ -368,7 +396,18 @@ payme.post('/payMeMerchantAlpha', async function(req, res) {
                             appData.id = id;
                             res.status(200).json(appData);
                             const [insert] = await connect.query('UPDATE users_list SET balance = balance + ? WHERE id = ?', [+checkpay[0].amount,+checkpay[0].userid]);
+                               
+                            const [currency] = await connect.query(`
+                            SELECT * from tirgo_balance_currency WHERE code = ${tirgoBalanceCurrencyCodes.uzs} 
+                            `);
+
+                            await connect.query(`
+                            INSERT INTO tir_balance_exchanges SET user_id = ?, currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo_service', payme_id = ?, created_by_id = ?
+                            `, [ +checkpay[0]?.userid, currency[0]?.currency_name, currency[0]?.rate, 0, +checkpay[0].amount, 0, +checkpay[0].amount / currency[0]?.rate, checkpay[0]?.id, +checkpay[0]?.userid]);
                             if(insert.affectedRows > 0){
+
+                                socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: checkpay[0].chat_id, text: `Вы пополнили TirgoService баланс на \n${checkpay[0].amount} ${currency[0]?.currency_name}\n${+checkpay[0].amount / currency[0]?.rate} tir` }));
+
                                 const [token] = await connect.query('SELECT * FROM users_list WHERE id = ?', [+checkpay[0].userid]);
                                 socket.updateAllMessages("update-alpha-balance", "1");
                                 if (token.length){
