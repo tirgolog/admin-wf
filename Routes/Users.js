@@ -22,6 +22,7 @@ const express = require("express"),
 const axios = require("axios");
 const { finishOrderDriver } = require("./rabbit");
 const { userInfo } = require("os");
+const { tirgoBalanceCurrencyCodes } = require("../constants");
 // Multer configuration
 // const storage = multer.diskStorage({
 //   destination: function (req, file, cb) {
@@ -79,7 +80,9 @@ users.post("/completeClickPay", async function (req, res) {
     appData.merchant_trans_id = req.body.merchant_trans_id;
     merchant_prepare_id = null;
     const [rows] = await connect.query(
-      "SELECT * FROM payment WHERE click_trans_id = ? LIMIT 1",
+      `SELECT p.*, su.chat_id FROM payment p
+      LEFT JOIN services_bot_users su on su.user_id = p.userid
+      WHERE click_trans_id = ? LIMIT 1`,
       [req.body.click_trans_id]
     );
     if (rows.length > 0 && rows[0].status === 0 && +req.body.error >= 0) {
@@ -113,28 +116,35 @@ users.post("/completeClickPay", async function (req, res) {
               "",
               ""
             );
-            let valueofPayment;
-            let duration = 1;
-            if (180000 > Number(rows[0].amount) >= 80000) {
-              valueofPayment = 80000;
-              duration = 1;
-            } else if (570000 > Number(rows[0].amountt) >= 180000) {
-              duration = 3;
-              valueofPayment = 180000;
+
+            socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: rows[0].chat_id, text: `Вы пополнили Tirgo баланс на \n${rows[0].amount} ${currency[0]?.currency_name}\n${+rows[0].amount / currency[0]?.rate} tir` }));
+
+            let valueofPayment = 0;
+            let duration = 0;
+            const [paymentUser] = await connect.query(
+                `SELECT 
+                  COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE user_id = ${+rows[0]?.userid} AND balance_type = 'tirgo'), 0) -
+                  COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction  WHERE deleted = 0 AND user_id = ${+rows[0]?.userid} AND transaction_type = 'subscription' AND status = 3), 0) AS tirgoBalance`
+              );
+            const tirCurrency = await connect.query(`SELECT id, currency_name, rate, code FROM tirgo_balance_currency WHERE code = ${tirgoBalanceCurrencyCodes.uzs}`);
+            const [subscriptions] = await connect.query("SELECT * FROM subscription");
+            const payAmount = +rows[0].amount + (+paymentUser[0]?.tirgoBalance * +tirCurrency[0]?.rate);
+            let subscriptionId;
+
+            for(let sub of subscriptions) {
+                const subValue = +sub.value * +tirCurrency[0]?.rate;
+                if(payAmount >= subValue  && subValue > valueofPayment) {
+                    valueofPayment = subValue;
+                    duration = sub.duration;
+                    subscriptionId = sub.id;
+                }
             }
-            if (Number(rows[0].amount) >= 570000) {
-              duration = 12;
-              valueofPayment = 570000;
-            }
-            const [subscription] = await connect.query(
-              "SELECT * FROM subscription where duration = ?",
-              [duration]
-            );
+
             const [users] = await connect.query(
               "SELECT * FROM users_list where id = ?",
               [req.body.merchant_trans_id]
             );
-            if (rows[0].amount > valueofPayment) {
+            if (payAmount > valueofPayment) {
               let nextMonth = new Date(
                 new Date().setMonth(
                   new Date().getMonth() + subscription[0].duration
@@ -142,7 +152,7 @@ users.post("/completeClickPay", async function (req, res) {
               );
               const [userUpdate] = await connect.query(
                 "UPDATE users_list SET subscription_id = ?, from_subscription = ? , to_subscription=?  WHERE id = ?",
-                [subscription[0].id, new Date(), nextMonth, req.body.merchant_trans_id]
+                [subscriptionId, new Date(), nextMonth, req.body.merchant_trans_id]
               );
               if (userUpdate.affectedRows == 1) {
                 // const subscription_transaction = await connect.query(
@@ -156,7 +166,7 @@ users.post("/completeClickPay", async function (req, res) {
                 // );
                 const [subscription_transaction] = await connect.query(`
                 INSERT INTO tir_balance_transaction (user_id, subscription_id, created_by_id, transaction_type, amount) VALUES ?
-              `, [req.body.merchant_trans_id, subscription[0].id, req.body.merchant_trans_id, 'subscription', +rows[0].amount / currency[0]?.rate]);
+              `, [req.body.merchant_trans_id, subscriptionId, req.body.merchant_trans_id, 'subscription', +rows[0].amount / currency[0]?.rate]);
                 if (subscription_transaction.affectedRows) {
                 }
               }
@@ -229,9 +239,13 @@ users.post("/alphaCompleteClickPay", async function (req, res) {
     appData.merchant_trans_id = req.body.merchant_trans_id;
     merchant_prepare_id = null;
     const [rows] = await connect.query(
-      "SELECT * FROM alpha_payment WHERE click_trans_id = ? LIMIT 1",
+      `SELECT ap.*, su.chat_id FROM alpha_payment ap
+      LEFT JOIN services_bot_users su on su.user_id = ap.userid
+      WHERE click_trans_id = ? LIMIT 1`,
       [req.body.click_trans_id]
     );
+    console.log(rows.length, req.body.merchant_trans_id)
+    console.log({user: rows[0]})
     if (rows.length > 0 && rows[0].status === 0 && +req.body.error >= 0) {
       await connect.query("UPDATE alpha_payment SET status = 1 WHERE id = ?", [
         rows[0].id,
@@ -240,7 +254,7 @@ users.post("/alphaCompleteClickPay", async function (req, res) {
         "UPDATE users_list SET balance = balance + ? WHERE id = ?",
         [rows[0].amount, +req.body.merchant_trans_id]
       );
-
+        console.log({amount: rows[0].amount})
       const [currency] = await connect.query(`
       SELECT * from tirgo_balance_currency WHERE code = ${tirgoBalanceCurrencyCodes.uzs} 
       `);
@@ -248,6 +262,9 @@ users.post("/alphaCompleteClickPay", async function (req, res) {
       await connect.query(`
       INSERT INTO tir_balance_exchanges SET user_id = ?, currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo_service', click_id = ?, created_by_id = ?
       `, [+rows[0]?.userid, currency[0]?.currency_name, currency[0]?.rate, 0, +rows[0].amount, 0, +rows[0].amount / currency[0]?.rate, +rows[0]?.id, +rows[0]?.userid]);
+        console.log({ chat_id: rows[0].chat_id })
+    console.log(rows[0])
+      socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: rows[0].chat_id, text: `Вы пополнили TirgoService баланс на\n${rows[0].amount} ${currency[0]?.currency_name}\n${+rows[0].amount / currency[0]?.rate} tir` }));
 
       socket.updateAllMessages("update-alpha-balance", "1");
       if (insert.affectedRows > 0) {
@@ -257,13 +274,13 @@ users.post("/alphaCompleteClickPay", async function (req, res) {
         );
         if (token.length) {
           if (token[0].token !== "" && token[0].token !== null) {
-            push.send(
-              token[0].token,
-              "Пополнение баланса",
-              "Ваш баланс успешно пополнен на сумму " + rows[0].amount,
-              "",
-              ""
-            );
+            // push.send(
+            //   token[0].token,
+            //   "Пополнение баланса",
+            //   "Ваш баланс успешно пополнен на сумму " + rows[0].amount,
+            //   "",
+            //   ""
+            // );
           }
         }
         data = {
@@ -274,7 +291,9 @@ users.post("/alphaCompleteClickPay", async function (req, res) {
       }
     }
     res.status(200).json(appData);
-  } finally {
+  } catch(err) {
+    console.log(err)
+  }finally {
     if (connect) {
       connect.release();
     }
@@ -307,6 +326,7 @@ users.post("/alphaPrepareClickPay", async function (req, res) {
       res.status(200).json(appData);
     }
   } catch (err) {
+    console.log(err)
     appData.status = false;
     appData.error = err;
     appData.message = err.message;
@@ -5308,9 +5328,9 @@ users.get("/tir-coin-balance", async (req, res) => {
       const [paymentUser] = await connect.query(
         `SELECT 
           COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE user_id = ${userId} AND balance_type = 'tirgo'), 0) -
-          COALESCE((SELECT SUM(amount) FROM tir_balance_transaction  WHERE user_id = ${userId} AND transaction_type = 'subscription' AND status = 3), 0) AS tirgoBalance,
+          COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction  WHERE deleted = 0 AND user_id = ${userId} AND transaction_type = 'subscription' AND status = 3), 0) AS tirgoBalance,
           COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE user_id = ${userId} AND balance_type = 'tirgo_service'), 0) - 
-          COALESCE((SELECT SUM(amount) FROM tir_balance_transaction  WHERE user_id = ${userId} AND transaction_type = 'service' AND status = 3), 0) AS serviceBalance;`
+          COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction  WHERE deleted = 0 AND user_id = ${userId} AND transaction_type = 'service' AND status = 3), 0) AS serviceBalance;`
       );
       appData.status = true;
       appData.data = paymentUser[0];
