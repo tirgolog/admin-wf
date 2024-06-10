@@ -78,6 +78,22 @@ module.exports = {
                     }
                 }
             });
+
+            socket.on('update-service-request', async function (data) {
+                let connect;
+                try {
+                    console.log('update-service-request')
+                    socketIO.emit('update-service-request', data)
+                    // connect = await database.connection.getConnection();
+                    // await connect.query('UPDATE users_list SET status = 0 WHERE id = ?', [socket.userid]);
+                } catch (e) {
+                    console.log(e)
+                } finally {
+                    if (connect) {
+                        connect.release()
+                    }
+                }
+            });
         });
     },
     emit: function (room, name, data) {
