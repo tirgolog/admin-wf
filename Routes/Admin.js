@@ -3359,7 +3359,7 @@ admin.get('/tir-currency-calculate', async (req, res) => {
   const { amountTir, convertedAmount, currencyCode } = req.query;
   try {
     connect = await database.connection.getConnection();
-    if(!amountTir || !convertedAmount) {
+    if(!amountTir && !convertedAmount) {
     appData.message = 'Требуется сумма';
     appData.status = false;
     res.status(400).json(appData);
