@@ -124,7 +124,7 @@ users.post("/completeClickPay", async function (req, res) {
             const [paymentUser] = await connect.query(
                 `SELECT 
                   COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE user_id = ${+rows[0]?.userid} AND balance_type = 'tirgo'), 0) -
-                  COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction  WHERE deleted = 0 AND user_id = ${+rows[0]?.userid} AND transaction_type = 'subscription' AND status = 3), 0) AS tirgoBalance`
+                  COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction  WHERE deleted = 0 AND user_id = ${+rows[0]?.userid} AND transaction_type = 'subscription'), 0) AS tirgoBalance`
               );
             const tirCurrency = await connect.query(`SELECT id, currency_name, rate, code FROM tirgo_balance_currency WHERE code = ${tirgoBalanceCurrencyCodes.uzs}`);
             const [subscriptions] = await connect.query("SELECT * FROM subscription");
@@ -5328,9 +5328,9 @@ users.get("/tir-coin-balance", async (req, res) => {
       const [paymentUser] = await connect.query(
         `SELECT 
           COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE user_id = ${userId} AND balance_type = 'tirgo'), 0) -
-          COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction  WHERE deleted = 0 AND user_id = ${userId} AND transaction_type = 'subscription' AND status = 3), 0) AS tirgoBalance,
+          COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction  WHERE deleted = 0 AND user_id = ${userId} AND transaction_type = 'subscription'), 0) AS tirgoBalance,
           COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE user_id = ${userId} AND balance_type = 'tirgo_service'), 0) - 
-          COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction  WHERE deleted = 0 AND user_id = ${userId} AND transaction_type = 'service' AND status = 3), 0) AS serviceBalance;`
+          COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction  WHERE deleted = 0 AND user_id = ${userId} AND transaction_type = 'service' AND status In(2, 3)), 0) AS serviceBalance;`
       );
       appData.status = true;
       appData.data = paymentUser[0];
