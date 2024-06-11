@@ -3377,25 +3377,24 @@ admin.get('/tir-currency-calculate', async (req, res) => {
       res.status(400).json(appData);
       return;
       }
-    const tirCurrency = await connect.query(`SELECT currency_name, rate, id FROM tirgo_balance_currency WHERE code = ${currencyCode}`);
+    const [tirCurrency] = await connect.query(`SELECT currency_name, rate, id FROM tirgo_balance_currency WHERE code = ${currencyCode}`);
     if(!tirCurrency.length) {
       if(amountTir) {
-        amount = amountTir * tirCurrency[0]?.rate;
+        amount = +amountTir * +tirCurrency[0]?.rate;
       } else if(convertedAmount) {
-        amount = convertedAmount / tirCurrency[0]?.rate;
+        amount = +convertedAmount / +tirCurrency[0]?.rate;
       }
     } else {
-      const tirCurrency = await connect.query(`SELECT currency_name, rate, id FROM tirgo_balance_currency WHERE code = ${tirgoBalanceCurrencyCodes.uzs}`);
+      const [tirCurrency] = await connect.query(`SELECT currency_name, rate, id FROM tirgo_balance_currency WHERE code = ${tirgoBalanceCurrencyCodes.uzs}`);
       const currencies = await axios.get('https://cbu.uz/ru/arkhiv-kursov-valyut/json/');
-      const selectedCurrencyRate = currencies.data.find(el => el.Code = currencyCode)?.Rate + ((5 * 100) / currencies.data.find(el => el.Code = currencyCode)?.Rate);
+      const selectedCurrencyRate = +currencies.data.find(el => el.Code = currencyCode)?.Rate + ((5 * 100) / +currencies.data.find(el => el.Code = currencyCode)?.Rate);
       if(amountTir) {
-        amount = (amountTir * tirCurrency[0]?.rate) / selectedCurrencyRate;
+        amount = (+amountTir * +tirCurrency[0]?.rate) / +selectedCurrencyRate;
       } else if(convertedAmount) {
-        amount = (convertedAmount / selectedCurrencyRate) / tirCurrency.Rate;
+        amount = (+convertedAmount / +selectedCurrencyRate) / +tirCurrency.Rate;
       }
     }
-
-    appData.data = {amount};
+    appData.data = {amount: amount.toFixed(4)};
     appData.status = true;
     res.status(200).json(appData);
   } catch(err) {
