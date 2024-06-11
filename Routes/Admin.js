@@ -3351,6 +3351,65 @@ admin.get("/tir-currencies", async (req, res) => {
   }
 });
 
+admin.get('/tir-currency-calculate', async (req, res) => {
+  let connect,
+  userInfo = await jwt.decode(req.headers.authorization.split(" ")[1]),
+  amount,
+  appData = { status: false };
+  const { amountTir, convertedAmount, currencyCode } = req.query;
+  try {
+    connect = await database.connection.getConnection();
+    if(!amountTir || !convertedAmount) {
+    appData.message = 'Требуется сумма';
+    appData.status = false;
+    res.status(400).json(appData);
+    return;
+    }
+    if(amountTir && convertedAmount) {
+      appData.message = 'one of amount is required';
+      appData.status = false;
+      res.status(400).json(appData);
+      return;
+    }
+    if(!currencyCode) {
+      appData.message = 'Требуется код валюты.';
+      appData.status = false;
+      res.status(400).json(appData);
+      return;
+      }
+    const tirCurrency = await connect.query(`SELECT currency_name, rate, id FROM tirgo_balance_currency WHERE code = ${currencyCode}`);
+    if(!tirCurrency.length) {
+      if(amountTir) {
+        amount = amountTir * tirCurrency[0]?.rate;
+      } else if(convertedAmount) {
+        amount = convertedAmount / tirCurrency[0]?.rate;
+      }
+    } else {
+      const tirCurrency = await connect.query(`SELECT currency_name, rate, id FROM tirgo_balance_currency WHERE code = ${tirgoBalanceCurrencyCodes.uzs}`);
+      const currencies = await axios.get('https://cbu.uz/ru/arkhiv-kursov-valyut/json/');
+      const selectedCurrency = currencies.data.find(el => el.Code = currencyCode);
+      if(amountTir) {
+        amount = (amountTir * tirCurrency[0]?.rate) / selectedCurrency.Rate;
+      } else if(convertedAmount) {
+        amount = (convertedAmount / selectedCurrency[0]?.rate) / tirCurrency.Rate;
+      }
+    }
+
+    appData.data = {amount};
+    appData.status = true;
+    res.status(200).json(appData);
+  } catch(err) {
+    console.log(err);
+    appData.message = err.message;
+    appData.status = false;
+    res.status(400).json(appData);
+  } finally {
+    if(connect) {
+      connect.release();
+    }
+  }
+})
+
 admin.post("/uzs-currency", async (req, res) => {
   let connect,
     currencyName = req.body.currencyName,

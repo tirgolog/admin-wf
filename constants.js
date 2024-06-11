@@ -1,6 +1,8 @@
 const tirgoBalanceCurrencyCodes = {
-    uzs: 1,
-    kzt: 2
+    uzs: 860,
+    kzt: 398,
+    rub: 643,
+    usd: 840
 }
 
 module.exports = {
