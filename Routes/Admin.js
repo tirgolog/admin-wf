@@ -3387,11 +3387,11 @@ admin.get('/tir-currency-calculate', async (req, res) => {
     } else {
       const tirCurrency = await connect.query(`SELECT currency_name, rate, id FROM tirgo_balance_currency WHERE code = ${tirgoBalanceCurrencyCodes.uzs}`);
       const currencies = await axios.get('https://cbu.uz/ru/arkhiv-kursov-valyut/json/');
-      const selectedCurrency = currencies.data.find(el => el.Code = currencyCode);
+      const selectedCurrencyRate = currencies.data.find(el => el.Code = currencyCode)?.Rate + ((5 * 100) / currencies.data.find(el => el.Code = currencyCode)?.Rate);
       if(amountTir) {
-        amount = (amountTir * tirCurrency[0]?.rate) / selectedCurrency.Rate;
+        amount = (amountTir * tirCurrency[0]?.rate) / selectedCurrencyRate;
       } else if(convertedAmount) {
-        amount = (convertedAmount / selectedCurrency[0]?.rate) / tirCurrency.Rate;
+        amount = (convertedAmount / selectedCurrencyRate) / tirCurrency.Rate;
       }
     }
 
