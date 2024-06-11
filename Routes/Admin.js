@@ -3378,7 +3378,7 @@ admin.get('/tir-currency-calculate', async (req, res) => {
       return;
       }
     const [tirCurrency] = await connect.query(`SELECT currency_name, rate, id FROM tirgo_balance_currency WHERE code = ${currencyCode}`);
-    if(!tirCurrency.length) {
+    if(tirCurrency.length) {
       if(amountTir) {
         amount = +amountTir * +tirCurrency[0]?.rate;
       } else if(convertedAmount) {
