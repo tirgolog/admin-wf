@@ -1603,11 +1603,11 @@ users.get("/checkSession", async function (req, res) {
 
     const [driverGroupBalance] = await connect.query(
       `SELECT 
-      COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE group_id = ${groupId} AND user_id = ${groupId} AND balance_type = 'tirgo' ), 0) -
-      COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE deleted = 0 AND group_id = ${groupId} AND transaction_type = 'subscription' ), 0)  AS tirgoBalance,
+      COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE group_id = ${rows[0]?.driver_group_id} AND user_id = ${rows[0]?.driver_group_id} AND balance_type = 'tirgo' ), 0) -
+      COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE deleted = 0 AND group_id = ${rows[0]?.driver_group_id} AND transaction_type = 'subscription' ), 0)  AS tirgoBalance,
 
-      COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE group_id = ${groupId} AND user_id = ${groupId} AND balance_type = 'tirgo_service' ), 0) -
-      COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE deleted = 0 AND group_id = ${groupId} AND transaction_type = 'service' AND status In(2, 3)), 0) AS serviceBalance
+      COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE group_id = ${rows[0]?.driver_group_id} AND user_id = ${rows[0]?.driver_group_id} AND balance_type = 'tirgo_service' ), 0) -
+      COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE deleted = 0 AND group_id = ${rows[0]?.driver_group_id} AND transaction_type = 'service' AND status In(2, 3)), 0) AS serviceBalance
     `);
 
       appData.user = rows[0];
