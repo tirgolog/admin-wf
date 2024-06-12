@@ -4833,7 +4833,7 @@ admin.get("/driver-group/transactions", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
 
-    const transactions = await connect.query(`
+    const [transactions] = await connect.query(`
       SELECT 
         id,
         group_id groupId,
