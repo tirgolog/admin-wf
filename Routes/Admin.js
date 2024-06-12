@@ -5673,7 +5673,7 @@ admin.get("/messages/by-bot-user", async (req, res) => {
     `);
       await connect.query(`
         UPDATE service_bot_message
-        SET is_read = true WHERE sender_user_id = ${userId} OR receiver_user_id = ${userId}
+        SET is_read = 1 WHERE sender_user_id = ${userId} OR receiver_user_id = ${userId}
       `);
 
       const [rowsCount] = await connect.query(`
