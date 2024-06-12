@@ -4833,55 +4833,15 @@ admin.get("/driver-group/transactions", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
 
-    const [balanceTransactions] = await connect.query(
-      `SELECT * from driver_group_transaction where driver_group_id = ${groupId}`
-    );
-
-    const [subTransactions] = await connect.query(
-      `SELECT *, ul.id as "driverId", ul.name as "driverName" from subscription_transaction st 
-      LEFT JOIN users_list ul on ul.id = st.userid
-      where is_group = true AND group_id = ${groupId} AND deleted = 0`
-    );
-
-    const [serviceTransactions] = await connect.query(
-      `SELECT *, ul.id as "driverId", ul.name as "driverName" from services_transaction st
-      LEFT JOIN users_list ul on ul.id = st.userid
-      where is_group = true AND group_id = ${groupId}`
-    );
-
-    const transactions = [...balanceTransactions.map((el) => {
-      return {
-        transactionId: el.id,
-        groupId: el.driver_group_id,
-        amount: el.amount,
-        adminId: el.admin_id,
-        createdAt: el.created_at,
-        transactionType: el.type
-      }
-    }), ...
-    subTransactions.map((el) => {
-      return {
-        transactionId: el.id,
-        groupId: el.group_id,
-        amount: el.amount,
-        driverId: el.driverId,
-        driverName: el.driverName,
-        adminId: el.admin_id,
-        createdAt: el.created_at,
-        transactionType: 'subscription'
-      }
-    }), ...serviceTransactions.map((el) => {
-      return {
-        transactionId: el.id,
-        groupId: el.group_id,
-        driverId: el.driverId,
-        driverName: el.driverName,
-        amount: el.amount,
-        createdAt: el.createdAt,
-        serviceName: el.service_name,
-        transactionType: 'subscription'
-      }
-    })];
+    const transactions = await connect.query(`
+      SELECT 
+        id,
+        group_id groupId,
+        amount_tir amount,
+        created_at createdAt,
+        transaction_type transactionType
+       FROM tir_balance_transaction WHERE group_id = ${groupId}
+    `);
 
     appData.data = transactions;
     appData.status = true;
