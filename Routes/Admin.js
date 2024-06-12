@@ -4835,12 +4835,20 @@ admin.get("/driver-group/transactions", async (req, res) => {
 
     const [transactions] = await connect.query(`
       SELECT 
-        id,
-        group_id groupId,
-        amount_tir amount,
-        created_at createdAt,
-        transaction_type transactionType
-       FROM tir_balance_transaction WHERE group_id = ${groupId}
+        t.id,
+        t.user_id driverId,
+        t.group_id groupId,
+        t.status,
+        s.id serviceId,
+        s.name serviceName,
+        dl.name driverName,
+        t.amount_tir amount,
+        t.created_at createdAt,
+        t.transaction_type transactionType
+       FROM tir_balance_transaction t
+       LEFT JOIN users_list dl on dl.id = t.user_id AND dl.user_type = 1 
+       LEFT JOIN services s on s.id = t.service_id AND t.transaction_type = 'service' 
+       WHERE t.group_id = ${groupId}
     `);
 
     appData.data = transactions;
