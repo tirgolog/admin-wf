@@ -98,7 +98,7 @@ users.post("/completeClickPay", async function (req, res) {
         const [currency] = await connect.query(`
         SELECT * from tirgo_balance_currency WHERE code = ${tirgoBalanceCurrencyCodes.uzs} 
         `);
-  
+
         await connect.query(`
         INSERT INTO tir_balance_exchanges SET user_id = ?, currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo', click_id = ?, created_by_id = ?
         `, [+rows[0]?.userid, currency[0]?.currency_name, currency[0]?.rate, 0, +rows[0].amount, 0, +rows[0].amount / currency[0]?.rate, rows[0].id, +rows[0]?.userid]);
@@ -122,22 +122,22 @@ users.post("/completeClickPay", async function (req, res) {
             let valueofPayment = 0;
             let duration = 0;
             const [paymentUser] = await connect.query(
-                `SELECT 
+              `SELECT 
                   COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE user_id = ${+rows[0]?.userid} AND balance_type = 'tirgo'), 0) -
                   COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction  WHERE deleted = 0 AND user_id = ${+rows[0]?.userid} AND transaction_type = 'subscription'), 0) AS tirgoBalance`
-              );
+            );
             const tirCurrency = await connect.query(`SELECT id, currency_name, rate, code FROM tirgo_balance_currency WHERE code = ${tirgoBalanceCurrencyCodes.uzs}`);
             const [subscriptions] = await connect.query("SELECT * FROM subscription");
             const payAmount = +rows[0].amount + (+paymentUser[0]?.tirgoBalance * +tirCurrency[0]?.rate);
             let subscriptionId;
 
-            for(let sub of subscriptions) {
-                const subValue = +sub.value * +tirCurrency[0]?.rate;
-                if(payAmount >= subValue  && subValue > valueofPayment) {
-                    valueofPayment = subValue;
-                    duration = sub.duration;
-                    subscriptionId = sub.id;
-                }
+            for (let sub of subscriptions) {
+              const subValue = +sub.value * +tirCurrency[0]?.rate;
+              if (payAmount >= subValue && subValue > valueofPayment) {
+                valueofPayment = subValue;
+                duration = sub.duration;
+                subscriptionId = sub.id;
+              }
             }
 
             const [users] = await connect.query(
@@ -245,7 +245,7 @@ users.post("/alphaCompleteClickPay", async function (req, res) {
       [req.body.click_trans_id]
     );
     console.log(rows.length, req.body.merchant_trans_id)
-    console.log({user: rows[0]})
+    console.log({ user: rows[0] })
     if (rows.length > 0 && rows[0].status === 0 && +req.body.error >= 0) {
       await connect.query("UPDATE alpha_payment SET status = 1 WHERE id = ?", [
         rows[0].id,
@@ -254,7 +254,7 @@ users.post("/alphaCompleteClickPay", async function (req, res) {
         "UPDATE users_list SET balance = balance + ? WHERE id = ?",
         [rows[0].amount, +req.body.merchant_trans_id]
       );
-        console.log({amount: rows[0].amount})
+      console.log({ amount: rows[0].amount })
       const [currency] = await connect.query(`
       SELECT * from tirgo_balance_currency WHERE code = ${tirgoBalanceCurrencyCodes.uzs} 
       `);
@@ -262,8 +262,8 @@ users.post("/alphaCompleteClickPay", async function (req, res) {
       await connect.query(`
       INSERT INTO tir_balance_exchanges SET user_id = ?, currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo_service', click_id = ?, created_by_id = ?
       `, [+rows[0]?.userid, currency[0]?.currency_name, currency[0]?.rate, 0, +rows[0].amount, 0, +rows[0].amount / currency[0]?.rate, +rows[0]?.id, +rows[0]?.userid]);
-        console.log({ chat_id: rows[0].chat_id })
-    console.log(rows[0])
+      console.log({ chat_id: rows[0].chat_id })
+      console.log(rows[0])
       socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: rows[0].chat_id, text: `Вы пополнили TirgoService баланс на\n${rows[0].amount} ${currency[0]?.currency_name}\n${+rows[0].amount / currency[0]?.rate} tir` }));
 
       socket.updateAllMessages("update-alpha-balance", "1");
@@ -291,9 +291,9 @@ users.post("/alphaCompleteClickPay", async function (req, res) {
       }
     }
     res.status(200).json(appData);
-  } catch(err) {
+  } catch (err) {
     console.log(err)
-  }finally {
+  } finally {
     if (connect) {
       connect.release();
     }
@@ -663,6 +663,10 @@ async function getCityFromLatLng(lat, lng) {
     }
   } catch (e) {
     console.error(e);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
   }
 }
 users.post("/findCity", async (req, res) => {
@@ -767,7 +771,7 @@ users.post("/login", async (req, res) => {
           [phone]
         );
 
-        if(!chatBotuser.length) {
+        if (!chatBotuser.length) {
           appData.status = false;
           appData.message = 'User is not registered in bot';
           res.status(403).json(appData);
@@ -830,14 +834,15 @@ users.post("/login", async (req, res) => {
 
 users.post("/refreshToken", async (req, res) => {
   let connect,
-  appData = { status: false },
-  userInfo = jwt.decode(req.headers.authorization.split(" ")[1]),
-  refreshTokenFromRequest = req.body.refreshToken;
-  if (!refreshTokenFromRequest)
-    return res
-      .status(401)
-      .json({ status: false, error: "Требуется токен обновления." });
-     connect = await database.connection.getConnection();
+    appData = { status: false },
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]),
+    refreshTokenFromRequest = req.body.refreshToken;
+  try {
+    if (!refreshTokenFromRequest)
+      return res
+        .status(401)
+        .json({ status: false, error: "Требуется токен обновления." });
+    connect = await database.connection.getConnection();
     const [users_list] = await connect.query(
       "SELECT refresh_token FROM users_list WHERE id = ?",
       [userInfo.id]
@@ -846,9 +851,9 @@ users.post("/refreshToken", async (req, res) => {
       return res
         .status(403)
         .json({ status: false, error: "Неверный токен обновления" });
-    }else{
-      const token = jwt.sign({id: userInfo.id}, process.env.SECRET_KEY, { expiresIn: '1440m' });
-      const refreshToken = jwt.sign({id: userInfo.id}, process.env.SECRET_KEY);
+    } else {
+      const token = jwt.sign({ id: userInfo.id }, process.env.SECRET_KEY, { expiresIn: '1440m' });
+      const refreshToken = jwt.sign({ id: userInfo.id }, process.env.SECRET_KEY);
       const [setToken] = await connect.query(
         "UPDATE users_list SET date_last_login = ?, refresh_token = ? WHERE id = ?",
         [new Date(), refreshToken, userInfo.id]
@@ -875,6 +880,16 @@ users.post("/refreshToken", async (req, res) => {
         res.status(403).json(appData);
       }
     }
+  } catch (err) {
+    appData.error = err.message;
+    appData.status = false;
+    res.status(403).json(appData);
+  }
+  finally {
+    if (connect) {
+      connect.release();
+    }
+  }
 });
 
 users.post("/sms-verification", async (req, res) => {
@@ -1018,7 +1033,7 @@ users.post("/loginClient", async (req, res) => {
           [phone]
         );
 
-        if(!chatBotuser.length) {
+        if (!chatBotuser.length) {
           appData.status = false;
           appData.message = 'User is not registered in bot';
           res.status(403).json(appData);
@@ -1081,8 +1096,8 @@ users.post("/codeverify", async (req, res) => {
         "UPDATE users_contacts SET verify = 1 WHERE text = ? AND user_type = 1 AND verify_code = ?",
         [phone, code]
       );
-      const token = jwt.sign({id: rows[0].user_id}, process.env.SECRET_KEY, { expiresIn: '1440m' });
-      const refreshToken = jwt.sign({id: rows[0].user_id}, process.env.SECRET_KEY);
+      const token = jwt.sign({ id: rows[0].user_id }, process.env.SECRET_KEY, { expiresIn: '1440m' });
+      const refreshToken = jwt.sign({ id: rows[0].user_id }, process.env.SECRET_KEY);
       const [setToken] = await connect.query(
         "UPDATE users_list SET date_last_login = ?, refresh_token = ? WHERE id = ?",
         [new Date(), refreshToken, rows[0].user_id]
@@ -1097,9 +1112,9 @@ users.post("/codeverify", async (req, res) => {
           [
             rows[0].user_id,
             "Произведен вход " +
-              req.headers["user-agent"].split("(")[1]?.replace(")", "") +
-              ", IP: " +
-              parseIp(req)?.replace("::ffff:", ""),
+            req.headers["user-agent"].split("(")[1]?.replace(")", "") +
+            ", IP: " +
+            parseIp(req)?.replace("::ffff:", ""),
           ]
         );
         socket.updateActivity("update-activity", "1");
@@ -1138,38 +1153,38 @@ users.post("/codeverifycation", async (req, res) => {
       [code, phone]
     );
     if (rows.length > 0) {
-        const token = jwt.sign({id: rows[0].user_id}, process.env.SECRET_KEY, { expiresIn: '1440m' });
-        const refreshToken = jwt.sign({id: rows[0].user_id}, process.env.SECRET_KEY);
-        const [setToken] = await connect.query(
-          "UPDATE users_list SET date_last_login = ?, refresh_token = ? WHERE id = ?",
-          [new Date(), refreshToken, rows[0].user_id]
+      const token = jwt.sign({ id: rows[0].user_id }, process.env.SECRET_KEY, { expiresIn: '1440m' });
+      const refreshToken = jwt.sign({ id: rows[0].user_id }, process.env.SECRET_KEY);
+      const [setToken] = await connect.query(
+        "UPDATE users_list SET date_last_login = ?, refresh_token = ? WHERE id = ?",
+        [new Date(), refreshToken, rows[0].user_id]
+      );
+      if (setToken.affectedRows > 0) {
+        appData.status = true;
+        appData.token = token;
+        appData.refreshToken = refreshToken;
+        res.status(200).json(appData);
+        await connect.query(
+          "INSERT INTO users_activity SET userid = ?, text = ?",
+          [
+            rows[0].user_id,
+            "Произведен вход " +
+            req.headers["user-agent"].split("(")[1].replace(")", "") +
+            ", IP: " +
+            parseIp(req).replace("::ffff:", ""),
+          ]
         );
-        if (setToken.affectedRows > 0) {
-          appData.status = true;
-          appData.token = token;
-          appData.refreshToken = refreshToken;
-          res.status(200).json(appData);
-          await connect.query(
-            "INSERT INTO users_activity SET userid = ?, text = ?",
-            [
-              rows[0].user_id,
-              "Произведен вход " +
-                req.headers["user-agent"].split("(")[1].replace(")", "") +
-                ", IP: " +
-                parseIp(req).replace("::ffff:", ""),
-            ]
-          );
-          socket.updateActivity("update-activity", "1");
-        } else {
-          appData.error = "Данные для входа введены неверно";
-          appData.status = false;
-          res.status(403).json(appData);
-        }
+        socket.updateActivity("update-activity", "1");
       } else {
         appData.error = "Данные для входа введены неверно";
         appData.status = false;
         res.status(403).json(appData);
       }
+    } else {
+      appData.error = "Данные для входа введены неверно";
+      appData.status = false;
+      res.status(403).json(appData);
+    }
   } catch (err) {
     appData.status = false;
     appData.error = err;
@@ -1197,38 +1212,38 @@ users.post("/codeverifyClient", async (req, res) => {
         "UPDATE users_contacts SET verify = 1 WHERE text = ? AND user_type = 2 AND verify_code = ?",
         [phone, code]
       );
-      const token = jwt.sign({id: rows[0].user_id}, process.env.SECRET_KEY, { expiresIn: '1440m' });
-      const refreshToken = jwt.sign({id: rows[0].user_id}, process.env.SECRET_KEY);
+      const token = jwt.sign({ id: rows[0].user_id }, process.env.SECRET_KEY, { expiresIn: '1440m' });
+      const refreshToken = jwt.sign({ id: rows[0].user_id }, process.env.SECRET_KEY);
       const [setToken] = await connect.query(
-          "UPDATE users_list SET date_last_login = ?, refresh_token = ? WHERE id = ?",
-          [new Date(), refreshToken, rows[0].user_id]
+        "UPDATE users_list SET date_last_login = ?, refresh_token = ? WHERE id = ?",
+        [new Date(), refreshToken, rows[0].user_id]
       );
-        if (setToken.affectedRows > 0) {
-          appData.status = true;
-          appData.token = token;
-          appData.refreshToken = refreshToken;
-          res.status(200).json(appData);
-          await connect.query(
-            "INSERT INTO users_activity SET userid = ?, text = ?",
-            [
-              rows[0].user_id,
-              "Произведен вход " +
-                req.headers["user-agent"].split("(")[1].replace(")", "") +
-                ", IP: " +
-                parseIp(req).replace("::ffff:", ""),
-            ]
-          );
-          socket.updateActivity("update-activity", "1");
-        } else {
-          appData.error = "Данные для входа введены неверно";
-          appData.status = false;
-          res.status(403).json(appData);
-        }
+      if (setToken.affectedRows > 0) {
+        appData.status = true;
+        appData.token = token;
+        appData.refreshToken = refreshToken;
+        res.status(200).json(appData);
+        await connect.query(
+          "INSERT INTO users_activity SET userid = ?, text = ?",
+          [
+            rows[0].user_id,
+            "Произведен вход " +
+            req.headers["user-agent"].split("(")[1].replace(")", "") +
+            ", IP: " +
+            parseIp(req).replace("::ffff:", ""),
+          ]
+        );
+        socket.updateActivity("update-activity", "1");
       } else {
         appData.error = "Данные для входа введены неверно";
         appData.status = false;
         res.status(403).json(appData);
       }
+    } else {
+      appData.error = "Данные для входа введены неверно";
+      appData.status = false;
+      res.status(403).json(appData);
+    }
   } catch (err) {
     appData.status = false;
     appData.error = err;
@@ -1246,7 +1261,7 @@ users.use((req, res, next) => {
     req.headers["token"] ||
     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
   let appData = {};
-  if (token && token !== undefined &&token!=='undefined') {
+  if (token && token !== undefined && token !== 'undefined') {
     jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
       if (err) {
         if (err.name === 'TokenExpiredError') {
@@ -1573,17 +1588,26 @@ users.get("/checkSession", async function (req, res) {
       //     totalWithdrawalAmount
       // );
 
-    const [result] = await connect.query(`
-    SELECT 
-        (COALESCE(
-          (SELECT SUM(amount) FROM driver_group_transaction WHERE driver_group_id = ${rows[0]?.driver_group_id} AND type = 'Пополнение'), 0) -
-        COALESCE(
-          (SELECT SUM(amount) FROM driver_group_transaction WHERE driver_group_id = ${rows[0]?.driver_group_id} AND type = 'Вывод'), 0)) -
+    //   const [result] = await connect.query(`
+    // SELECT 
+    //     (COALESCE(
+    //       (SELECT SUM(amount) FROM driver_group_transaction WHERE driver_group_id = ${rows[0]?.driver_group_id} AND type = 'Пополнение'), 0) -
+    //     COALESCE(
+    //       (SELECT SUM(amount) FROM driver_group_transaction WHERE driver_group_id = ${rows[0]?.driver_group_id} AND type = 'Вывод'), 0)) -
 
-        (COALESCE(
-          (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND group_id = ${rows[0]?.driver_group_id}), 0) +
-        COALESCE(
-          (SELECT SUM(amount) FROM services_transaction WHERE group_id = ${rows[0]?.driver_group_id} AND status In(2, 3)), 0)) as balance;
+    //     (COALESCE(
+    //       (SELECT SUM(amount) FROM subscription_transaction WHERE deleted = 0 AND group_id = ${rows[0]?.driver_group_id}), 0) +
+    //     COALESCE(
+    //       (SELECT SUM(amount) FROM services_transaction WHERE group_id = ${rows[0]?.driver_group_id} AND status In(2, 3)), 0)) as balance;
+    // `);
+
+    const [driverGroupBalance] = await connect.query(
+      `SELECT 
+      COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE group_id = ${groupId} AND user_id = ${groupId} AND balance_type = 'tirgo' ), 0) -
+      COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE deleted = 0 AND group_id = ${groupId} AND transaction_type = 'subscription' ), 0)  AS tirgoBalance,
+
+      COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE group_id = ${groupId} AND user_id = ${groupId} AND balance_type = 'tirgo_service' ), 0) -
+      COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE deleted = 0 AND group_id = ${groupId} AND transaction_type = 'service' AND status In(2, 3)), 0) AS serviceBalance
     `);
 
       appData.user = rows[0];
@@ -1591,7 +1615,7 @@ users.get("/checkSession", async function (req, res) {
       appData.user.driver_verification = verification[0]?.verified;
       // console.log(appData.user.driver_verification, "driver_verification");
       appData.user.send_verification = verification[0]?.send_verification;
-      appData.user.groupBalance = result[0]?.balance;
+      appData.user.groupBalance = driverGroupBalance[0]?.serviceBalance;
       appData.user.balance =
         totalActiveAmount +
         (totalPayments - totalSubscriptionPayment) -
@@ -1668,7 +1692,7 @@ users.get("/checkSessionClient", async function (req, res) {
   let connect,
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]),
     appData = { status: false, timestamp: new Date().getTime() };
-    console.log(userInfo.id)
+  console.log(userInfo.id)
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
@@ -2131,6 +2155,11 @@ users.post("/getAllReviews", async (req, res) => {
     appData.error = err;
     res.status(403).json(appData);
   }
+  finally {
+    if (connect) {
+      connect.release();
+    }
+  }
 });
 users.post("/getOrdersAdmin", async (req, res) => {
   let connect,
@@ -2457,6 +2486,11 @@ users.post("/finish-merchant-cargo", async (req, res) => {
     appData.error = "Internal error";
     res.status(403).json(appData);
   }
+  finally {
+    if (connect) {
+      connect.release();
+    }
+  }
 });
 
 users.post("/verification", async (req, res) => {
@@ -2562,6 +2596,11 @@ users.post("/verification", async (req, res) => {
     console.log(err);
     appData.error = "Internal error";
     res.status(403).json(appData);
+  }
+  finally {
+    if (connect) {
+      connect.release();
+    }
   }
 });
 
@@ -4913,7 +4952,7 @@ users.post("/addDriverSubscription", async (req, res) => {
             valueofPayment = 570000;
           }
 
-          if(rows[0]?.driver_group_id) {
+          if (rows[0]?.driver_group_id) {
 
             const [result] = await connect.query(`
             SELECT 
@@ -5002,7 +5041,7 @@ users.post("/addDriverSubscription", async (req, res) => {
               [subscription_id, new Date(), nextMonth, user_id]
             );
             if (userUpdate.affectedRows == 1) {
-              if(rows[0]?.driver_group_id) {
+              if (rows[0]?.driver_group_id) {
                 const subscription_transaction = await connect.query(
                   "INSERT INTO subscription_transaction SET userid = ?, subscription_id = ?, phone = ?, amount = ?, group_id = ?, is_group = ?",
                   [user_id, subscription_id, phone, valueofPayment, rows[0]?.driver_group_id, true]
@@ -5156,7 +5195,7 @@ users.post("/addDriverServices", async (req, res) => {
   let connect,
     balance,
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
-    appData = { status: false };
+  appData = { status: false };
   const { user_id, phone, services } = req.body;
   try {
     if (!services) {
@@ -5174,43 +5213,43 @@ users.post("/addDriverServices", async (req, res) => {
       res.status(400).json(appData);
     } else {
 
-        const [editUser] = await connect.query(
-          "UPDATE users_list SET is_service = 1  WHERE id = ?",
-          [user_id]
-        );
-        if (editUser.affectedRows > 0) {
-          const insertValues = services.map((service) => {
-              return [
-                user_id,
-                service.services_id,
-                userInfo.id,
-                'service'
-              ];
-          });
+      const [editUser] = await connect.query(
+        "UPDATE users_list SET is_service = 1  WHERE id = ?",
+        [user_id]
+      );
+      if (editUser.affectedRows > 0) {
+        const insertValues = services.map((service) => {
+          return [
+            user_id,
+            service.services_id,
+            userInfo.id,
+            'service'
+          ];
+        });
 
-          // let sql;
-          // if(user[0]?.driver_group_id) {
-          //   sql = 'INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, without_subscription, group_id, is_group) VALUES ?';
-          // } else {
-          //   sql = 'INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, without_subscription) VALUES ?';
-          // }
-          // const [result] = await connect.query(sql, [insertValues]);
-          const [result] = await connect.query(`
+        // let sql;
+        // if(user[0]?.driver_group_id) {
+        //   sql = 'INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, without_subscription, group_id, is_group) VALUES ?';
+        // } else {
+        //   sql = 'INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, without_subscription) VALUES ?';
+        // }
+        // const [result] = await connect.query(sql, [insertValues]);
+        const [result] = await connect.query(`
             INSERT INTO tir_balance_transaction (user_id, service_id, created_by_id, transaction_type) VALUES ?
           `, [insertValues]);
 
-          if (result.affectedRows > 0) {
-            appData.status = true;
-            res.status(200).json(appData);
-          } else {
-            appData.status = false;
-            res.status(400).json(appData);
-          }
+        if (result.affectedRows > 0) {
+          appData.status = true;
+          res.status(200).json(appData);
         } else {
-          appData.error = "Пользователь не может обновить";
           appData.status = false;
           res.status(400).json(appData);
         }
+      } else {
+        appData.error = "Пользователь не может обновить";
+        appData.status = false;
+        res.status(400).json(appData);
+      }
     }
   } catch (e) {
     appData.error = e.message;
@@ -5306,35 +5345,35 @@ users.get("/tir-coin-balance", async (req, res) => {
     appData = { status: false };
   const { userId } = req.query;
   try {
-  
-    if(!userId) {
+
+    if (!userId) {
       appData.status = false;
       appData.message = 'userId is required';
       res.status(400).json(appData);
       return;
     }
-    
+
     connect = await database.connection.getConnection();
 
     const [user] = await connect.query(`
       SELECT id FROM users_list WHERE id = ${userId} AND user_type = 1
     `);
-    if(!user.length) {
+    if (!user.length) {
       appData.status = false;
       appData.message = 'Пользователь не найден';
       res.status(400).json(appData);
       return;
     }
-      const [paymentUser] = await connect.query(
-        `SELECT 
+    const [paymentUser] = await connect.query(
+      `SELECT 
           COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE user_id = ${userId} AND balance_type = 'tirgo'), 0) -
           COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction  WHERE deleted = 0 AND user_id = ${userId} AND transaction_type = 'subscription'), 0) AS tirgoBalance,
           COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE user_id = ${userId} AND balance_type = 'tirgo_service'), 0) - 
           COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction  WHERE deleted = 0 AND user_id = ${userId} AND transaction_type = 'service' AND status In(2, 3)), 0) AS serviceBalance;`
-      );
-      appData.status = true;
-      appData.data = paymentUser[0];
-      res.status(200).json(appData);
+    );
+    appData.status = true;
+    appData.data = paymentUser[0];
+    res.status(200).json(appData);
   } catch (e) {
     console.log(e)
     appData.error = e.message;
