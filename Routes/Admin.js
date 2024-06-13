@@ -451,8 +451,9 @@ admin.get("/getAgentBalanse/:agent_id", async (req, res) => {
       `SELECT 
       COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND user_id = ${agentId} AND balance_type = 'tirgo' ), 0)  -
       COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE deleted = 0 AND created_by_id = ${agentId} AND transaction_type = 'subscription'), 0) AS tirgoBalance,
-      COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND user_id = ${agentId} AND balance_type = 'tirgo_service' ), 0) -
-      COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND created_by_id = ${agentId} AND balance_type = 'tirgo_service' ), 0)  AS serviceBalance
+      COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND user_id = ${agentId} AND balance_type = 'tirgo_service' ), 0) -
+      COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND created_by_id = ${agentId} AND balance_type = 'tirgo_service' ), 0) -
+      COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE deleted = 0 AND agent_id = ${agentId} AND transaction_type = 'service'), 0) AS serviceBalance
     `);
 
     if (rows.length) {
@@ -3141,11 +3142,17 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
       [driverId]
     );
     if (rows.length > 0) {
+      // const [paymentUser] = await connect.query(
+      //   `SELECT 
+      //   COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE userid = ? AND is_agent = false), 0) - 
+      //   COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false AND status In(2, 3)), 0)
+      //   AS balance;`,
+      //   [driverId, driverId]
+      // );
       const [paymentUser] = await connect.query(
         `SELECT 
-        COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE userid = ? AND is_agent = false), 0) - 
-        COALESCE ((SELECT SUM(amount) from services_transaction where userid = ? AND is_agent = false AND status In(2, 3)), 0)
-        AS balance;`,
+        COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE user_id = ? AND balance_type = 'tirgo_service'), 0) - 
+        COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction  WHERE deleted = 0 AND user_id = ? AND transaction_type = 'service' AND status In(2, 3)), 0) AS balance;`,
         [driverId, driverId]
       );
       appData.data = rows[0];
@@ -4074,14 +4081,16 @@ admin.post("/agent/add-services", async (req, res) => {
             user_id,
             service.service_id,
             userInfo.id,
-            'service'
+            'service',
+            agent_id,
+            true
           ];
         })
         // const sql =
         //   "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, created_by_id, is_agent) VALUES ?";
         // const [result] = await connect.query(sql, [insertValues]);
         const [result] = await connect.query(`
-        INSERT INTO tir_balance_transaction (user_id, service_id, created_by_id, transaction_type) VALUES ?
+        INSERT INTO tir_balance_transaction (user_id, service_id, created_by_id, transaction_type, agent_id, is_by_agent) VALUES ?
       `, [insertValues]);
         if (result.affectedRows > 0) {
           appData.status = true;
@@ -4144,8 +4153,8 @@ admin.post("/agent/add-subscription-to-driver", async (req, res) => {
             if (Number(agentBalance[0].tirgoBalance) >= Number(subscription[0]?.value)) {
 
            const [insertResult] = await connect.query(`
-              INSERT INTO tir_balance_transaction SET user_id = ?, subscription_id = ?, amount_tir = ?, created_by_id = ?, transaction_type = ?
-            `, [user_id, subscription_id, subscription[0]?.value, +userInfo?.id, 'subscription']);
+              INSERT INTO tir_balance_transaction SET user_id = ?, agent_id = ?, is_by_agent = true, subscription_id = ?, amount_tir = ?, created_by_id = ?, transaction_type = ?
+            `, [user_id, agent_id, subscription_id, subscription[0]?.value, +userInfo?.id, 'subscription']);
 
               if (insertResult.affectedRows) {
                 let nextthreeMonth = new Date(
