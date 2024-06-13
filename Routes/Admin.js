@@ -4833,6 +4833,24 @@ admin.get("/driver-group/transactions", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
 
+    const [balances] = await connect.query(` 
+    SELECT 
+      t.id,
+      t.user_id driverId,
+      t.group_id groupId,
+      '3' status,
+      dl.name driverName,
+      t.amount_tir amount,
+      t.created_at createdAt,
+      CASE 
+       WHEN t.balance_type = 'tirgo' THEN 'Пополнение Tirgo баланса'
+       ELSE 'Пополнение TirgoService баланса'
+      END transactionType
+     FROM tir_balance_exchanges t
+     LEFT JOIN users_list dl on dl.id = t.user_id AND dl.user_type = 1 
+     WHERE t.group_id = ${groupId}
+  `);
+
     const [transactions] = await connect.query(` 
       SELECT 
         t.id,
@@ -4853,8 +4871,10 @@ admin.get("/driver-group/transactions", async (req, res) => {
        LEFT JOIN subscription sb on sb.id = t.subscription_id AND t.transaction_type = 'subscription' 
        WHERE t.group_id = ${groupId}
     `);
-
-    appData.data = transactions;
+    const data = [...transactions, ...balances].sort((a, b) => {
+      return b.createdAt - a.createdAt
+    })
+    appData.data = data;
     appData.status = true;
     res.status(200).json(appData);
   } catch (e) {
