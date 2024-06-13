@@ -602,6 +602,8 @@ admin.get("/agent-service-transactions", async (req, res) => {
     serviceId = req.query.serviceId,
     rows = [],
     row = [],
+    trans = [],
+    tran = [],
     balanceRows = [],
     balanceRow = [],
     alphaRows = [],
@@ -616,119 +618,58 @@ admin.get("/agent-service-transactions", async (req, res) => {
     if (agentId) {
       connect = await database.connection.getConnection();
 
-      if (!transactionType || transactionType == "service") {
-        let rowWhereClause = `st.created_by_id = ${agentId} AND st.status <> 4`;
-        if (transactionType == "service" && serviceId) {
-          rowWhereClause += ` AND s.id = ${serviceId}`;
-        }
-        if (driverId) {
-          rowWhereClause += ` AND st.userid = ${driverId}`;
-        }
-        [rows] = await connect.query(
-          `SELECT 
-          st.id,
-          st.created_by_id,
-          st.amount,
-          st.created_at,
-          st.service_name,
-          st.userid,
-          st.status,
-          'st' as 'rawType', al.name as "agentName", adl.name as "driverName" FROM services_transaction st
-          LEFT JOIN users_list al on al.id = st.created_by_id AND al.user_type = 4
-          LEFT JOIN users_list adl on adl.id = st.userid AND adl.user_type = 1
-          LEFT JOIN services s on s.id = st.service_id
-          where ${rowWhereClause} ORDER BY ${sortByDate ? 'st.created_at' : 'st.id'} ${sortType?.toString().toLowerCase() == 'asc' ? 'ASC' : 'DESC'} LIMIT ?, ?`,
-          [+from, +limit]
-        );
-        [row] = await connect.query(
-          `SELECT Count(id) as count FROM services_transaction where created_by_id = ${agentId} AND status In(2, 3)`,
-          []
-        );
+      if(!transactionType || transactionType == 'service_balance') {
+      [rows] = await connect.query(
+        `SELECT 
+          tbe.id,
+          dl.id driverId,
+          dl.name driverName,
+          adl.id adminId,
+          adl.name adminName,
+          tbe.amount_tir amount,
+          'Пополнение TirgoService баланса' transactionType,
+          tbe.created_at createdAt
+         FROM tir_balance_exchanges tbe
+        LEFT JOIN users_list dl on dl.id = tbe.user_id AND dl.user_type = 1
+        LEFT JOIN users_list adl on adl.id = tbe.created_by_id AND adl.user_type = 3
+        WHERE tbe.balance_type = 'tirgo_service' AND tbe.agent_id = ${agentId} ORDER BY ${sortByDate ? "created_at" : "id"
+        } ${sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
+        } LIMIT ?, ?;`,
+        [+from, +limit]
+      );
+
+      [row] = await connect.query(
+        `SELECT Count(id) as count FROM tir_balance_exchanges WHERE balance_type = 'tirgo_service' AND agent_id = ${agentId}`,
+        []
+      );
+    }
+
+      if(!transactionType || transactionType == 'service') {
+        trans = await connect.query(`
+      SELECT 
+        tbt.id,
+        dl.id driverId,
+        dl.name driverName,
+        adl.id adminId,
+        adl.name adminName,
+        tbt.amount_tir amount,
+        'Оформления сервиса' transactionType,
+        tbt.created_at createdAt,
+        tbt.status
+      FROM tir_balance_transaction tbt
+      LEFT JOIN users_list dl on dl.id = tbt.user_id AND dl.user_type = 1
+      LEFT JOIN users_list adl on adl.id = tbt.created_by_id AND adl.user_type = 3
+      WHERE tbt.transaction_type = 'service' AND tbt.agent_id = ${agentId} ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''};`);
+      tran = await connect.query(`
+      SELECT 
+        Count(*) as count
+      FROM tir_balance_transaction tbt
+      WHERE transaction_type = 'service' AND tbt.agent_id = ${agentId}  ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''};
+      `);
       }
-
-      if (!transactionType || transactionType == "service_balance") {
-        if (!driverId) {
-          [balanceRows] = await connect.query(
-            `SELECT *, adl.name as "adminName", al.name as "agentName", 'at' as 'rawType' FROM agent_transaction at
-          LEFT JOIN users_list al on al.id = at.agent_id
-          LEFT JOIN users_list adl on adl.id = at.admin_id
-          WHERE at.agent_id = ${agentId} AND type = 'service_balance' ORDER BY ${sortByDate ? "at.created_at" : "at.id"
-            } ${sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
-            } LIMIT ?, ?`,
-            [+from, +limit]
-          );
-
-          [balanceRow] = await connect.query(
-            `SELECT Count(id) as count FROM agent_transaction where agent_id = ${agentId} AND type = 'service_balance'`,
-            []
-          );
-        }
-
-        let alphaWhereClause = `ap.agent_id = ${agentId} AND is_agent = true`;
-        if (driverId) {
-          alphaWhereClause += ` AND ap.userid = ${driverId}`;
-        }
-        [alphaRows] = await connect.query(
-          `SELECT *, 'alpha' as "rawType", al.name as "agentName", d.name as "driverName" FROM alpha_payment ap 
-          LEFT JOIN users_list al on al.id = ap.agent_id
-          LEFT JOIN users_list d on d.id = ap.userid
-          WHERE ${alphaWhereClause} LIMIT ?, ?`,
-          [+from, +limit]
-        );
-        [alphaRow] = await connect.query(
-          `SELECT Count(id) as count FROM alpha_payment WHERE agent_id = ${agentId} AND is_agent = true`
-        );
-      }
-      const data = [...balanceRows, ...rows, ...alphaRows]
-        .sort((a, b) => {
-          if (sortType.toString().toLowerCase() == "asc") {
-            return a.created_at - b.created_at;
-          } else {
-            return b.created_at - a.created_at;
-          }
-        })
-        .splice(0, limit)
-        .map((el) => {
-          if (el.rawType == "at") {
-            console.log(el.type);
-            return {
-              id: el.id,
-              agent_id: el.agent_id,
-              agentName: el.agentName,
-              amount: el.amount,
-              created_at: el.created_at,
-              type:
-                el.type == "subscription" ? "Подписка" : "Пополнение баланса",
-              adminId: el.admin_id,
-              adminName: el.adminName,
-            };
-          } else if (el.rawType == "alpha") {
-            return {
-              id: el.id,
-              agent_id: el.agent_id,
-              amount: el.amount,
-              created_at: el.created_at,
-              type: "Пополнение баланса",
-              agentName: el.agentName,
-              agentId: el.agent_id,
-              driverName: el.driverName,
-              driverId: el.userid,
-            };
-          } else {
-            return {
-              id: el.id,
-              agentId: el.created_by_id,
-              agentName: el.agentName,
-              amount: el.amount,
-              created_at: el.created_at,
-              type: el.service_name,
-              driverId: el.userid,
-              driverName: el.driverName,
-              adminId: el.admin_id,
-              status: el.status,
-            };
-          }
-        });
+      const data = ([...rows, ...trans[0]].sort((a, b) => {
+        return b.createdAt - a.createdAt
+      })).splice(0, limit)
 
       if (data.length) {
         appData.status = true;
@@ -736,7 +677,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
           content: data,
           from,
           limit,
-          totalCount: row[0]?.count + balanceRow[0]?.count + alphaRow[0]?.count,
+          totalCount: row[0]?.count + tran[0][0]?.count
         };
       }
       res.status(200).json(appData);
@@ -813,9 +754,9 @@ admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
     driverId = req.query.driverId,
     agentId = req.query.agentId,
     rows = [],
-    subs = [],
     row = [],
-    sub = [],
+    trans = [],
+    tran = [],
     sortByDate = req.query.sortByDate == "true", //true or false
     sortType = req.query.sortType;
   try {
@@ -827,80 +768,73 @@ admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
     }
     connect = await database.connection.getConnection();
 
-    if ((!transactionType || transactionType == "tirgo_balance") && !driverId) {
-      [rows] = await connect.query(
-        `SELECT at.*, al.name as "agentName", adl.name as "adminName" FROM agent_transaction  at
-        LEFT JOIN users_list al on al.id = at.agent_id
-        LEFT JOIN users_list adl on adl.id = at.admin_id
-        WHERE type = 'tirgo_balance' AND at.agent_id = ${agentId} ORDER BY ${sortByDate ? "created_at" : "id"
-        } ${sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
-        } LIMIT ?, ?;`,
-        [+from, +limit]
-      );
-
-      [row] = await connect.query(
-        `SELECT Count(id) as count FROM agent_transaction where type = 'tirgo_balance' AND  agent_id = ${agentId}`,
-        []
-      );
-    }
-
-    if (!transactionType || transactionType == "subscription") {
-      let whereClause = `st.deleted = 0 AND st.agent_id = ${agentId}`;
-      if (driverId) {
-        whereClause += ` AND userid = ${driverId}`;
+      if(!transactionType || transactionType == 'tirgo_balance') {
+        [rows] = await connect.query(
+          `SELECT 
+            tbe.id,
+            dl.id driverId,
+            dl.name driverName,
+            adl.id adminId,
+            adl.name adminName,
+            tbe.amount_tir amount,
+            'Пополнение Tirgo баланса' transactionType,
+            tbe.created_at createdAt
+           FROM tir_balance_exchanges tbe
+          LEFT JOIN users_list dl on dl.id = tbe.user_id AND dl.user_type = 1
+          LEFT JOIN users_list adl on adl.id = tbe.created_by_id AND adl.user_type = 3
+          WHERE tbe.balance_type = 'tirgo' AND tbe.agent_id = ${agentId} ORDER BY ${sortByDate ? "created_at" : "id"
+          } ${sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
+          } LIMIT ?, ?;`,
+          [+from, +limit]
+        );
+  
+        [row] = await connect.query(
+          `SELECT Count(id) as count FROM tir_balance_exchanges WHERE balance_type = 'tirgo' AND agent_id = ${agentId}`,
+          []
+        );
       }
-      [subs] = await connect.query(
-        `SELECT st.*, al.name as "agentName", ul.name as "driverName", 'subscription' as "type" FROM subscription_transaction st
-        LEFT JOIN users_list ul on ul.id = st.userid
-        LEFT JOIN users_list al on al.id = st.agent_id
-        WHERE ${whereClause} ORDER BY ${sortByDate ? "created_at" : "id"} ${sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
-        } LIMIT ?, ?;`,
-        [+from, +limit]
-      );
 
-      [sub] = await connect.query(
-        `SELECT Count(id) as count FROM subscription_transaction where deleted = 0 AND agent_id = ${agentId}`,
-        []
-      );
-    }
+      if(!transactionType || transactionType == 'subscription') {
+        [trans] = await connect.query(`
+      SELECT 
+        tbt.id,
+        dl.id driverId,
+        dl.name driverName,
+        adl.id adminId,
+        adl.name adminName,
+        tbt.amount_tir amount,
+        'Оформления подписки' transactionType,
+        tbt.created_at createdAt
+      FROM tir_balance_transaction tbt
+      LEFT JOIN users_list dl on dl.id = tbt.user_id AND dl.user_type = 1
+      LEFT JOIN users_list adl on adl.id = tbt.created_by_id AND adl.user_type = 3
+      WHERE tbt.transaction_type = 'subscription' AND tbt.agent_id = ${agentId};
+      `);
+      [tran] = await connect.query(`
+      SELECT 
+        Count(*) as count
+      FROM tir_balance_transaction tbt
+      WHERE transaction_type = 'subscription' AND tbt.agent_id = ${agentId};
+      `);
+      }
 
-    const data = [...rows, ...subs]
-      .sort((a, b) => {
-        if (sortType.toString().toLowerCase() == "asc") {
-          return a.created_at - b.created_at;
-        } else {
-          return b.created_at - a.created_at;
-        }
-      })
-      .splice(0, limit)
-      .map((el) => {
-        return {
-          id: el.id,
-          driverId: el.userid,
-          driverName: el.driverName,
-          agentName: el.agentName,
-          agentId: el.agent_id,
-          phone: el.phone,
-          createdAt: el.created_at,
-          type: el.type == "subscription" ? "Подписка" : "Пополнение баланса",
-          amount: el.amount,
-          subscription_id: el.subscription_id,
-          adminId: el.admin_id,
-          adminName: el.adminName,
-        };
-      });
 
-    if (data.length) {
+      const data = ([...rows, ...trans].sort((a, b) => {
+        return b.createdAt - a.createdAt
+      })).splice(0, limit)
+
+    if (rows.length) {
       appData.status = true;
       appData.data = {
         content: data,
         from,
         limit,
-        totalCount: row[0]?.count + sub[0]?.count,
+        totalCount: row[0]?.count + tran[0]?.count
       };
     }
     res.status(200).json(appData);
   } catch (e) {
+    console.log(e)
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
@@ -4477,7 +4411,7 @@ admin.post("/services-transaction/user", async (req, res) => {
       LEFT JOIN driver_group dg ON dg.id = tbt.group_id AND tbt.is_by_group = 1
       LEFT JOIN services s ON s.id = tbt.service_id
       WHERE tbt.deleted = 0 AND tbt.user_id = ? 
-      ORDER BY st.id DESC
+      ORDER BY tbt.id DESC
       LIMIT ?, ?;
     `,
       [userid, from, limit]
