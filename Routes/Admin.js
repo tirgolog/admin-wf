@@ -453,7 +453,7 @@ admin.get("/getAgentBalanse/:agent_id", async (req, res) => {
       COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE deleted = 0 AND created_by_id = ${agentId} AND transaction_type = 'subscription'), 0) AS tirgoBalance,
       COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND user_id = ${agentId} AND balance_type = 'tirgo_service' ), 0) -
       COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND created_by_id = ${agentId} AND balance_type = 'tirgo_service' ), 0) -
-      COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE deleted = 0 AND agent_id = ${agentId} AND transaction_type = 'service'), 0) AS serviceBalance
+      COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE status In(2, 3) AND deleted = 0 AND agent_id = ${agentId} AND transaction_type = 'service'), 0) AS serviceBalance
     `);
 
     if (rows.length) {
@@ -4146,8 +4146,10 @@ admin.post("/agent/add-subscription-to-driver", async (req, res) => {
         );
         const [agentBalance] = await connect.query(
           `SELECT 
-          COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agent_id} AND user_id = ${agent_id} AND balance_type = 'tirgo' ), 0)  AS tirgoBalance
+          COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agent_id} AND user_id = ${agent_id} AND balance_type = 'tirgo' ), 0)  -
+          COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE deleted = 0 AND created_by_id = ${agent_id} AND transaction_type = 'subscription'), 0) AS tirgoBalance
         `);
+
         if (agentBalance.length) {
           console.log(Number(agentBalance[0].tirgoBalance),  Number(subscription[0]?.value))
             if (Number(agentBalance[0].tirgoBalance) >= Number(subscription[0]?.value)) {
