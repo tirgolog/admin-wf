@@ -660,12 +660,12 @@ admin.get("/agent-service-transactions", async (req, res) => {
       FROM tir_balance_transaction tbt
       LEFT JOIN users_list dl on dl.id = tbt.user_id AND dl.user_type = 1
       LEFT JOIN users_list adl on adl.id = tbt.created_by_id AND adl.user_type = 3
-      WHERE tbt.transaction_type = 'service' AND tbt.agent_id = ${agentId} ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''};`);
+      WHERE tbt.deleted = 0 AND tbt.transaction_type = 'service' AND tbt.agent_id = ${agentId} ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''};`);
       tran = await connect.query(`
       SELECT 
         Count(*) as count
       FROM tir_balance_transaction tbt
-      WHERE transaction_type = 'service' AND tbt.agent_id = ${agentId}  ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''};
+      WHERE tbt.deleted = 0 AND transaction_type = 'service' AND tbt.agent_id = ${agentId}  ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''};
       `);
       }
       const data = ([...rows, ...trans[0]].sort((a, b) => {
@@ -809,13 +809,13 @@ admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
       FROM tir_balance_transaction tbt
       LEFT JOIN users_list dl on dl.id = tbt.user_id AND dl.user_type = 1
       LEFT JOIN users_list adl on adl.id = tbt.created_by_id AND adl.user_type = 3
-      WHERE tbt.transaction_type = 'subscription' AND tbt.agent_id = ${agentId};
+      WHERE tbt.deleted = 0 AND tbt.transaction_type = 'subscription' AND tbt.agent_id = ${agentId};
       `);
       [tran] = await connect.query(`
       SELECT 
         Count(*) as count
       FROM tir_balance_transaction tbt
-      WHERE transaction_type = 'subscription' AND tbt.agent_id = ${agentId};
+      WHERE tbt.deleted = 0 AND transaction_type = 'subscription' AND tbt.agent_id = ${agentId};
       `);
       }
 
@@ -5263,7 +5263,7 @@ admin.post("/remove-driver-subscription", async (req, res) => {
           appData.error = 'У водителя нет подписки'
           res.status(400).json(appData)
         } else {
-          const [subTrans] = await connect.query(`SELECT id, agent_id from tir_balance_transaction WHERE deleted = 0 AND user_id = ${user_id} ORDER BY created_at DESC LIMIT 1`);
+          const [subTrans] = await connect.query(`SELECT id, agent_id from tir_balance_transaction WHERE deleted = 0 AND transaction_type = 'subscription' AND user_id = ${user_id} ORDER BY created_at DESC LIMIT 1`);
           if (!subTrans.length) {
             appData.status = false;
             appData.error = 'User doesn\'t have subscription transaction'
