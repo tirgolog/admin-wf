@@ -1,5 +1,5 @@
 const adminCarrier = require('firebase-admin');
-const serviceAccountCarrier = require('../firebase-private-key.json');
+const serviceAccountCarrier = require('../abs.json');
 
 adminCarrier.initializeApp({
     credential: adminCarrier.credential.cert(serviceAccountCarrier)
