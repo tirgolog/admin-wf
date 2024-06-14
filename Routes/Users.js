@@ -5385,4 +5385,41 @@ users.get("/tir-coin-balance", async (req, res) => {
   }
 });
 
+users.post("/set-fcm-token", async (req, res) => {
+  let connect,
+    appData = { status: false };
+  const { userId, token } = req.body;
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      "SELECT id FROM users_list WHERE id = ?",
+      [userId]
+    );
+    if (rows.length < 1) {
+      appData.error = "Не найден Пользователь";
+      appData.status = false;
+      res.status(400).json(appData);
+    } else {
+      const [update] = await connect.query(
+        `UPDATE users_list SET token = ? WHERE id = ?`,
+        [token, userId]
+      );
+      if(update.affectedRows) {
+        appData.status = true;
+        res.status(200).json(appData);
+      } else {
+        appData.status = false;
+        res.status(400).json(appData);
+      }
+    }
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 module.exports = users;

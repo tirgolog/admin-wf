@@ -1,53 +1,29 @@
 const Minio = require("minio");
 const Push = require('./Modules/Push');
-const
-    app = require('express')(),
-    fs = require('fs'),
-    path = require('path'),
-    jwt = require("jsonwebtoken"),
-    // options = {
-    //     key: fs.readFileSync('private.key'),
-    //     cert: fs.readFileSync('certificate.crt'),
-    //     ca: fs.readFileSync('ca_bundle.crt'),
-    //     requestCert: true,
-    //     rejectUnauthorized: false
-    // },
-    http = require('http').createServer(app),
-    io = require('socket.io')(http, {
+const app = require('express')();
+const fs = require('fs');
+const path = require('path');
+const http = require('http').createServer(app);
+const io = require('socket.io')(http, {
         cors: {
             origin: '*',
             methods: ['GET', 'POST'],
         },
-    }),
-    cors = require('cors'),
-    bodyParser = require('body-parser'),
-    socket = require('./Modules/Socket'),
-    Users = require('./Routes/Users'),
-    Payme = require('./Routes/Payme.js'),
-    Admin = require('./Routes/Admin'),
-    Reborn = require('./Routes/Reborn'),
-    Merchant = require('./Routes/Merchant'),
-    port = 7790;
+    });
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const socket = require('./Modules/Socket');
+const Users = require('./Routes/Users');
+const Payme = require('./Routes/Payme.js');
+const Admin = require('./Routes/Admin');
+const Reborn = require('./Routes/Reborn');
+const Merchant = require('./Routes/Merchant');
+const port = 7790;
 
 process.env.SECRET_KEY = "tirgoserverkey";
 process.env.FILES_PATCH = "/var/www/html/";
 process.env.SERVER_URL = "https://tirgo.io/";
 
-//Beeline
-//AWS
-// const minioClient = new Minio.Client({
-//     endPoint: "13.232.83.179",
-//     port: 9000,
-//     useSSL: false,
-//     accessKey: "2ByR3PpFGckilG4fhSaJ",
-//     secretKey: "8UH4HtIBc7WCwgCVshcxmQslHFyJB8Y79Bauq5Xd",
-// });
-
-// minioClient.bucketExists("tirgo", function (error) {
-//     if (error) {
-//         return console.log(error);
-//     }
-// });
 app.get('/', function (req, res) {
     res.send('<h1>tirgo glad you!!!</h1>');
 });
@@ -72,18 +48,8 @@ const corsOptions = {
     optionsSuccessStatus: 204,
     preflightContinue: true, // Handle preflight requests
 };
-// const token = jwt.sign({id: 6650}, process.env.SECRET_KEY, { expiresIn: '20m' });
-// console.log(token)
 app.use(cors());
 app.options('*', cors());
-// app.use(cors());
-// // Enable CORS for all routes
-// app.use((req, res, next) => {
-//     res.header('Access-Control-Allow-Origin', '*'); // Replace with your Ionic app's address
-//     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
-//     res.header('Access-Control-Allow-Headers', 'Content-Type');
-//     next(); 
-// });
 app.use(bodyParser.json({ limit: '150mb' }));
 app.use(bodyParser.urlencoded({
     extended: true
@@ -111,7 +77,6 @@ app.use('/admin', Admin);
 app.use('/reborn', Reborn);
 app.use('/merchant', Merchant);
 require('./Routes/rabbit.js')
-
 
 http.on('listening', function () {
     console.log('ok, server is running');   
