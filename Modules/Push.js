@@ -1,10 +1,7 @@
 const adminCarrier = require('firebase-admin');
 let serviceAccountCarrier; 
-if(process.env.ENVIRONMENT == 'production') {
     serviceAccountCarrier = require('../../firebase/firebase-fcm-private-key.json');
-} else {
-    serviceAccountCarrier = require('../firebase-fcm-private-key.json');
-}
+
 
 adminCarrier.initializeApp({
     credential: adminCarrier.credential.cert(serviceAccountCarrier)
