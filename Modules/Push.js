@@ -1,6 +1,6 @@
 const adminCarrier = require('firebase-admin');
 let serviceAccountCarrier; 
-    serviceAccountCarrier = require('../../firebase/firebase-fcm-private-key.json');
+    // serviceAccountCarrier = require('../../firebase/firebase-fcm-private-key.json');
 
 
 adminCarrier.initializeApp({
