@@ -6626,4 +6626,38 @@ admin.get("/excel/payments/alpha-payment-service", async (req, res) => {
   }
 });
 
+admin.post("/push-notification", async (req, res) => {
+  let connect,
+    appData = { status: false };
+  const { title, message, userId } = req.body;
+  try {
+    connect = await database.connection.getConnection();
+    const [user] = await connect.query(`SELECT id, token FROM users_list WHERE id = ?`,
+      [userId]
+    );
+    if(!user.length) {
+      appData.error = "Не найден Пользователь";
+      appData.status = false;
+      res.status(400).json(appData);
+    } else if(!user[0]?.token) {
+      appData.error = "У пользователя нет fcm токен";
+      appData.status = false;
+      res.status(400).json(appData);
+    } else {
+      push.sendToDevice(user[0]?.token, title, message)
+      appData.status = true;
+      appData.data = data;
+      res.status(200).json(appData);
+    }
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+
 module.exports = admin;
