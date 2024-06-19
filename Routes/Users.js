@@ -23,6 +23,7 @@ const axios = require("axios");
 const { finishOrderDriver } = require("./rabbit");
 const { userInfo } = require("os");
 const { tirgoBalanceCurrencyCodes } = require("../constants");
+const Push = require("../Modules/Push");
 // Multer configuration
 // const storage = multer.diskStorage({
 //   destination: function (req, file, cb) {
@@ -3119,6 +3120,11 @@ users.post("/acceptDriverOffer", async (req, res) => {
 
   try {
     connect = await database.connection.getConnection();
+
+    const [driver] = await connect.query(
+      `SELECT token FROM users_list WHERE id = ${driverId}`
+    );
+
     await connect.query(
       "DELETE FROM orders_accepted WHERE user_id = ? AND order_id <> ?",
       [driverId, orderid]
@@ -3139,6 +3145,7 @@ users.post("/acceptDriverOffer", async (req, res) => {
         );
       }
       socket.updateAllList("update-all-list", "1");
+      Push.sendToDevice(driver[0]?.token, 'Одобрение предложения', `Ваше предложение было одобрено на заказ ID: ${orderid}`)
       appData.status = true;
       res.status(200).json(appData);
     } else {

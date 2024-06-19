@@ -597,7 +597,7 @@ reborn.post("/getAllDriversByAgent", async (req, res) => {
     );
     console.log(rows)
     const [rows_count] = await connect.query(
-      "SELECT count(*) as allcount FROM users_list WHERE user_type = 1 ORDER BY id DESC"
+      `SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND agent_id = ${agent_id}  ORDER BY id DESC`
     );
     if (rows.length) {
       appData.data_count = rows_count[0].allcount;
