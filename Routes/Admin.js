@@ -404,6 +404,63 @@ admin.post("/agent-service/add-to-driver", async (req, res) => {
   }
 });
 
+admin.post("/agent-service/confirm-price", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  const { id, status, agentId } = req.body;
+  try {
+    connect = await database.connection.getConnection();
+    let user;
+    [user] = await connect.query(
+      `SELECT sbu.chat_id, s.name serviceName, ul.id user_id, st.amount_tir serviceAmount, ul.driver_group_id groupId FROM tir_balance_transaction st
+      LEFT JOIN services_bot_users sbu on sbu.user_id = st.user_id
+      LEFT JOIN users_list ul on ul.id = st.user_id
+      LEFT JOIN services s on s.id = st.service_id
+      WHERE st.deleted = 0 AND st.id = ${id}`
+    );
+    if (status == 2) {
+      const [rows] = await connect.query(
+        `SELECT 
+        COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND user_id = ${agentId} AND balance_type = 'tirgo_service' ), 0) -
+        COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND created_by_id = ${agentId} AND balance_type = 'tirgo_service' ), 0) -
+        COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE status In(2, 3) AND deleted = 0 AND agent_id = ${agentId} AND transaction_type = 'service'), 0) AS serviceBalance
+      `);
+      if (Number(rows[0]?.balance) < Number(user[0]?.serviceAmount)) {
+        appData.error = "Недостаточно средств в балансе";
+        res.status(400).json(appData);
+        return;
+      }
+    }
+     const [updateResult] = await connect.query(   
+        "UPDATE tir_balance_transaction SET status = ? WHERE id = ?",
+        [status, id]
+      );
+    if (updateResult.affectedRows > 0) {
+      if (status == 2 && user.length) {
+        socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Предоставленные документы приняты. Обработка документов начато, наши модераторы свяжутся с вами` }));
+      } else if (status == 4) {
+        socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Услуга "${user[0]?.serviceName}" отменена` }));
+      } else if (status == 3) {
+        socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Услуга "${user[0]?.serviceName}" выполнен` }));
+      }
+
+      appData.status = true;
+      res.status(200).json(appData);
+    } else {
+      appData.error = "История транзакций не изменилась";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 admin.get("/getAgent/:agent_id", async (req, res) => {
   let connect,
     appData = { status: false },
