@@ -4658,7 +4658,7 @@ admin.post("/services-transaction/status/by", async (req, res) => {
     connect = await database.connection.getConnection();
     let user;
     [user] = await connect.query(
-      `SELECT sbu.chat_id, s.name serviceName, ul.id user_id, st.amount_tir serviceAmount, ul.driver_group_id groupId FROM tir_balance_transaction st
+      `SELECT sbu.chat_id, s.name serviceName, ul.id user_id, st.amount_tir serviceAmount, st.is_by_agent, st.agent_id, ul.driver_group_id groupId FROM tir_balance_transaction st
       LEFT JOIN services_bot_users sbu on sbu.user_id = st.user_id
       LEFT JOIN users_list ul on ul.id = st.user_id
       LEFT JOIN services s on s.id = st.service_id
@@ -4666,7 +4666,15 @@ admin.post("/services-transaction/status/by", async (req, res) => {
     );
     if (status == 2) {
       let balance;
-      if (user[0]?.groupId) {
+      if(user[0]?.is_by_agent) {
+        const [rows] = await connect.query(
+          `SELECT 
+          COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${user[0]?.agent_id} AND user_id = ${user[0]?.agent_id} AND balance_type = 'tirgo_service' ), 0) -
+          COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${user[0]?.agent_id} AND created_by_id = ${user[0]?.agent_id} AND balance_type = 'tirgo_service' ), 0) -
+          COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE status In(2, 3) AND deleted = 0 AND agent_id = ${user[0]?.agent_id} AND transaction_type = 'service'), 0) AS serviceBalance
+        `);
+        balance = rows[0]?.serviceBalance;
+      } else if (user[0]?.groupId) {
         const [result] = await connect.query(`
           SELECT 
           COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE group_id = ${user[0]?.groupId} AND user_id = ${user[0]?.groupId} AND balance_type = 'tirgo_service' ), 0) -
@@ -4689,7 +4697,7 @@ admin.post("/services-transaction/status/by", async (req, res) => {
       }
     }
     let updateResult;
-    if(user[0]?.groupId) {
+     if(user[0]?.groupId) {
       [updateResult] = await connect.query(   
         "UPDATE tir_balance_transaction SET status = ?, group_id = ? WHERE id = ?",
         [status, user[0]?.groupId, id]
