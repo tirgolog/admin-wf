@@ -4118,6 +4118,7 @@ admin.post("/agent/add-services", async (req, res) => {
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   const { user_id, phone, services } = req.body;
   try {
+    console.log(req.body)
     connect = await database.connection.getConnection();
     if (!services[0]?.without_subscription) {
       const [user] = await connect.query(
@@ -4146,6 +4147,7 @@ admin.post("/agent/add-services", async (req, res) => {
       );
       if (editUser.affectedRows > 0) {
         const insertValues = services.map((service) => {
+          console.log({agent_id})
           return [
             user_id,
             service.service_id,
