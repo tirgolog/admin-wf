@@ -425,7 +425,7 @@ admin.post("/agent-service/confirm-price", async (req, res) => {
         COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND created_by_id = ${agentId} AND balance_type = 'tirgo_service' ), 0) -
         COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE status In(2, 3) AND deleted = 0 AND agent_id = ${agentId} AND transaction_type = 'service'), 0) AS serviceBalance
       `);
-      if (Number(rows[0]?.balance) < Number(user[0]?.serviceAmount)) {
+      if (Number(rows[0]?.serviceBalance) < Number(user[0]?.amount_tir)) {
         appData.error = "Недостаточно средств в балансе";
         res.status(400).json(appData);
         return;
