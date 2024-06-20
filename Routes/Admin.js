@@ -4113,13 +4113,16 @@ admin.post("/addDriverServices", async (req, res) => {
 });
 
 admin.post("/agent/add-services", async (req, res) => {
+  console.log({agent_id}, 1)
   let connect,
     appData = { status: false },
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   const { user_id, phone, services } = req.body;
   try {
+    console.log({agent_id}, 2)
     console.log(req.body)
     connect = await database.connection.getConnection();
+    console.log({agent_id}, 3)
     if (!services[0]?.without_subscription) {
       const [user] = await connect.query(
         "SELECT * FROM users_list WHERE to_subscription >= CURDATE() AND id = ?",
@@ -4145,6 +4148,7 @@ admin.post("/agent/add-services", async (req, res) => {
         "UPDATE users_list SET is_service = 1  WHERE id = ?",
         [user_id]
       );
+      console.log({agent_id}, 4)
       if (editUser.affectedRows > 0) {
         const insertValues = services.map((service) => {
           console.log({agent_id})
@@ -4157,6 +4161,7 @@ admin.post("/agent/add-services", async (req, res) => {
             true
           ];
         })
+        console.log({insertValues})
         // const sql =
         //   "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, created_by_id, is_agent) VALUES ?";
         // const [result] = await connect.query(sql, [insertValues]);
