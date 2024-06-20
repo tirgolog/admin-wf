@@ -1129,6 +1129,16 @@ admin.post("/appendOrderDriver", async (req, res) => {
       "SELECT * FROM orders_accepted WHERE user_id = ? AND status_order = 1",
       [userid, orderid]
     );
+    const [driver] = await connection.query(
+      "SELECT token FROM users_list WHERE id = ?",
+      [userid]
+    );
+    const [client] = await connection.query(
+      `SELECT ul.token, ul.id FROM orders o
+      LEFT JOIN users_list ul on ul.id = o.user_id
+      WHERE id = ?`,
+      [orderid]
+    );
     if (inProccessOrder.length) {
       console.error("Driver has active order !");
       appData.status = false;
@@ -1182,6 +1192,8 @@ admin.post("/appendOrderDriver", async (req, res) => {
           );
         }
         appData.status = true;
+        push.sendToDevice(driver[0]?.token, 'Прикреплен новый заказ', `Администратор прикрепил к вам новый заказ ID: ${orderid}`)
+        push.sendToDevice(client[0]?.token, 'Новый заказ прикреплен', `Администратор прикрепил водителя к заказу ID: ${orderid}`)
       } else {
         appData.error =
           "Невозможно назначить водителя, Водитель уже предложил цену";
