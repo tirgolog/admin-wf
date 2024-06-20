@@ -3221,8 +3221,8 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
       const [paymentUser] = await connect.query(
         `SELECT 
         COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE user_id = ? AND balance_type = 'tirgo_service'), 0) - 
-        COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction  WHERE deleted = 0 AND user_id = ? AND transaction_type = 'service' AND status In(2, 3)), 0) AS balance;`,
-        [driverId, driverId]
+        COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction  WHERE deleted = 0 AND user_id = ? AND created_by_id = ? AND transaction_type = 'service' AND status In(2, 3)), 0) AS balance;`,
+        [driverId, driverId, driverId]
       );
       appData.data = rows[0];
       appData.data.balance = paymentUser[0]?.balance;
@@ -4113,16 +4113,12 @@ admin.post("/addDriverServices", async (req, res) => {
 });
 
 admin.post("/agent/add-services", async (req, res) => {
-  console.log({agent_id}, 1)
   let connect,
     appData = { status: false },
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
-  const { user_id, phone, services } = req.body;
+  const { user_id, agent_id, phone, services } = req.body;
   try {
-    console.log({agent_id}, 2)
-    console.log(req.body)
     connect = await database.connection.getConnection();
-    console.log({agent_id}, 3)
     if (!services[0]?.without_subscription) {
       const [user] = await connect.query(
         "SELECT * FROM users_list WHERE to_subscription >= CURDATE() AND id = ?",
@@ -4148,10 +4144,8 @@ admin.post("/agent/add-services", async (req, res) => {
         "UPDATE users_list SET is_service = 1  WHERE id = ?",
         [user_id]
       );
-      console.log({agent_id}, 4)
       if (editUser.affectedRows > 0) {
         const insertValues = services.map((service) => {
-          console.log({agent_id})
           return [
             user_id,
             service.service_id,
