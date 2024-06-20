@@ -761,7 +761,7 @@ users.post("/login", async (req, res) => {
     }
 
     const [rows] = await connect.query(
-      "SELECT * FROM users_contacts WHERE text = ? AND user_type = 1 AND verify = 1",
+      "SELECT * FROM users_contacts WHERE text = ? AND user_type = 1",
       [phone]
     );
     if (rows.length > 0) {
