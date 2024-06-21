@@ -1136,7 +1136,7 @@ admin.post("/appendOrderDriver", async (req, res) => {
     const [client] = await connection.query(
       `SELECT ul.token, ul.id FROM orders o
       LEFT JOIN users_list ul on ul.id = o.user_id
-      WHERE id = ?`,
+      WHERE o.id = ?`,
       [orderid]
     );
     if (inProccessOrder.length) {
