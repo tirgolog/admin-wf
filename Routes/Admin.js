@@ -6667,7 +6667,6 @@ admin.post("/push-notification", async (req, res) => {
     } else {
       push.sendToDevice(user[0]?.token, title, message)
       appData.status = true;
-      appData.data = data;
       res.status(200).json(appData);
     }
   } catch (e) {
