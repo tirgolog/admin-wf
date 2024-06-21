@@ -1268,6 +1268,14 @@ admin.post("/acceptOrderDriver", async (req, res) => {
       await connection.commit();
 
       // Notify clients about the update
+
+      const [user] = await connection.query(`
+        SELECT ul.token FROM orders o
+        LEFT JOIN users_list ul on ul.id = o.user_id
+        WHERE o.id = ?
+      `, [orderid])
+
+      push.sendToDevice(user[0]?.token, 'Новое предложение по цене', `На ваш заказ ID:${orderid} поступило новое предложение цены`)
       socket.updateAllList("update-all-list", "1");
       if (isMerchant) {
         await channel.sendToQueue(
