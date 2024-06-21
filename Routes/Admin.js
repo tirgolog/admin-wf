@@ -706,6 +706,8 @@ admin.get("/agent-service-transactions", async (req, res) => {
         trans = await connect.query(`
       SELECT 
         tbt.id,
+        s.code serviceCode,
+        s.name serviceName
         dl.id driverId,
         dl.name driverName,
         adl.id adminId,
@@ -717,6 +719,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
       FROM tir_balance_transaction tbt
       LEFT JOIN users_list dl on dl.id = tbt.user_id AND dl.user_type = 1
       LEFT JOIN users_list adl on adl.id = tbt.created_by_id AND adl.user_type = 3
+      LEFT JOIN services s on s.id = tbt.service_id
       WHERE tbt.deleted = 0 AND tbt.transaction_type = 'service' AND tbt.agent_id = ${agentId} ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''};`);
       tran = await connect.query(`
       SELECT 
