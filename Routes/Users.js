@@ -5395,7 +5395,7 @@ users.get("/tir-coin-balance", async (req, res) => {
 users.post("/set-fcm-token", async (req, res) => {
   let connect,
     appData = { status: false };
-  const { userId, token } = req.body;
+  const { userId, fcmToken } = req.body;
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
@@ -5409,7 +5409,7 @@ users.post("/set-fcm-token", async (req, res) => {
     } else {
       const [update] = await connect.query(
         `UPDATE users_list SET token = ? WHERE id = ?`,
-        [token, userId]
+        [fcmToken, userId]
       );
       if(update.affectedRows) {
         appData.status = true;
