@@ -5,6 +5,7 @@ const express = require("express"),
   database = require("../Database/database"),
   cors = require("cors"),
   fs = require("fs"),
+  path = require("path"),
   push = require("../Modules/Push"),
   jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -1195,8 +1196,8 @@ admin.post("/appendOrderDriver", async (req, res) => {
           );
         }
         appData.status = true;
-        push.sendToDevice(driver[0]?.token, 'Прикреплен новый заказ', `Администратор прикрепил к вам новый заказ ID: ${orderid}`)
-        push.sendToDevice(client[0]?.token, 'Новый заказ прикреплен', `Администратор прикрепил водителя к заказу ID: ${orderid}`)
+        push.sendToCarrierDevice(driver[0]?.token, 'Прикреплен новый заказ', `Администратор прикрепил к вам новый заказ ID: ${orderid}`)
+        push.sendToCarrierDevice(client[0]?.token, 'Новый заказ прикреплен', `Администратор прикрепил водителя к заказу ID: ${orderid}`)
       } else {
         appData.error =
           "Невозможно назначить водителя, Водитель уже предложил цену";
@@ -1278,7 +1279,7 @@ admin.post("/acceptOrderDriver", async (req, res) => {
         WHERE o.id = ?
       `, [orderid])
 
-      push.sendToDevice(user[0]?.token, 'Новое предложение по цене', `На ваш заказ ID:${orderid} поступило новое предложение цены`)
+      push.sendToCarrierDevice(user[0]?.token, 'Новое предложение по цене', `На ваш заказ ID:${orderid} поступило новое предложение цены`)
       socket.updateAllList("update-all-list", "1");
       if (isMerchant) {
         await channel.sendToQueue(
@@ -6676,7 +6677,8 @@ admin.post("/push-notification", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
-      push.sendToDevice(user[0]?.token, title, message)
+      push.sendToClientDevice('cFCbFMzAR4irVLXjUP7XhO:APA91bEEhArXOGtnCtnZm74gsqhO6Qd14wTTqDU1h_9N8GE95VZCjBSP6ZLHxNoy8UJPQ5GElSoAW4t_8-JC-xPoPaezrPYIBzIeH5J0lgM5H2s9bN5CKB4Ap03Obqw_f4e2gj3cEDeu',
+       title, message, path.join(process.cwd(), 'public', 'icons', 'driver-icon.png'))
       appData.status = true;
       res.status(200).json(appData);
     }

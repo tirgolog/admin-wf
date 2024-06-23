@@ -1,9 +1,14 @@
-const adminCarrier = require('firebase-admin');
-let serviceAccountCarrier = require('../firebase-fcm-private-key.json');
+const admin = require('firebase-admin');
+let serviceAccountCarrier = require('../firebase-fcm-driver-private-key.json');
+let serviceAccountClient = require('../firebase-fcm-client-private-key.json');
 
-adminCarrier.initializeApp({
-    credential: adminCarrier.credential.cert(serviceAccountCarrier)
-});
+const carrierAdmin = admin.initializeApp({
+    credential: admin.credential.cert(serviceAccountCarrier)
+}, 'carrier');
+
+const clientAdmin = admin.initializeApp({
+    credential: admin.credential.cert(serviceAccountClient)
+}, 'client');
 
 module.exports = {
     send: (token, title, body, targetID='', targetType='', image='', otherData='') => {
@@ -46,7 +51,7 @@ module.exports = {
             },
             token: token
         };
-        return adminCarrier.messaging().send(payload)
+        return carrierAdmin.messaging().send(payload)
             .then((response) => {
                 // Response is a message ID string.
                 console.log('Successfully sent message: ' + title + ' | ', response);
@@ -55,7 +60,7 @@ module.exports = {
                 console.log('Error: ', error);
             });
     },
-    sendToDevice: (token, title, body, targetID='', targetType='', image='', otherData='') => {
+    sendToCarrierDevice: (token, title, body, targetID='', targetType='', image='', otherData='') => {
         console.log(token, title, body, targetID, targetType, image, otherData)
         const message = {
             data: {
@@ -69,7 +74,31 @@ module.exports = {
             token: token
           };
           
-        return adminCarrier.messaging().send(message)
+        return carrierAdmin.messaging().send(message)
+            .then((response) => {
+                // Response is a message ID string.
+                console.log('Successfully sent message: ' + title + ' | ', response);
+            })
+            .catch(async (error) => {
+                console.log('Error: ', error);
+            });
+    },
+    sendToClientDevice: (token, title, body, icon, targetID='', targetType='', image='', otherData='') => {
+        console.log(token, title, body, targetID, targetType, image, otherData)
+        const message = {
+            data: {
+              score: '850',
+              time: '2:45'
+            },
+            notification: {
+                title: title,
+                body: body,
+              },
+      
+            token: token
+          };
+          
+        return clientAdmin.messaging().send(message)
             .then((response) => {
                 // Response is a message ID string.
                 console.log('Successfully sent message: ' + title + ' | ', response);

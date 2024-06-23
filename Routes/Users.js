@@ -3145,7 +3145,7 @@ users.post("/acceptDriverOffer", async (req, res) => {
         );
       }
       socket.updateAllList("update-all-list", "1");
-      Push.sendToDevice(driver[0]?.token, 'Одобрение предложения', `Ваше предложение было одобрено на заказ ID: ${orderid}`)
+      Push.sendToCarrierDevice(driver[0]?.token, 'Одобрение предложения', `Ваше предложение было одобрено на заказ ID: ${orderid}`)
       appData.status = true;
       res.status(200).json(appData);
     } else {
