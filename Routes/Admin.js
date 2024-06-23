@@ -707,7 +707,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
       SELECT 
         tbt.id,
         s.code serviceCode,
-        s.name serviceName
+        s.name serviceName,
         dl.id driverId,
         dl.name driverName,
         adl.id adminId,
