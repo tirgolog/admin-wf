@@ -1197,7 +1197,7 @@ admin.post("/appendOrderDriver", async (req, res) => {
         }
         appData.status = true;
         push.sendToCarrierDevice(driver[0]?.token, 'Прикреплен новый заказ', `Администратор прикрепил к вам новый заказ ID: ${orderid}`)
-        push.sendToCarrierDevice(client[0]?.token, 'Новый заказ прикреплен', `Администратор прикрепил водителя к заказу ID: ${orderid}`)
+        push.sendToClientDevice(client[0]?.token, 'Новый заказ прикреплен', `Администратор прикрепил водителя к заказу ID: ${orderid}`)
       } else {
         appData.error =
           "Невозможно назначить водителя, Водитель уже предложил цену";
