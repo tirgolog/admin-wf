@@ -6677,8 +6677,7 @@ admin.post("/push-notification", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
-      push.sendToClientDevice('cFCbFMzAR4irVLXjUP7XhO:APA91bEEhArXOGtnCtnZm74gsqhO6Qd14wTTqDU1h_9N8GE95VZCjBSP6ZLHxNoy8UJPQ5GElSoAW4t_8-JC-xPoPaezrPYIBzIeH5J0lgM5H2s9bN5CKB4Ap03Obqw_f4e2gj3cEDeu',
-       title, message, path.join(process.cwd(), 'public', 'icons', 'driver-icon.png'))
+      push.sendToClientDevice(user[0]?.token, title, message)
       appData.status = true;
       res.status(200).json(appData);
     }
