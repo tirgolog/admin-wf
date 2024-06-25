@@ -3040,20 +3040,7 @@ users.post("/acceptOrderDriver", async (req, res) => {
       );
       if (user.length) {
         if (user[0].token !== "" && user[0].token !== null) {
-          push.send(
-            user[0].token,
-            "Информация о водителе",
-            "Информация об имени водителя " +
-            driver[0].name +
-            "Телифон " +
-            driver[0].phone +
-            "Рейтинг " +
-            driver[0].phone +
-            "Цена " +
-            price,
-            "",
-            ""
-          );
+          Push.sendToClientDevice(user[0].token, 'Новое предложение по цене', `На ваш заказ ID: ${order[0]?.id} поступило новое предложение цены`)
         }
       }
       if (rows.affectedRows) {
