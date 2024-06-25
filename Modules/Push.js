@@ -84,7 +84,8 @@ module.exports = {
             });
     },
     sendToClientDevice: (token, title, body, icon, targetID='', targetType='', image='', otherData='') => {
-        console.log(token, title, body, targetID, targetType, image, otherData)
+        try {
+            console.log(token, title, body, targetID, targetType, image, otherData)
         const message = {
             data: {
               score: '850',
@@ -106,5 +107,8 @@ module.exports = {
             .catch(async (error) => {
                 console.log('Error: ', error);
             });
+        } catch(err) {
+            console.log(err)
+        }
     },
 };
