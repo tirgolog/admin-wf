@@ -1380,7 +1380,7 @@ admin.post("/createOrder", async (req, res) => {
         if (rows.affectedRows) {
           appData.status = true;
           socket.updateAllList("update-all-list", "1");
-          const [client] = await connect.query(`SELECT token FROM users_list WHERE id = ${data.userId}`);
+          const [client] = await connect.query(`SELECT token FROM users_list WHERE id = ${data.userid}`);
           push.sendToClientDevice(client[0]?.token, 'Новый заказ создан', `Администратор создал ваш новый заказ ID: ${rows?.insertId}`)
         } else {
           appData.error = "Невозможно добавить заказ";
