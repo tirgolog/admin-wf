@@ -1158,7 +1158,7 @@ users.post("/codeverifycation", async (req, res) => {
       const refreshToken = jwt.sign({ id: rows[0].user_id }, process.env.SECRET_KEY);
       const [setToken] = await connect.query(
         "UPDATE users_list SET date_last_login = ?, refresh_token = ? WHERE id = ?",
-        [new Date(), refreshToken, rows[0].user_id]
+        [new Date(), refreshToken, rows[0].id]
       );
       if (setToken.affectedRows > 0) {
         appData.status = true;
@@ -1182,7 +1182,7 @@ users.post("/codeverifycation", async (req, res) => {
         res.status(403).json(appData);
       }
     } else {
-      appData.error = "Данные для входа введены неверно";
+      appData.error = "Пользователь не найден";
       appData.status = false;
       res.status(403).json(appData);
     }
@@ -1247,6 +1247,7 @@ users.post("/codeverifyClient", async (req, res) => {
       res.status(403).json(appData);
     }
   } catch (err) {
+    console.log(err)
     appData.status = false;
     appData.error = err;
     res.status(403).json(appData);
