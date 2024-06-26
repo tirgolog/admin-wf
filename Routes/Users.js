@@ -1187,6 +1187,7 @@ users.post("/codeverifycation", async (req, res) => {
       res.status(403).json(appData);
     }
   } catch (err) {
+    console.log(err)
     appData.status = false;
     appData.error = err;
     res.status(403).json(appData);
@@ -1241,7 +1242,7 @@ users.post("/codeverifyClient", async (req, res) => {
         res.status(403).json(appData);
       }
     } else {
-      appData.error = "Данные для входа введены неверно";
+      appData.error = "Пользователь не найден";
       appData.status = false;
       res.status(403).json(appData);
     }
