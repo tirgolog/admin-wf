@@ -3257,18 +3257,7 @@ users.post("/acceptDriverClient", async (req, res) => {
     );
     if (user.length) {
       if (user[0].token !== "" && user[0].token !== null) {
-        push.send(
-          user[0].token,
-          "Информация о клиенте",
-          "Имя информационного клиента " +
-          user[0].name +
-          "Телифон " +
-          user[0].phone +
-          "Рейтинг " +
-          user[0].phone,
-          "",
-          ""
-        );
+        Push.sendToCarrierDevice(user[0].token, 'Одобрение предложения', `Ваше предложение было одобрено на заказ ID: ${orderid}`)
       }
     }
     if (rows.affectedRows) {
