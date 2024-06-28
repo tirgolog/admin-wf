@@ -6665,28 +6665,34 @@ admin.get("/excel/payments/alpha-payment-service", async (req, res) => {
 admin.post("/push-notification", async (req, res) => {
   let connect,
     appData = { status: false };
-  const { title, message, userId } = req.body;
+  const { title, message, userId, topic } = req.body;
   try {
     connect = await database.connection.getConnection();
-    const [user] = await connect.query(`SELECT id, token, user_type FROM users_list WHERE id = ?`,
-      [userId]
-    );
-    if(!user.length) {
-      appData.error = "Не найден Пользователь";
-      appData.status = false;
-      res.status(400).json(appData);
-    } else if(!user[0]?.token) {
-      appData.error = "У пользователя нет fcm токен";
-      appData.status = false;
-      res.status(400).json(appData);
-    } else {
-      if(user[0]?.user_type == 1) {
-        push.sendToDriverDevice(user[0]?.token, title, message);
-      } else if (user[0]?.user_type == 2) {
-        push.sendToClientDevice(user[0]?.token, title, message);
-      }
+    if(topic) {
+      push.sendToTopic(topic, title, message);
       appData.status = true;
       res.status(200).json(appData);
+    } else {
+      const [user] = await connect.query(`SELECT id, token, user_type FROM users_list WHERE id = ?`,
+        [userId]
+      );
+      if(!user.length) {
+        appData.error = "Не найден Пользователь";
+        appData.status = false;
+        res.status(400).json(appData);
+      } else if(!user[0]?.token) {
+        appData.error = "У пользователя нет fcm токен";
+        appData.status = false;
+        res.status(400).json(appData);
+      } else {
+        if(user[0]?.user_type == 1) {
+          push.sendToDriverDevice(user[0]?.token, title, message);
+        } else if (user[0]?.user_type == 2) {
+          push.sendToClientDevice(user[0]?.token, title, message);
+        }
+        appData.status = true;
+        res.status(200).json(appData);
+      }
     }
   } catch (e) {
     appData.error = e.message;

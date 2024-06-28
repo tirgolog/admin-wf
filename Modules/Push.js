@@ -104,11 +104,88 @@ module.exports = {
                 // Response is a message ID string.
                 console.log('Successfully sent message: ' + title + ' | ', response);
             })
-            .catch(async (error) => {
+            .catch((error) => {
                 console.log('Error: ', error);
             });
         } catch(err) {
             console.log(err)
         }
     },
+    subscribeToTopic(token, topic) {
+        try {
+            if(topic == 'clients') {
+              clientAdmin.messaging().subscribeToTopic(token, topic);
+            } else if(topic == 'drivers') {
+                carrierAdmin.messaging().subscribeToTopic(token, topic);
+            }
+        } catch(err) {
+            console.log(err)
+        }
+    },
+    sendToTopic(topic, title, body) {
+        try {
+            console.log(topic, title, body)
+        const message = {
+            data: {
+              score: '850',
+              time: '2:45'
+            },
+            notification: {
+                title: title,
+                body: body,
+              },
+      
+            topic: topic
+          };
+          
+          if(topic == 'clients') {
+              return clientAdmin.messaging().send(message)
+                  .then((response) => {
+                      // Response is a message ID string.
+                      console.log('Successfully sent message: ' + title + ' | ', response);
+                  })
+                  .catch((error) => {
+                      console.log('Error: ', error);
+                  });
+          } else if(topic == 'drivers') {
+            return clientAdmin.messaging().send(message)
+            .then((response) => {
+                // Response is a message ID string.
+                console.log('Successfully sent message: ' + title + ' | ', response);
+            })
+            .catch((error) => {
+                console.log('Error: ', error);
+            });
+          } else if(topic == 'all') {
+            Promise.all(clientAdmin.messaging().send({
+                data: {
+                  score: '850',
+                  time: '2:45'
+                },
+                notification: {
+                    title: title,
+                    body: body,
+                  },
+          
+                topic: 'clients'
+              }), carrierAdmin.messaging().send({
+                data: {
+                  score: '850',
+                  time: '2:45'
+                },
+                notification: {
+                    title: title,
+                    body: body,
+                  },
+          
+                topic: 'drivers'
+              })).then((data) => {
+                  // Response is a message ID string.
+                  console.log('Successfully sent to All: ', data);
+              });
+          }
+        } catch(err) {
+            console.log(err)
+        }
+    }
 };
