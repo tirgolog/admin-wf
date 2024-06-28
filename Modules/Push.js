@@ -156,6 +156,33 @@ module.exports = {
             .catch((error) => {
                 console.log('Error: ', error);
             });
+          } else if(topic == 'all') {
+            Promise.all(clientAdmin.messaging().send({
+                data: {
+                  score: '850',
+                  time: '2:45'
+                },
+                notification: {
+                    title: title,
+                    body: body,
+                  },
+          
+                topic: 'clients'
+              }), carrierAdmin.messaging().send({
+                data: {
+                  score: '850',
+                  time: '2:45'
+                },
+                notification: {
+                    title: title,
+                    body: body,
+                  },
+          
+                topic: 'drivers'
+              })).then((data) => {
+                  // Response is a message ID string.
+                  console.log('Successfully sent to All: ', data);
+              });
           }
         } catch(err) {
             console.log(err)
