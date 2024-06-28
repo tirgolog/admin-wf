@@ -5404,7 +5404,7 @@ users.post("/set-fcm-token", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "SELECT id FROM users_list WHERE id = ?",
+      "SELECT id, user_type FROM users_list WHERE id = ?",
       [userId]
     );
     if (rows.length < 1) {
@@ -5417,6 +5417,7 @@ users.post("/set-fcm-token", async (req, res) => {
         [fcmToken, userId]
       );
       if(update.affectedRows) {
+        push.subscribeToTopic(token, rows[0]?.user_type == 1 ? 'drivers' : 'clients');
         appData.status = true;
         res.status(200).json(appData);
       } else {
