@@ -6668,7 +6668,7 @@ admin.post("/push-notification", async (req, res) => {
   const { title, message, userId } = req.body;
   try {
     connect = await database.connection.getConnection();
-    const [user] = await connect.query(`SELECT id, token FROM users_list WHERE id = ?`,
+    const [user] = await connect.query(`SELECT id, token, user_type FROM users_list WHERE id = ?`,
       [userId]
     );
     if(!user.length) {
@@ -6680,7 +6680,11 @@ admin.post("/push-notification", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
-      push.sendToClientDevice(user[0]?.token, title, message)
+      if(user[0]?.user_type == 1) {
+        push.sendToDriverDevice(user[0]?.token, title, message);
+      } else if (user[0]?.user_type == 2) {
+        push.sendToClientDevice(user[0]?.token, title, message);
+      }
       appData.status = true;
       res.status(200).json(appData);
     }
