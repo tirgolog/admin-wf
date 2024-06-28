@@ -1258,40 +1258,40 @@ users.post("/codeverifyClient", async (req, res) => {
   }
 });
 
-users.use((req, res, next) => {
-  let token =
-    req.body.token ||
-    req.headers["token"] ||
-    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-  let appData = {};
-  if (token && token !== undefined && token !== 'undefined') {
-    jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
-      if (err) {
-        if (err.name === 'TokenExpiredError') {
-          appData["error"] = "Token has expired";
-          return res.status(401).json(appData);
-        } else {
-          console.error("JWT Verification Error:", err);
-          appData["error"] = "Token is invalid";
-          return res.status(401).json(appData);
-        }
-      } else {
-        // Check if token has expired
-        const currentTimestamp = Math.floor(Date.now() / 1000);
-        if (decoded.exp < currentTimestamp) {
-          appData["data"] = "Token has expired";
-          return res.status(401).json(appData);
-        }
-        // Attach user information from the decoded token to the request
-        req.user = decoded;
-        next();
-      }
-    });
-  } else {
-    appData["error"] = "Token is null";
-    res.status(401).json(appData);
-  }
-});
+// users.use((req, res, next) => {
+//   let token =
+//     req.body.token ||
+//     req.headers["token"] ||
+//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+//   let appData = {};
+//   if (token && token !== undefined && token !== 'undefined') {
+//     jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
+//       if (err) {
+//         if (err.name === 'TokenExpiredError') {
+//           appData["error"] = "Token has expired";
+//           return res.status(401).json(appData);
+//         } else {
+//           console.error("JWT Verification Error:", err);
+//           appData["error"] = "Token is invalid";
+//           return res.status(401).json(appData);
+//         }
+//       } else {
+//         // Check if token has expired
+//         const currentTimestamp = Math.floor(Date.now() / 1000);
+//         if (decoded.exp < currentTimestamp) {
+//           appData["data"] = "Token has expired";
+//           return res.status(401).json(appData);
+//         }
+//         // Attach user information from the decoded token to the request
+//         req.user = decoded;
+//         next();
+//       }
+//     });
+//   } else {
+//     appData["error"] = "Token is null";
+//     res.status(401).json(appData);
+//   }
+// });
 
 users.post("/saveDeviceToken", async (req, res) => {
   let connect,
@@ -3901,15 +3901,39 @@ users.get("/getMyOrdersClient", async (req, res) => {
 users.get("/getMyOrdersDriver", async (req, res) => {
   let connect,
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]),
-    transportstypes = "",
+    transportstypes = [],
+    transport_type = req.query.transportType,
+    from = req.query.from,
+    limit = req.query.limit,
     appData = { status: false, timestamp: new Date().getTime() };
   merchantData = [];
   try {
+
+    if(!from) {
+      from = 0;
+    }
+    if(!limit) {
+      limit = 10;
+    }
+    connect = await database.connection.getConnection();
+    
+    if(transport_type) {
+      transportstypes.push(+transport_type);
+    } else {
+      const [transports] = await connect.query(
+        "SELECT * FROM users_transport WHERE user_id = ? AND active = 1",
+        [userInfo?.id]
+      );
+      for (let transport of transports) {
+        transportstypes.push(+transport.type)
+      }
+    }
+
     const merchantCargos = await axios.get(
       "https://merchant.tirgo.io/api/v1/cargo/all-driver"
     );
     if (merchantCargos.data.success) {
-      merchantData = merchantCargos.data.data.map((el) => {
+      merchantData = (merchantCargos.data.data.map((el) => {
         return {
           id: el.id,
           isMerchant: true,
@@ -3954,22 +3978,22 @@ users.get("/getMyOrdersDriver", async (req, res) => {
           logo: el.merchant?.logoFilePath,
           merchant: el.merchant,
         };
-      });
+      })).filter(item => transportstypes.includes(item.transport_types[0]));
     }
 
-    connect = await database.connection.getConnection();
-    const [transports] = await connect.query(
-      "SELECT * FROM users_transport WHERE user_id = ? AND active = 1",
-      [userInfo.id]
-    );
-    for (let transport of transports) {
-      transportstypes = transportstypes + transport.type + ",";
-    }
-    transportstypes = transportstypes + "22,";
-    transportstypes = transportstypes.substring(0, transportstypes.length - 1);
     let [rows] = await connect.query(
-      "SELECT o.*,ul.name as usernameorder,ul.phone as userphoneorder FROM orders o LEFT JOIN users_list ul ON o.user_id = ul.id WHERE o.status <> 3 ORDER BY o.id DESC",
-      [transportstypes, transportstypes]
+      `SELECT 
+       o.*,ul.name as usernameorder,ul.phone as userphoneorder 
+      FROM orders o 
+      LEFT JOIN users_list ul ON o.user_id = ul.id
+      WHERE 
+        o.status <> 3 AND
+        (
+          o.transport_type IN (?) 
+          OR JSON_CONTAINS(o.transport_types, ?)
+        ) 
+      ORDER BY o.id DESC LIMIT ${from}, ${limit}`,
+      [transportstypes, JSON.stringify(transportstypes)]
     );
     if (rows.length) {
       appData.data = await Promise.all(
@@ -3998,6 +4022,9 @@ users.get("/getMyOrdersDriver", async (req, res) => {
           return newItem;
         })
       );
+      appData.data = (appData.data.sort((a,b) => {
+          return new Date(b.created_at) - new Date(a.created_at);
+    })).slice(0, limit)
       appData.status = true;
     } else {
       appData.error = "Нет заказов";
