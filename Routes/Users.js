@@ -5435,4 +5435,36 @@ users.post("/set-fcm-token", async (req, res) => {
   }
 });
 
+users.get("/active-order", async (req, res) => {
+  let connect,
+    appData = { status: false };
+  const { userId } = req.query;
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      `SELECT oa.id ordersAcceptedId, o.* FROM orders_accepted oa
+      LEFT JOIN orders o on o.id = oa.order_id
+      WHERE user_id = ? AND status_order = 1`,
+      [userId]
+    );
+    if (rows.length < 1) {
+      appData.status = true;
+      appData.data = { active: false, data: null };
+      res.status(400).json(appData);
+    } else {
+        appData.status = false;
+        appData.data = { active: false, data: rows[0] };
+        res.status(400).json(appData);
+    }
+  } catch (e) {
+    appData.status = false;
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 module.exports = users;
