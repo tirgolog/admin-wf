@@ -5444,7 +5444,7 @@ users.get("/active-order", async (req, res) => {
     const [rows] = await connect.query(
       `SELECT oa.id ordersAcceptedId, o.* FROM orders_accepted oa
       LEFT JOIN orders o on o.id = oa.order_id
-      WHERE user_id = ? AND status_order = 1`,
+      WHERE oa.user_id = ? AND oa.status_order = 1`,
       [userId]
     );
     if (rows.length < 1) {
