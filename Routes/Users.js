@@ -3408,16 +3408,24 @@ users.post("/fonishOrderDriver", async (req, res) => {
           [orderid]
         );
         if (rows.affectedRows) {
-          socket.updateAllList("update-all-list", "1");
+          await connect.query(
+            "UPDATE orders_accepted SET status = 2 WHERE order_id = ?",
+            [orderid]
+          );
+          socket.updateAllList("update-active-order", "1");
           appData.status = true;
         } else {
           appData.error = "Что то пошло не так";
         }
       } else {
         appData.status = true;
-        socket.updateAllList("update-all-list", "1");
+        socket.updateAllList("update-active-order", "1");
         await connect.query(
           "UPDATE orders SET status = 2,end_driver = 1 WHERE id = ?",
+          [orderid]
+        );
+        await connect.query(
+          "UPDATE orders_accepted SET status = 2 WHERE order_id = ?",
           [orderid]
         );
         await connect.query(
