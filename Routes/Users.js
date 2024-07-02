@@ -3256,8 +3256,10 @@ users.post("/acceptDriverClient", async (req, res) => {
       `HTTP acceptDriverClient: orderId ${orderid}`
     );
     const [user] = await connect.query(
-      "select *  from users_list  where  id= ?",
-      [userInfo?.id]
+      `select ul.token  from orders_accepted oa
+      LEFT JOIN users_list ul on ul.id = oa.user_id
+      where order_id = ?`,
+      [orderid]
     );
     if (user.length) {
       if (user[0].token !== "" && user[0].token !== null) {
@@ -3998,8 +4000,7 @@ users.get("/getMyOrdersDriver", async (req, res) => {
       FROM orders o 
       LEFT JOIN users_list ul ON o.user_id = ul.id
       WHERE 
-        o.status <> 3 AND
-        o.status <> 1 AND
+        o.status = 0 AND
         (
           o.transport_type IN (?) 
           OR JSON_CONTAINS(o.transport_types, ?)
