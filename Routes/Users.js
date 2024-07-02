@@ -3133,7 +3133,7 @@ users.post("/acceptDriverOffer", async (req, res) => {
           [clientId, driverId, orderid, amount, addAmount]
         );
       }
-      socket.updateAllList("update-all-list", "1");
+      socket.updateAllList("update-active-order", "1");
       Push.sendToCarrierDevice(driver[0]?.token, 'Одобрение предложения', `Ваше предложение было одобрено на заказ ID: ${orderid}`)
       appData.status = true;
       res.status(200).json(appData);
