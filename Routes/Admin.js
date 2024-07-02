@@ -6686,7 +6686,7 @@ admin.post("/push-notification", async (req, res) => {
         res.status(400).json(appData);
       } else {
         if(user[0]?.user_type == 1) {
-          push.sendToDriverDevice(user[0]?.token, title, message);
+          push.sendToCarrierDevice(user[0]?.token, title, message);
         } else if (user[0]?.user_type == 2) {
           push.sendToClientDevice(user[0]?.token, title, message);
         }
@@ -6695,6 +6695,7 @@ admin.post("/push-notification", async (req, res) => {
       }
     }
   } catch (e) {
+    console.log(e)
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {
