@@ -5471,6 +5471,7 @@ users.get("/active-order", async (req, res) => {
         [rows[0]?.route_id]
       );
       rows[0].route = route[0];
+      rows[0]?.transport_types = JSON.parse(rows[0]?.transport_types);
       appData.status = true;
         appData.data = { active: true, data: rows[0] };
         res.status(200).json(appData);
