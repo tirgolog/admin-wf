@@ -5443,7 +5443,6 @@ users.get("/active-order", async (req, res) => {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
       `SELECT ul.name as usernameorder,ul.phone as userphoneorder, oa.id ordersAcceptedId, o.* FROM orders_accepted oa
-      FROM orders o 
       LEFT JOIN orders o on o.id = oa.order_id
       LEFT JOIN users_list ul ON o.user_id = ul.id
       WHERE oa.user_id = ? AND oa.status_order = 1`,
