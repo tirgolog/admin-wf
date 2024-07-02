@@ -3404,12 +3404,12 @@ users.post("/fonishOrderDriver", async (req, res) => {
     if (orderInfo.length || isMerchant) {
       if (orderInfo[0].to_city === location) {
         const [rows] = await connect.query(
-          "UPDATE orders SET status = 2,end_driver = 1 WHERE id = ?",
+          "UPDATE orders SET status = 3,end_driver = 1 WHERE id = ?",
           [orderid]
         );
         if (rows.affectedRows) {
           await connect.query(
-            "UPDATE orders_accepted SET status_order = 2 WHERE order_id = ?",
+            "UPDATE orders_accepted SET status_order = 3 WHERE order_id = ?",
             [orderid]
           );
           socket.updateAllList("update-active-order", "1");
@@ -3421,11 +3421,11 @@ users.post("/fonishOrderDriver", async (req, res) => {
         appData.status = true;
         socket.updateAllList("update-active-order", "1");
         await connect.query(
-          "UPDATE orders SET status = 2,end_driver = 1 WHERE id = ?",
+          "UPDATE orders SET status = 3,end_driver = 1 WHERE id = ?",
           [orderid]
         );
         await connect.query(
-          "UPDATE orders_accepted SET status_order = 2 WHERE order_id = ?",
+          "UPDATE orders_accepted SET status_order = 3 WHERE order_id = ?",
           [orderid]
         );
         await connect.query(
