@@ -3286,7 +3286,7 @@ users.post("/acceptDriverClient", async (req, res) => {
         "UPDATE orders SET status = 1,driver_id = ? WHERE id = ? AND user_id = ?",
         [id, orderid, userInfo.id]
       );
-      socket.updateAllList("update-all-list", "1");
+      socket.updateAllList("update-active-order", "1");
     } else {
       appData.error = "Невозможно принять водителя";
     }
