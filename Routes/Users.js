@@ -3988,6 +3988,7 @@ users.get("/getMyOrdersDriver", async (req, res) => {
       LEFT JOIN users_list ul ON o.user_id = ul.id
       WHERE 
         o.status <> 3 AND
+        o.status <> 1 AND
         (
           o.transport_type IN (?) 
           OR JSON_CONTAINS(o.transport_types, ?)
