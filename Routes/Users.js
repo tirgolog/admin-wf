@@ -3818,7 +3818,7 @@ users.get("/getMyOrdersClient", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "SELECT * FROM orders WHERE user_id = ? AND status <> 2 ORDER BY id DESC",
+      "SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC",
       [userInfo.id]
     );
     if (rows.length) {
