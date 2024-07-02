@@ -5450,11 +5450,11 @@ users.get("/active-order", async (req, res) => {
     if (rows.length < 1) {
       appData.status = true;
       appData.data = { active: false, data: null };
-      res.status(400).json(appData);
+      res.status(200).json(appData);
     } else {
         appData.status = false;
-        appData.data = { active: false, data: rows[0] };
-        res.status(400).json(appData);
+        appData.data = { active: true, data: rows[0] };
+        res.status(200).json(appData);
     }
   } catch (e) {
     appData.status = false;
