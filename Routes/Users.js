@@ -3115,7 +3115,7 @@ users.post("/acceptDriverOffer", async (req, res) => {
     );
 
     await connect.query(
-      "DELETE FROM orders_accepted WHERE user_id = ? AND order_id <> ?",
+      "DELETE FROM orders_accepted WHERE user_id = ? AND order_id <> ? AND status_order = 0",
       [driverId, orderid]
     );
     await connect.query(
@@ -3245,7 +3245,7 @@ users.post("/acceptDriverClient", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     await connect.query(
-      "DELETE FROM orders_accepted WHERE user_id = ? AND order_id <> ?",
+      "DELETE FROM orders_accepted WHERE user_id = ? AND order_id <> ? AND status_order = 0",
       [id, orderid]
     );
     const [rows] = await connect.query(
