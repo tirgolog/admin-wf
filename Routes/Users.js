@@ -5442,8 +5442,10 @@ users.get("/active-order", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      `SELECT oa.id ordersAcceptedId, o.* FROM orders_accepted oa
+      `SELECT ul.name as usernameorder,ul.phone as userphoneorder, oa.id ordersAcceptedId, o.* FROM orders_accepted oa
+      FROM orders o 
       LEFT JOIN orders o on o.id = oa.order_id
+      LEFT JOIN users_list ul ON o.user_id = ul.id
       WHERE oa.user_id = ? AND oa.status_order = 1`,
       [userId]
     );
@@ -5452,7 +5454,12 @@ users.get("/active-order", async (req, res) => {
       appData.data = { active: false, data: null };
       res.status(200).json(appData);
     } else {
-        appData.status = false;
+      const [route] = await connect.query(
+        "SELECT * FROM routes WHERE id = ? LIMIT 1",
+        [rows[0]?.route_id]
+      );
+      rows[0].route = route[0];
+      appData.status = false;
         appData.data = { active: true, data: rows[0] };
         res.status(200).json(appData);
     }
