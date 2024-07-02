@@ -4069,7 +4069,7 @@ users.get("/getMyArchiveOrdersDriver", async (req, res) => {
       await Promise.all(
         rows.map(async (item) => {
           const [order] = await connect.query(
-            "SELECT o.*,ul.name as usernameorder,ul.phone as userphoneorder FROM orders o LEFT JOIN users_list ul ON o.user_id = ul.id WHERE o.id = ? AND o.status = 3 ORDER BY o.id DESC",
+            "SELECT o.*,ul.name as usernameorder,ul.phone as userphoneorder FROM orders o LEFT JOIN users_list ul ON o.user_id = ul.id WHERE o.id = ? AND o.status = IN(2, 3) ORDER BY o.id DESC",
             [item.order_id]
           );
           await Promise.all(
