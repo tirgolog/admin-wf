@@ -3409,7 +3409,7 @@ users.post("/fonishOrderDriver", async (req, res) => {
         );
         if (rows.affectedRows) {
           await connect.query(
-            "UPDATE orders_accepted SET status = 2 WHERE order_id = ?",
+            "UPDATE orders_accepted SET status_order = 2 WHERE order_id = ?",
             [orderid]
           );
           socket.updateAllList("update-active-order", "1");
@@ -3425,7 +3425,7 @@ users.post("/fonishOrderDriver", async (req, res) => {
           [orderid]
         );
         await connect.query(
-          "UPDATE orders_accepted SET status = 2 WHERE order_id = ?",
+          "UPDATE orders_accepted SET status_order = 2 WHERE order_id = ?",
           [orderid]
         );
         await connect.query(
@@ -5467,7 +5467,7 @@ users.get("/active-order", async (req, res) => {
         [rows[0]?.route_id]
       );
       rows[0].route = route[0];
-      appData.status = false;
+      appData.status = true;
         appData.data = { active: true, data: rows[0] };
         res.status(200).json(appData);
     }
