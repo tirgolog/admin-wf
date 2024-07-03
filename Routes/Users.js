@@ -4013,7 +4013,7 @@ users.get("/getMyOrdersDriver", async (req, res) => {
   }
 
   sqlQuery += `ORDER BY o.id DESC LIMIT ?, ?`;
-  queryParams.push(from, limit);
+  queryParams.push(+from, +limit);
 
   let [rows] = await connect.query(sqlQuery, queryParams);
     if (rows.length) {
