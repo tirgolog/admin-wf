@@ -3419,11 +3419,12 @@ admin.get('/tir-currency-calculate', async (req, res) => {
         amount = (+convertedAmount / +selectedCurrencyRate) / +tirCurrency.Rate;
       }
     }
+    console.log(amount)
     appData.data = {amount: amount.toFixed(4)};
     appData.status = true;
     res.status(200).json(appData);
   } catch(err) {
-    console.log(err);
+    console.log('TIR CURRENCY CALCULATE ERROR', err);
     appData.message = err.message;
     appData.status = false;
     res.status(400).json(appData);
