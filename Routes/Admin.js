@@ -6670,7 +6670,31 @@ admin.post("/push-notification", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     if(topic) {
-      push.sendToTopic(topic, title, message);
+      if(topic == 'all') {
+        const [users] = await connect.query(`SELECT id, token, user_type FROM users_list WHERE token IS NOT NULL`);
+         for(let user of users) {
+          if(user.token) {
+            if(user.user_type == 1) {
+              push.sendToCarrierDevice(user.token, title, message);
+            } else if(user.user_type == 2) {
+              push.sendToClientDevice(user.token, title, message);
+            }
+         }
+        }
+      } else {
+        const [users] = await connect.query(`SELECT id, token, user_type FROM users_list WHERE token IS NOT NULL AND user_type = ?`, [topic == 'drivers' ? 1 : 2]);
+        console.log(users)
+        for(let user of users) {
+          if(user.token) {
+            if(user.user_type == 1) {
+              push.sendToCarrierDevice(user.token, title, message);
+            } else if(user.user_type == 2) {
+              push.sendToClientDevice(user.token, title, message);
+            }
+         }
+        }
+      }
+
       appData.status = true;
       res.status(200).json(appData);
     } else {
