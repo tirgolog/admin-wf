@@ -3994,20 +3994,28 @@ users.get("/getMyOrdersDriver", async (req, res) => {
       })).filter(item => transportstypes.includes(item.transport_types[0]));
     }
 
-    let [rows] = await connect.query(
-      `SELECT 
-       o.*,ul.name as usernameorder,ul.phone as userphoneorder 
-      FROM orders o 
-      LEFT JOIN users_list ul ON o.user_id = ul.id
-      WHERE 
-        o.status = 0 AND
-        (
-          o.transport_type IN (?) 
-          OR JSON_CONTAINS(o.transport_types, ?)
-        ) 
-      ORDER BY o.id DESC LIMIT ${from}, ${limit}`,
-      [transportstypes, JSON.stringify(transportstypes)]
-    );
+  let sqlQuery = `
+  SELECT 
+       o.*, ul.name as usernameorder, ul.phone as userphoneorder 
+  FROM orders o 
+  LEFT JOIN users_list ul ON o.user_id = ul.id
+  WHERE 
+    o.status = 0 `;
+
+  let queryParams =   [];
+
+  if (transportstypes.length > 0) {
+    sqlQuery += `AND (
+      o.transport_type IN (?) 
+      OR JSON_CONTAINS(o.transport_types, ?)
+    )`;
+    queryParams.push(transportstypes, JSON.stringify(transportstypes));
+  }
+
+  sqlQuery += `ORDER BY o.id DESC LIMIT ?, ?`;
+  queryParams.push(from, limit);
+
+  let [rows] = await connect.query(sqlQuery, queryParams);
     if (rows.length) {
       appData.data = await Promise.all(
         [...merchantData, ...rows].map(async (item) => {
