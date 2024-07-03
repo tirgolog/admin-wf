@@ -3932,14 +3932,6 @@ users.get("/getMyOrdersDriver", async (req, res) => {
     
     if(transport_type) {
       transportstypes.push(+transport_type);
-    } else {
-      const [transports] = await connect.query(
-        "SELECT * FROM users_transport WHERE user_id = ? AND active = 1",
-        [userInfo?.id]
-      );
-      for (let transport of transports) {
-        transportstypes.push(+transport.type)
-      }
     }
 
     const merchantCargos = await axios.get(
