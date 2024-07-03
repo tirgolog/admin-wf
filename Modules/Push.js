@@ -61,7 +61,7 @@ module.exports = {
             });
     },
     sendToCarrierDevice: (token, title, body, targetID='', targetType='', image='', otherData='') => {
-        console.log(token, title, body, targetID, targetType, image, otherData)
+        console.log('drivers', token, title, body, targetID, targetType, image, otherData)
         const message = {
             data: {
               score: '850',
@@ -85,7 +85,7 @@ module.exports = {
     },
     sendToClientDevice: (token, title, body, icon, targetID='', targetType='', image='', otherData='') => {
         try {
-            console.log(token, title, body, targetID, targetType, image, otherData)
+            console.log('clients', token, title, body, targetID, targetType, image, otherData)
         const message = {
             data: {
               score: '850',
@@ -112,11 +112,14 @@ module.exports = {
         }
     },
     subscribeToTopic(token, topic) {
+        console.log('Subscribe to topic: ', topic, token)
         try {
             if(topic == 'clients') {
               clientAdmin.messaging().subscribeToTopic(token, topic);
             } else if(topic == 'drivers') {
-                carrierAdmin.messaging().subscribeToTopic(token, topic);
+                carrierAdmin.messaging().subscribeToTopic(token, topic).then((data) => {
+                    console.log(data)
+                });
             }
         } catch(err) {
             console.log(err)
@@ -142,7 +145,7 @@ module.exports = {
               return clientAdmin.messaging().send(message)
                   .then((response) => {
                       // Response is a message ID string.
-                      console.log('Successfully sent message: ' + title + ' | ', response);
+                      console.log('Successfully sent message clients: ' + title + ' | ', response);
                   })
                   .catch((error) => {
                       console.log('Error: ', error);
@@ -151,7 +154,7 @@ module.exports = {
             return clientAdmin.messaging().send(message)
             .then((response) => {
                 // Response is a message ID string.
-                console.log('Successfully sent message: ' + title + ' | ', response);
+                console.log('Successfully sent message drivers: ' + title + ' | ', response);
             })
             .catch((error) => {
                 console.log('Error: ', error);
