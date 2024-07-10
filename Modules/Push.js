@@ -63,15 +63,35 @@ module.exports = {
     sendToCarrierDevice: (token, title, body, targetID='', targetType='', image='', otherData='') => {
         console.log('drivers', token, title, body, targetID, targetType, image, otherData)
         const message = {
-            data: {
-              score: '850',
-              time: '2:45'
-            },
             notification: {
-                title: title,
-                body: body
+              title: title,
+              body: body,
+            },
+            data: {
+              targetID: targetID,
+              targetType: targetType,
+              image: image,
+              otherData: otherData,
+              score: '850',
+              time: '2:45',
+            },
+            token: token,
+            apns: {
+              payload: {
+                aps: {
+                  alert: {
+                    title: title,
+                    body: body,
+                  },
+                  sound: 'default',
+                },
               },
-            token: token
+            },
+            android: {
+              notification: {
+                image: image,
+              },
+            },
           };
           
         return carrierAdmin.messaging().send(message)
@@ -86,19 +106,40 @@ module.exports = {
     sendToClientDevice: (token, title, body, icon, targetID='', targetType='', image='', otherData='') => {
         try {
             console.log('clients', token, title, body, targetID, targetType, image, otherData)
-        const message = {
-            data: {
-              score: '850',
-              time: '2:45'
-            },
-            notification: {
-                title: title,
-                body: body,
-              },
-      
-            token: token
-          };
           
+          const message = {
+            notification: {
+              title: title,
+              body: body,
+            },
+            data: {
+              targetID: targetID,
+              targetType: targetType,
+              image: image,
+              otherData: otherData,
+              score: '850',
+              time: '2:45',
+            },
+            token: token,
+            apns: {
+              payload: {
+                aps: {
+                  alert: {
+                    title: title,
+                    body: body,
+                  },
+                  sound: 'default',
+                },
+              },
+            },
+            android: {
+              notification: {
+                icon: icon,
+                image: image,
+              },
+            },
+          };
+
         return clientAdmin.messaging().send(message)
             .then((response) => {
                 // Response is a message ID string.
