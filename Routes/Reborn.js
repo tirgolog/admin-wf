@@ -20,6 +20,7 @@ reborn.post('/getAllDrivers', async (req, res) => {
         dateReg = req.body.dateReg ? req.body.dateReg:'',
         dateLogin = req.body.dateLogin ? req.body.dateLogin:'',
         subscription = req.body.subscription ? req.body.subscription:'',
+        isSubscribed = req.body.is_subscribed,
         appData = {status: false};
     try {
         connect = await database.connection.getConnection();
@@ -74,6 +75,13 @@ reborn.post('/getAllDrivers', async (req, res) => {
 
             if(subscription) {
                 queryFilter += ` AND ul.subscription_id IS NOT NULL`;
+            }
+
+              // Optional filter for is_subscribe
+            if (isSubscribed) {
+                queryFilter += `select id from users_list WHERE to_subscription > CURDATE()
+                                AND from_subscription IS NOT NULL
+                                AND to_subscription IS NOT NULL`;
             }
             // console.log(query + queryFilter)
             
