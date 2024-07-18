@@ -1471,7 +1471,7 @@ admin.post("/addUser", async (req, res) => {
                     ]
                   );
                   await connect.query(
-                    "INSERT INTO users_contacts SET text=?,user_type = 1,user_id = ?,verify = 1",
+                    "INSERT INTO users_contacts SET text=?,user_type = 1,user_id = ?,verify = 0",
                     [phone, insert.insertId]
                   );
                   await connect.query(
@@ -1536,7 +1536,7 @@ admin.post("/addUser", async (req, res) => {
                     ]
                   );
                   await connect.query(
-                    "INSERT INTO users_contacts SET text=?,user_type = 1,user_id = ?,verify = 1",
+                    "INSERT INTO users_contacts SET text=?,user_type = 1,user_id = ?,verify = 0",
                     [phone, insert.insertId]
                   );
                   await connect.query(
@@ -1601,7 +1601,7 @@ admin.post("/addUser", async (req, res) => {
                     ]
                   );
                   await connect.query(
-                    "INSERT INTO users_contacts SET text=?,user_type = 1,user_id = ?,verify = 1",
+                    "INSERT INTO users_contacts SET text=?,user_type = 1,user_id = ?,verify = 0",
                     [phone, insert.insertId]
                   );
                   await connect.query(
@@ -1651,7 +1651,7 @@ admin.post("/addUser", async (req, res) => {
           ]
         );
         await connect.query(
-          "INSERT INTO users_contacts SET text=?,user_type = 1,user_id = ?,verify = 1",
+          "INSERT INTO users_contacts SET text=?,user_type = 1,user_id = ?,verify = 0",
           [phone, insert.insertId]
         );
         appData.id = insert.insertId;
