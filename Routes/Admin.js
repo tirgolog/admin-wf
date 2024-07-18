@@ -1470,7 +1470,7 @@ admin.post("/addUser", async (req, res) => {
 
                   const [insertResult] = await connect.query(`
                   INSERT INTO tir_balance_transaction SET user_id = ?, agent_id = ?, is_by_agent = true, subscription_id = ?, amount_tir = ?, created_by_id = ?, transaction_type = ?
-                `, [insert.insertId, agent_id, data.subscription_id, subscription[0]?.value, +userInfo?.id, 'subscription']);
+                `, [insert.insertId, data.agent_id, data.subscription_id, subscription[0]?.value, +userInfo?.id, 'subscription']);
   
                 if (insertResult.affectedRows) {
                   let nextthreeMonth = new Date(
