@@ -1439,10 +1439,11 @@ admin.post("/addUser", async (req, res) => {
               if (
                 Number(agentBalance[0].tirgoBalance) >= Number(subscription[0]?.value)
               ) {
-                const insertResult = await connect.query(
-                  "INSERT INTO agent_transaction SET  agent_id = ?, amount = ?, type = 'subscription'",
-                  [data.agent_id, subscription[0]?.value]
-                );
+    
+                const [insertResult] = await connect.query(`
+                INSERT INTO tir_balance_transaction SET user_id = ?, agent_id = ?, is_by_agent = true, subscription_id = ?, amount_tir = ?, created_by_id = ?, transaction_type = ?
+              `, [user_id, agent_id, subscription_id, subscription[0]?.value, +userInfo?.id, 'subscription']);
+
                 if (insertResult) {
                   let nextthreeMonth = new Date(
                     new Date().setMonth(
