@@ -1443,7 +1443,7 @@ admin.post("/addUser", async (req, res) => {
                   const [insert] = await connect.query(
                     `INSERT INTO users_list SET 
                     country = ?,city = ?,geo_id = ?,iso_code = ?,city_lat = ?,city_lng = ?,phone = ?,user_type = 1,name = ?,
-                    birthday = ?,email = ?, agent_id = ?date_last_login = NULL`,
+                    birthday = ?,email = ?, agent_id = ?, date_last_login = NULL`,
                     [
                       cityInfo.country,
                       cityInfo.city ? cityInfo.city : cityInfo.region,
