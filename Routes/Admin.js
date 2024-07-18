@@ -1405,7 +1405,8 @@ admin.post("/addUser", async (req, res) => {
     cityInfo = req.body.cityinfo,
     data = req.body.datauser,
     phone = "",
-    appData = { status: false };
+    appData = { status: false },
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   try {
     connect = await database.connection.getConnection();
     phone = data.phone.replace(/[^0-9, ]/g, "").replace(/ /g, "");
