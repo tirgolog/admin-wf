@@ -1441,7 +1441,9 @@ admin.post("/addUser", async (req, res) => {
               ) {
     
                   const [insert] = await connect.query(
-                    "INSERT INTO users_list SET country = ?,city = ?,geo_id = ?,iso_code = ?,city_lat = ?,city_lng = ?,phone = ?,user_type = 1,name = ?,birthday = ?,email = ?, agent_id = ?, subscription_id = ?, date_last_login = NULL, from_subscription = ? , to_subscription=? ",
+                    `INSERT INTO users_list SET 
+                    country = ?,city = ?,geo_id = ?,iso_code = ?,city_lat = ?,city_lng = ?,phone = ?,user_type = 1,name = ?,
+                    birthday = ?,email = ?, agent_id = ?date_last_login = NULL`,
                     [
                       cityInfo.country,
                       cityInfo.city ? cityInfo.city : cityInfo.region,
@@ -1453,10 +1455,7 @@ admin.post("/addUser", async (req, res) => {
                       data.name,
                       new Date(data.birthday),
                       data.email,
-                      data.agent_id,
-                      data.subscription_id,
-                      new Date(),
-                      nextthreeMonth,
+                      data.agent_id
                     ]
                   );
                   await connect.query(
