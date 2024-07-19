@@ -3280,7 +3280,7 @@ admin.get('/tir-currency-calculate', async (req, res) => {
       if(amountTir) {
         amount = (+amountTir * +tirCurrency[0]?.rate) / +selectedCurrencyRate;
       } else if(convertedAmount) {
-        amount = (+convertedAmount / +selectedCurrencyRate) / +tirCurrency.Rate;
+        amount = (+convertedAmount / +selectedCurrencyRate) / +tirCurrency.rate;
       }
     }
     console.log(amount)
