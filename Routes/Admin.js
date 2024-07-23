@@ -6593,5 +6593,75 @@ admin.post("/push-notification", async (req, res) => {
   }
 });
 
+admin.post("/editDriverTransport", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() },
+    id = req.body.id,
+    name = req.body.name,
+    description = req.body.description,
+    maxweight = req.body.maxweight,
+    type = req.body.type,
+    car_photos = req.body.car_photos,
+    license_files = req.body.license_files,
+    tech_passport_files = req.body.tech_passport_files,
+    cubature = req.body.cubature,
+    state_number = req.body.state_number,
+    adr = req.body.adr,
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      "UPDATE users_transport SET name = ?,description = ?,type = ?,max_weight = ?,user_id = ?,adr = ?,cubature = ? ,state_number = ? WHERE id = ?",
+      [
+        name,
+        description,
+        type,
+        maxweight,
+        userInfo.id,
+        adr,
+        cubature,
+        state_number,
+        id,
+      ]
+    );
+    if (rows.affectedRows) {
+      await connect.query(
+        "DELETE FROM users_transport_files WHERE transport_id = ?",
+        [id]
+      );
+      appData.status = true;
+      for (let car of car_photos) {
+        await connect.query(
+          "INSERT INTO users_transport_files SET transport_id = ?,file_patch = ?,name = ?,type_file = ?",
+          [id, car.preview, car.filename, "car_photos"]
+        );
+      }
+      for (let lic of license_files) {
+        await connect.query(
+          "INSERT INTO users_transport_files SET transport_id = ?,file_patch = ?,name = ?,type_file = ?",
+          [id, lic.preview, lic.filename, "license_files"]
+        );
+      }
+      for (let tech of tech_passport_files) {
+        await connect.query(
+          "INSERT INTO users_transport_files SET transport_id = ?,file_patch = ?,name = ?,type_file = ?",
+          [id, tech.preview, tech.filename, "tech_passport_files"]
+        );
+      }
+    } else {
+      appData.error =
+        "Не получилось отредактировать транспорт. Попробуйте позже.";
+    }
+    res.status(200).json(appData);
+  } catch (err) {
+    appData.status = false;
+    appData.error = err;
+    res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
 
 module.exports = admin;
