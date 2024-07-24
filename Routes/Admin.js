@@ -4954,15 +4954,13 @@ admin.post("/add-driver-to-agent", async (req, res) => {
         const [row] = await connect.query(
           `UPDATE users_list SET agent_id = ${agentId} WHERE id = ${userId}`
         );
-
         if (row.affectedRows) {
-
           const [rows] = await connect.query(`
-          ISERT INTO agent_driver_operations (agent_id, driver_id, type) values (${agentId}, ${userId}, 'added');
+          INSERT INTO agent_driver_operations (agent_id, driver_id, type) values (${agentId}, ${userId}, 'added');
           `);
 
           const [rows2] = await connect.query(`
-          ISERT INTO agent_driver_operations (agent_id, driver_id, type) values (${user[0]?.agent_id}, ${userId}, 'removed');
+          INSERT INTO agent_driver_operations (agent_id, driver_id, type) values (${user[0]?.agent_id}, ${userId}, 'removed');
           `);
           socket.emit(agentId, 'driver-operation', '1');
           socket.emit(user[0]?.agent_id, 'driver-operation', '1');
