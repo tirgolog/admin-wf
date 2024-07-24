@@ -4912,6 +4912,93 @@ admin.post("/add-driver-to-group", async (req, res) => {
   }
 });
 
+admin.post("/add-driver-to-agent", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  const { userId, agentId } = req.body;
+  try {
+    connect = await database.connection.getConnection();
+    const [query] = await connect.query(`
+      SELECT id from users_list where id = ${agentId} AND user_type = 4;
+    `);
+    if (query[0]?.id) {
+      const [user] = await connect.query(`
+      SELECT id, agent_id from users_list where id = ${userId};
+    `);
+
+      if (user[0]?.id) {
+
+        const [row] = await connect.query(
+          `UPDATE users_list SET agent_id = ${agentId} WHERE id = ${userId}`
+        );
+
+        if (row.affectedRows) {
+
+          const [rows] = await connect.query(`
+          ISERT INTO agent_driver_operations (agent_id, driver_id, type) values (${agentId}, ${userId}, 'added');
+          `);
+
+          const [rows2] = await connect.query(`
+          ISERT INTO agent_driver_operations (agent_id, driver_id, type) values (${user[0]?.agent_id}, ${userId}, 'removed');
+          `);
+          socket.emit(agentId, 'driver-operation', '1');
+          socket.emit(user[0]?.agent_id, 'driver-operation', '1');
+          appData.status = true;
+          res.status(200).json(appData);
+        } else {
+          appData.status = false;
+          res.status(400).json(appData);
+        }
+      } else {
+        appData.message = 'Такого водителя не существует';
+        appData.status = false;
+        res.status(400).json(appData);
+      }
+    } else {
+      appData.message = 'Такого агента не существует';
+      appData.status = false;
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/agent-driver-operations", async (req, res) => {
+  let connect,
+      appData = { status: false },
+      agentId = req.query.agentId;
+
+  try {
+    connect = await database.connection.getConnection();
+    const [operations] = await connect.query(
+      `SELECT agent_id, driver_id, type, createdAt
+       FROM agent_driver_operations
+       WHERE agent_id = ?`,
+      [agentId]
+    );
+    
+    appData.data = operations;
+    appData.status = true;
+    res.status(200).json(appData);
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+
 admin.post("/remove-driver-from-group", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
@@ -6653,6 +6740,75 @@ admin.post("/editDriverTransport", async (req, res) => {
     } else {
       appData.error =
         "Не получилось отредактировать транспорт. Попробуйте позже.";
+    }
+    res.status(200).json(appData);
+  } catch (err) {
+    appData.status = false;
+    appData.error = err;
+    res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.post("/addDriverTransport", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() },
+    name = req.body.name,
+    description = req.body.description,
+    maxweight = req.body.maxweight,
+    type = req.body.type,
+    car_photos = req.body.car_photos,
+    license_files = req.body.license_files,
+    tech_passport_files = req.body.tech_passport_files,
+    cubature = req.body.cubature,
+    state_number = req.body.state_number,
+    adr = req.body.adr,
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      "INSERT INTO users_transport SET name = ?,description = ?,type = ?,max_weight = ?,user_id = ?,adr = ?,cubature = ?,state_number = ?",
+      [
+        name,
+        description,
+        type,
+        maxweight,
+        userInfo.id,
+        adr,
+        cubature,
+        state_number,
+      ]
+    );
+    if (rows.affectedRows) {
+      appData.status = true;
+      for (let car of car_photos) {
+        await connect.query(
+          "INSERT INTO users_transport_files SET transport_id = ?,file_patch = ?,name = ?,type_file = ?",
+          [rows.insertId, car.preview, car.filename, "car_photos"]
+        );
+      }
+      for (let lic of license_files) {
+        await connect.query(
+          "INSERT INTO users_transport_files SET transport_id = ?,file_patch = ?,name = ?,type_file = ?",
+          [rows.insertId, lic.preview, lic.filename, "license_files"]
+        );
+      }
+      for (let tech of tech_passport_files) {
+        await connect.query(
+          "INSERT INTO users_transport_files SET transport_id = ?,file_patch = ?,name = ?,type_file = ?",
+          [rows.insertId, tech.preview, tech.filename, "tech_passport_files"]
+        );
+      }
+      await connect.query(
+        "INSERT INTO users_activity SET userid = ?,text = ?",
+        [userInfo.id, "Добавил транспорт " + name]
+      );
+      socket.updateActivity("update-activity", "1");
+    } else {
+      appData.error = "Не получилось добавить транспорт. Попробуйте позже.";
     }
     res.status(200).json(appData);
   } catch (err) {
