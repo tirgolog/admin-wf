@@ -189,6 +189,28 @@ admin.get("/getAllAgent", async (req, res) => {
   }
 });
 
+admin.get("/getAllAgentDir", async (req, res) => {
+  let connect,
+    appData = { status: false };
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(
+      "SELECT id, name FROM users_list WHERE user_type = 4 ORDER BY id DESC"
+    );
+    if (rows.length) {
+      appData.data = rows;
+    }
+    res.status(200).json(appData);
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 admin.put("/changeAgentBalance", async (req, res) => {
   let connect,
     appData = { status: false },
