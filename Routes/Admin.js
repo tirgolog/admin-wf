@@ -198,6 +198,7 @@ admin.get("/getAllAgentDir", async (req, res) => {
       "SELECT id, name FROM users_list WHERE user_type = 4 ORDER BY id DESC"
     );
     if (rows.length) {
+      appData.status = true;
       appData.data = rows;
     }
     res.status(200).json(appData);
