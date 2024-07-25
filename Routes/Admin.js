@@ -4999,9 +4999,10 @@ admin.get("/agent-driver-operations", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [operations] = await connect.query(
-      `SELECT agent_id, driver_id, type, createdAt
-       FROM agent_driver_operations
-       WHERE agent_id = ?`,
+      `SELECT ado.id, ado.agent_id,  ado.driver_id, ado.type, ado.createdAt, u.name as driver_name
+       FROM agent_driver_operations ado
+       LEFT JOIN users_list u ON u.id = ado.driver_id
+       WHERE ado.agent_id = ?`,
       [agentId]
     );
     
