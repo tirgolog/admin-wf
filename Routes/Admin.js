@@ -6721,13 +6721,12 @@ admin.post("/editDriverTransport", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "UPDATE users_transport SET name = ?,description = ?,type = ?,max_weight = ?,user_id = ?,adr = ?,cubature = ? ,state_number = ?, transport_number = ? WHERE id = ?",
+      "UPDATE users_transport SET name = ?,description = ?,type = ?,max_weight = ?, adr = ?,cubature = ? ,state_number = ?, transport_number = ? WHERE id = ?",
       [
         name,
         description,
         type,
         maxweight,
-        userInfo.id,
         adr,
         cubature,
         state_number,
@@ -6788,6 +6787,7 @@ admin.post("/addDriverTransport", async (req, res) => {
     cubature = req.body.cubature,
     state_number = req.body.state_number,
     adr = req.body.adr,
+    userId = req.body.userId,
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   try {
     connect = await database.connection.getConnection();
@@ -6798,7 +6798,7 @@ admin.post("/addDriverTransport", async (req, res) => {
         description,
         type,
         maxweight,
-        userInfo.id,
+        userId,
         adr,
         cubature,
         state_number,
