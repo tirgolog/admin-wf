@@ -6786,13 +6786,14 @@ admin.post("/addDriverTransport", async (req, res) => {
     tech_passport_files = req.body.tech_passport_files,
     cubature = req.body.cubature,
     state_number = req.body.state_number,
+    transport_number = req.body.transport_number,
     adr = req.body.adr,
     userId = req.body.userId,
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "INSERT INTO users_transport SET name = ?,description = ?,type = ?,max_weight = ?,user_id = ?,adr = ?,cubature = ?,state_number = ?",
+      "INSERT INTO users_transport SET name = ?,description = ?,type = ?,max_weight = ?,user_id = ?,adr = ?,cubature = ?,state_number = ?, transport_number = ?",
       [
         name,
         description,
@@ -6802,6 +6803,7 @@ admin.post("/addDriverTransport", async (req, res) => {
         adr,
         cubature,
         state_number,
+        transport_number
       ]
     );
     if (rows.affectedRows) {
