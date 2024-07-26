@@ -3825,9 +3825,21 @@ users.get("/getMyOrdersClient", async (req, res) => {
       appData.data = await Promise.all(
         rows.map(async (item) => {
           let newItem = item;
-          newItem.transport_types = JSON.parse(item.transport_types);
+          try {
+            if (typeof item.transport_types === 'string') {
+                newItem.transport_types = JSON.parse(item.transport_types);
+            } else {
+                newItem.transport_types = item.transport_types;
+            }
+        } catch (error) {
+            console.error('Error parsing JSON:', error);
+            newItem.transport_types = null; // or handle it as needed
+        }
           const [orders_accepted] = await connect.query(
-            "SELECT ul.*,oa.price as priceorder,oa.one_day,oa.two_day,oa.three_day,oa.status_order FROM orders_accepted oa LEFT JOIN users_list ul ON ul.id = oa.user_id WHERE oa.order_id = ? ORDER BY oa.id DESC",
+            `SELECT ul.*, oa.price as priceorder, oa.one_day, oa.two_day, oa.three_day, oa.status_order 
+            FROM orders_accepted oa 
+            LEFT JOIN users_list ul ON ul.id = oa.user_id 
+            WHERE oa.order_id = ? ORDER BY oa.id DESC`,
             [item.id]
           );
           newItem.orders_accepted = await Promise.all(
