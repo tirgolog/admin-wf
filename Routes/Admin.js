@@ -2163,6 +2163,8 @@ admin.post("/saveUserInfo", async (req, res) => {
     birthday = req.body.birthday,
     country = req.body.country,
     city = req.body.city,
+    passport_files = req.body.passport_files,
+    driver_licanse_files = req.body.driver_licanse_files,
     id = req.body.id,
     appData = { status: false, timestamp: new Date().getTime() };
   try {
@@ -2172,6 +2174,21 @@ admin.post("/saveUserInfo", async (req, res) => {
       [name, new Date(birthday), country, city, id]
     );
     if (rows.affectedRows) {
+
+      for(let file of passport_files) {
+        await connect.query(
+          "INSERT INTO users_list_files SET user_id = ?,name = ?,type_file = ?",
+          [id, file.filename, "passport"]
+        );
+      }
+
+      for(let file of driver_licanse_files) {
+        await connect.query(
+          "INSERT INTO users_list_files SET user_id = ?,name = ?,type_file = ?",
+          [id, file.filename, "driver-license"]
+        );
+      }
+
       appData.data = rows;
       appData.status = true;
     } else {

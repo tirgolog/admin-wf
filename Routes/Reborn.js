@@ -207,6 +207,7 @@ reborn.post('/getUserInfo', async (req, res) => {
             const [files] = await connect.query('SELECT * FROM users_list_files WHERE user_id = ?', [rows[0].id]);
             appData.data.files = await Promise.all(files.map(async (file) => {
                 let newFile = file;
+                newFile.filename = file.name;
                 newFile.preview = fs.existsSync(process.env.FILES_PATCH +'tirgo/drivers/'+rows[0].id+'/'+ file.name)?process.env.SERVER_URL +'tirgo/drivers/'+rows[0].id+'/'+ file.name : null;
                 return newFile;
             }));
