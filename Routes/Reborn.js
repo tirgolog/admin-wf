@@ -79,7 +79,7 @@ reborn.post('/getAllDrivers', async (req, res) => {
 
               // Optional filter for is_subscribe
             if (isSubscribed) {
-                queryFilter += `AND to_subscription > CURDATE()
+                queryFilter += ` AND to_subscription > CURDATE()
                                 AND from_subscription IS NOT NULL
                                 AND to_subscription IS NOT NULL`;
             }
