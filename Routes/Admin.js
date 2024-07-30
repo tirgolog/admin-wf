@@ -2176,6 +2176,12 @@ admin.post("/saveUserInfo", async (req, res) => {
     if (rows.affectedRows) {
 
       for(let file of passport_files) {
+
+        await connect.query(
+          "DELETE FROM users_list_files WHERE user_id = ?, type_file = ?",
+          [id, "passport"]
+        );
+
         await connect.query(
           "INSERT INTO users_list_files SET user_id = ?,name = ?,type_file = ?",
           [id, file.filename, "passport"]
@@ -2183,6 +2189,12 @@ admin.post("/saveUserInfo", async (req, res) => {
       }
 
       for(let file of driver_licanse_files) {
+
+        await connect.query(
+          "DELETE FROM users_list_files WHERE user_id = ?, type_file = ?",
+          [id, "driver-license"]
+        );
+
         await connect.query(
           "INSERT INTO users_list_files SET user_id = ?,name = ?,type_file = ?",
           [id, file.filename, "driver-license"]
