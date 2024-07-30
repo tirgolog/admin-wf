@@ -2178,7 +2178,7 @@ admin.post("/saveUserInfo", async (req, res) => {
       for(let file of passport_files) {
 
         await connect.query(
-          "DELETE FROM users_list_files WHERE user_id = ?, type_file = ?",
+          "DELETE FROM users_list_files WHERE user_id = ? AND type_file = ?",
           [id, "passport"]
         );
 
@@ -2191,7 +2191,7 @@ admin.post("/saveUserInfo", async (req, res) => {
       for(let file of driver_licanse_files) {
 
         await connect.query(
-          "DELETE FROM users_list_files WHERE user_id = ?, type_file = ?",
+          "DELETE FROM users_list_files WHERE user_id = ? AND type_file = ?",
           [id, "driver-license"]
         );
 
