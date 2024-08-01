@@ -1097,7 +1097,8 @@ users.post("/codeverify", async (req, res) => {
         "UPDATE users_contacts SET verify = 1 WHERE text = ? AND user_type = 1 AND verify_code = ?",
         [phone, code]
       );
-      const token = jwt.sign({ id: rows[0].user_id }, process.env.SECRET_KEY, { expiresIn: '1440m' });
+      // const token = jwt.sign({ id: rows[0].user_id }, process.env.SECRET_KEY, { expiresIn: '1440m' });
+      const token = jwt.sign({ id: rows[0].user_id }, process.env.SECRET_KEY);
       const refreshToken = jwt.sign({ id: rows[0].user_id }, process.env.SECRET_KEY);
       const [setToken] = await connect.query(
         "UPDATE users_list SET date_last_login = ?, refresh_token = ? WHERE id = ?",
@@ -1141,6 +1142,46 @@ users.post("/codeverify", async (req, res) => {
     }
   }
 });
+
+users.post("/update-activity", async (req, res) => {
+  let connect,
+    appData = { status: false },
+    user_id = req.body.user_id;
+  try {
+    connect = await database.connection.getConnection();
+      
+   const [res] = await connect.query(
+      "INSERT INTO users_activity SET userid = ?, text = ?",
+      [
+        user_id,
+        "Произведен вход " +
+        req.headers["user-agent"].split("(")[1]?.replace(")", "") +
+        ", IP: " +
+        parseIp(req)?.replace("::ffff:", ""),
+      ]
+    );
+
+    if(res.affectedRows) {
+      appData.status = true;
+      res.status(200).json(appData);
+      socket.updateActivity("update-activity", "1");
+    } else {
+      appData.error = "Internal error";
+      appData.status = false;
+      res.status(403).json(appData);
+    }
+  } catch (err) {
+    console.log(err)
+    appData.status = false;
+    appData.error = err;
+    res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 
 users.post("/codeverifycation", async (req, res) => {
   let connect,
