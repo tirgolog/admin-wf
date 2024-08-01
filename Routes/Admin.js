@@ -4064,7 +4064,7 @@ admin.post("/agent/add-services", async (req, res) => {
     }
 
     const [rows] = await connect.query(
-      "SELECT * FROM users_contacts WHERE text = ? AND verify = 1",
+      "SELECT * FROM users_contacts WHERE text = ? ",
       [phone]
     );
     if (rows.length < 1) {
