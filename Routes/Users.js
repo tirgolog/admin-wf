@@ -1150,7 +1150,7 @@ users.post("/update-activity", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
       
-   const [res] = await connect.query(
+   const [response] = await connect.query(
       "INSERT INTO users_activity SET userid = ?, text = ?",
       [
         user_id,
@@ -1161,7 +1161,7 @@ users.post("/update-activity", async (req, res) => {
       ]
     );
 
-    if(res.affectedRows) {
+    if(response.affectedRows) {
       appData.status = true;
       res.status(200).json(appData);
       socket.updateActivity("update-activity", "1");
@@ -1299,40 +1299,40 @@ users.post("/codeverifyClient", async (req, res) => {
   }
 });
 
-users.use((req, res, next) => {
-  let token =
-    req.body.token ||
-    req.headers["token"] ||
-    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-  let appData = {};
-  if (token && token !== undefined && token !== 'undefined') {
-    jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
-      if (err) {
-        if (err.name === 'TokenExpiredError') {
-          appData["error"] = "Token has expired";
-          return res.status(401).json(appData);
-        } else {
-          console.error("JWT Verification Error:", err);
-          appData["error"] = "Token is invalid";
-          return res.status(401).json(appData);
-        }
-      } else {
-        // Check if token has expired
-        const currentTimestamp = Math.floor(Date.now() / 1000);
-        if (decoded.exp < currentTimestamp) {
-          appData["data"] = "Token has expired";
-          return res.status(401).json(appData);
-        }
-        // Attach user information from the decoded token to the request
-        req.user = decoded;
-        next();
-      }
-    });
-  } else {
-    appData["error"] = "Token is null";
-    res.status(401).json(appData);
-  }
-});
+// users.use((req, res, next) => {
+//   let token =
+//     req.body.token ||
+//     req.headers["token"] ||
+//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+//   let appData = {};
+//   if (token && token !== undefined && token !== 'undefined') {
+//     jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
+//       if (err) {
+//         if (err.name === 'TokenExpiredError') {
+//           appData["error"] = "Token has expired";
+//           return res.status(401).json(appData);
+//         } else {
+//           console.error("JWT Verification Error:", err);
+//           appData["error"] = "Token is invalid";
+//           return res.status(401).json(appData);
+//         }
+//       } else {
+//         // Check if token has expired
+//         const currentTimestamp = Math.floor(Date.now() / 1000);
+//         if (decoded.exp < currentTimestamp) {
+//           appData["data"] = "Token has expired";
+//           return res.status(401).json(appData);
+//         }
+//         // Attach user information from the decoded token to the request
+//         req.user = decoded;
+//         next();
+//       }
+//     });
+//   } else {
+//     appData["error"] = "Token is null";
+//     res.status(401).json(appData);
+//   }
+// });
 
 users.post("/saveDeviceToken", async (req, res) => {
   let connect,
