@@ -5542,4 +5542,50 @@ users.get("/active-order", async (req, res) => {
   }
 });
 
+users.get("/get-app-version", async (req, res) => {
+  let connect,
+    appData = { status: false };
+  const { appType } = req.query;
+  try {
+    connect = await database.connection.getConnection();
+
+    if(!appType) { 
+      appData.status = false;
+      appData.message = 'appType is required';
+      res.status(200).json(appData);
+      return;
+    }
+
+    if(appType != 'driver-android' || appType != 'driver-ios' || appType != 'client-android' || appType != 'clientios') { 
+      appData.status = false;
+      appData.message = 'invalid app type';
+      res.status(200).json(appData);
+      return;
+    }
+
+    const [rows] = await connect.query(
+      `SELECT * FROM app_versions
+      WHERE type = ?`,
+      [appType]
+    );
+    if (rows.length < 1) {
+      appData.status = false;
+      appData.data = rows;
+      res.status(400).json(appData);
+    } else {
+      appData.status = true;
+        appData.data = rows;
+        res.status(200).json(appData);
+    }
+  } catch (e) {
+    appData.status = false;
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 module.exports = users;
