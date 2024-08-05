@@ -5556,7 +5556,7 @@ users.get("/get-app-version", async (req, res) => {
       return;
     }
 
-    if(appType != 'driver-android' || appType != 'driver-ios' || appType != 'client-android' || appType != 'client-ios') { 
+    if(appType != 'driver-android' && appType != 'driver-ios' && appType != 'client-android' && appType != 'client-ios') { 
       appData.status = false;
       appData.message = 'invalid app type';
       res.status(200).json(appData);
