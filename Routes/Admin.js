@@ -3854,15 +3854,15 @@ admin.put("/services/:id", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const { id } = req.params;
-    const { name, code, price_uzs, price_kzs, rate, withoutSubscription } =
+    const { name, code, price_uzs, price_kzs, price_tir, rate, withoutSubscription } =
       req.body;
     if (!id || !name || !code || !price_uzs || !price_kzs || !rate) {
       appData.error = "All fields are required";
       return res.status(400).json(appData);
     }
     const [rows] = await connect.query(
-      `UPDATE services SET name = ? , price_uzs = ?, price_kzs = ?, rate = ?, code = ?, without_subscription = ? WHERE id = ?`,
-      [name, price_uzs, price_kzs, rate, code, withoutSubscription, id]
+      `UPDATE services SET name = ? , price_uzs = ?, price_kzs = ?, price_tir = ?, rate = ?, code = ?, without_subscription = ? WHERE id = ?`,
+      [name, price_uzs, price_kzs, price_tir, rate, code, withoutSubscription, id]
     );
     if (rows.affectedRows > 0) {
       appData.status = true;
@@ -3873,6 +3873,56 @@ admin.put("/services/:id", async (req, res) => {
       return res.status(404).json(appData);
     }
   } catch (err) {
+    appData.error = "Internal error";
+    res.status(500).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.patch("/service-change-price/:id", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  try {
+    connect = await database.connection.getConnection();
+    const { id } = req.params;
+    const { price_tir } = req.body;
+    if (!id || !price_tir) {
+      appData.error = "All fields are required";
+      return res.status(400).json(appData);
+    }
+
+    const [service] = await connect.query(
+      "SELECT * FROM services where id = ?",
+      [id]
+    );
+    if (!service.length) {
+      appData.error = "Услуги не найдены";
+      return res.status(400).json(appData);
+    }
+
+    const [rows] = await connect.query(
+      `UPDATE services SET price_tir = ? WHERE id = ?`,
+      [price_tir, id]
+    );
+    if (rows.affectedRows > 0) {
+      appData.status = true;
+
+      await connect.query(
+        `INSERT INTO service_price_history (price_tir, service_id) VALUES (?, ?)`,
+        [price_tir, id]
+      );
+
+      socket.updateAllMessages("update-services", "1");
+      return res.status(200).json(appData);
+    } else {
+      appData.error = "Ни одна запись не была обновлена";
+      return res.status(404).json(appData);
+    }
+  } catch (err) {
+    console.log(err)
     appData.error = "Internal error";
     res.status(500).json(appData);
   } finally {
@@ -3912,6 +3962,7 @@ admin.post("/services", async (req, res) => {
     code = req.body.code,
     price_uzs = req.body.price_uzs,
     price_kzs = req.body.price_kzs,
+    price_tir = req.body.price_tir,
     rate = req.body.rate,
     withoutSubscription = req.body.withoutSubscription,
     appData = { status: false };
@@ -3930,8 +3981,8 @@ admin.post("/services", async (req, res) => {
       res.status(400).json(appData);
     } else {
       const [services] = await connect.query(
-        "INSERT INTO services SET name = ?, code = ?, price_uzs = ?, price_kzs = ?, rate = ?, without_subscription = ?",
-        [name, code, price_uzs, price_kzs, rate, withoutSubscription]
+        "INSERT INTO services SET name = ?, code = ?, price_uzs = ?, price_kzs = ?, price_tir = ?, rate = ?, without_subscription = ?",
+        [name, code, price_uzs, price_kzs, price_tir, rate, withoutSubscription]
       );
       appData.status = true;
       appData.data = services;
@@ -3965,6 +4016,65 @@ admin.get("/services", async (req, res) => {
     if (subscription.length) {
       appData.status = true;
       appData.data = subscription;
+      res.status(200).json(appData);
+    } else {
+      appData.error = "Услуги не найдены";
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/services-price-history", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  const date = req.query.date;
+  
+  try {
+    connect = await database.connection.getConnection();
+    
+    // Initial query with LEFT JOIN
+    let query = `
+    SELECT 
+    s.*,
+    CASE 
+    WHEN s.id = sh.service_id THEN JSON_ARRAYAGG(
+        JSON_OBJECT(
+            'price', sh.price_tir,
+            'updated_at', sh.updated_at
+        )
+    )
+    ELSE JSON_ARRAY()
+    END AS price_history
+    FROM 
+        services s
+    LEFT JOIN 
+        service_price_history sh 
+    ON 
+        sh.service_id = s.id
+    `;
+    
+    // If a date is provided, add WHERE clause
+    if(date) {
+      query += ` WHERE sh.updated_at = ?`;
+    }
+
+    // Add GROUP BY after WHERE clause
+    query += ` GROUP BY s.id`;
+
+    // Execute the query
+    const [serviceHistory] = await connect.query(query, date ? [new Date(date)] : []);
+    
+    if (serviceHistory.length) {
+      appData.status = true;
+      appData.data = serviceHistory;
       res.status(200).json(appData);
     } else {
       appData.error = "Услуги не найдены";
