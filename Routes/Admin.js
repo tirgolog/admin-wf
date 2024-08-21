@@ -3899,7 +3899,7 @@ admin.patch("/service-change-price/:id", async (req, res) => {
       [id]
     );
     if (!service.length) {
-      appData.error = "Услуги не найдены";
+      appData.error = "Услуги не найдены"; 
       return res.status(400).json(appData);
     }
 
