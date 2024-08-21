@@ -3854,15 +3854,15 @@ admin.put("/services/:id", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const { id } = req.params;
-    const { name, code, price_uzs, price_kzs, price_tir, rate, withoutSubscription } =
+    const { name, code, price_uzs, price_kzs, price_tir, rate, withoutSubscription, comment } =
       req.body;
-    if (!id || !name || !code || !price_uzs || !price_kzs || !rate) {
+    if (!id || !name || !code || !price_uzs || !price_kzs || !price_tir || !rate || !comment) {
       appData.error = "All fields are required";
       return res.status(400).json(appData);
     }
     const [rows] = await connect.query(
-      `UPDATE services SET name = ? , price_uzs = ?, price_kzs = ?, price_tir = ?, rate = ?, code = ?, without_subscription = ? WHERE id = ?`,
-      [name, price_uzs, price_kzs, price_tir, rate, code, withoutSubscription, id]
+      `UPDATE services SET name = ? , price_uzs = ?, price_kzs = ?, price_tir = ?, rate = ?, code = ?, without_subscription = ?, comment = ? WHERE id = ?`,
+      [name, price_uzs, price_kzs, price_tir, rate, code, withoutSubscription, comment, id]
     );
     if (rows.affectedRows > 0) {
       appData.status = true;
@@ -3888,8 +3888,8 @@ admin.patch("/service-change-price/:id", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const { id } = req.params;
-    const { price_tir } = req.body;
-    if (!id || !price_tir) {
+    const { price_tir, price_uzs, price_kzs } = req.body;
+    if (!id || !price_tir || !price_uzs || !price_kzs) {
       appData.error = "All fields are required";
       return res.status(400).json(appData);
     }
@@ -3904,15 +3904,15 @@ admin.patch("/service-change-price/:id", async (req, res) => {
     }
 
     const [rows] = await connect.query(
-      `UPDATE services SET price_tir = ? WHERE id = ?`,
-      [price_tir, id]
+      `UPDATE services SET price_tir = ?, price_uzs = ?, price_kzs = ? WHERE id = ?`,
+      [price_tir, price_uzs, price_kzs, id]
     );
     if (rows.affectedRows > 0) {
       appData.status = true;
 
       await connect.query(
-        `INSERT INTO service_price_history (price_tir, service_id) VALUES (?, ?)`,
-        [price_tir, id]
+        `INSERT INTO service_price_history (price_tir, price_uzs, price_kzs, service_id) VALUES (?, ?, ?, ?)`,
+        [price_tir, price_uzs, price_kzs, id]
       );
 
       socket.updateAllMessages("update-services", "1");
@@ -3964,10 +3964,11 @@ admin.post("/services", async (req, res) => {
     price_kzs = req.body.price_kzs,
     price_tir = req.body.price_tir,
     rate = req.body.rate,
+    comment = req.body.comment,
     withoutSubscription = req.body.withoutSubscription,
     appData = { status: false };
   try {
-    if (!name || !price_uzs || !price_kzs || !rate || !code) {
+    if (!name || !price_uzs || !price_kzs || !price_tir || !rate || !code) {
       appData.error = "All fields are required";
       return res.status(400).json(appData);
     }
@@ -3981,8 +3982,8 @@ admin.post("/services", async (req, res) => {
       res.status(400).json(appData);
     } else {
       const [services] = await connect.query(
-        "INSERT INTO services SET name = ?, code = ?, price_uzs = ?, price_kzs = ?, price_tir = ?, rate = ?, without_subscription = ?",
-        [name, code, price_uzs, price_kzs, price_tir, rate, withoutSubscription]
+        "INSERT INTO services SET name = ?, code = ?, price_uzs = ?, price_kzs = ?, price_tir = ?, rate = ?, without_subscription = ?, comment = ?",
+        [name, code, price_uzs, price_kzs, price_tir, rate, withoutSubscription, comment]
       );
       appData.status = true;
       appData.data = services;
@@ -4009,8 +4010,10 @@ admin.get("/services", async (req, res) => {
     name, 
     price_uzs, 
     price_kzs, 
+    price_tir,
     rate, 
     code, 
+    comment,
     without_subscription
     FROM services`);
     if (subscription.length) {
