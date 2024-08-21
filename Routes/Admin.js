@@ -3856,7 +3856,7 @@ admin.put("/services/:id", async (req, res) => {
     const { id } = req.params;
     const { name, code, price_uzs, price_kzs, price_tir, rate, withoutSubscription, comment } =
       req.body;
-    if (!id || !name || !code || !price_uzs || !price_kzs || !price_tir || !rate || !comment) {
+    if (!id || !name || !code || !price_uzs || !price_kzs || !price_tir || !rate) {
       appData.error = "All fields are required";
       return res.status(400).json(appData);
     }
@@ -3889,7 +3889,7 @@ admin.patch("/service-change-price/:id", async (req, res) => {
     connect = await database.connection.getConnection();
     const { id } = req.params;
     const { price_tir, price_uzs, price_kzs } = req.body;
-    if (!id || !price_tir || !price_uzs || !price_kzs) {
+    if (!id || !price_uzs || !price_kzs) {
       appData.error = "All fields are required";
       return res.status(400).json(appData);
     }
@@ -3968,7 +3968,7 @@ admin.post("/services", async (req, res) => {
     withoutSubscription = req.body.withoutSubscription,
     appData = { status: false };
   try {
-    if (!name || !price_uzs || !price_kzs || !price_tir || !rate || !code) {
+    if (!name || !price_uzs || !price_kzs || !rate || !code) {
       appData.error = "All fields are required";
       return res.status(400).json(appData);
     }
