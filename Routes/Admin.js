@@ -4043,37 +4043,32 @@ admin.get("/services-price-history", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     
-    // Initial query with LEFT JOIN
+    // Subquery approach
     let query = `
     SELECT 
     s.*,
-    CASE 
-    WHEN s.id = sh.service_id THEN JSON_ARRAYAGG(
-        JSON_OBJECT(
+    COALESCE(
+      (
+        SELECT JSON_ARRAYAGG(
+          JSON_OBJECT(
             'price', sh.price_tir,
             'updated_at', sh.updated_at
+          )
         )
-    )
-    ELSE JSON_ARRAY()
-    END AS price_history
+        FROM service_price_history sh
+        WHERE sh.service_id = s.id
+        ${date ? `AND DATE(sh.updated_at) <= ?` : ""}
+      ),
+      JSON_ARRAY()
+    ) AS price_history
     FROM 
         services s
-    LEFT JOIN 
-        service_price_history sh 
-    ON 
-        sh.service_id = s.id
     `;
-    
-    // If a date is provided, add WHERE clause
-    if(date) {
-      query += ` WHERE sh.updated_at = ?`;
-    }
 
-    // Add GROUP BY after WHERE clause
     query += ` GROUP BY s.id`;
 
     // Execute the query
-    const [serviceHistory] = await connect.query(query, date ? [new Date(date)] : []);
+    const [serviceHistory] = await connect.query(query, date ? [new Date(date).toISOString().split('T')[0]] : []);
     
     if (serviceHistory.length) {
       appData.status = true;
@@ -4093,6 +4088,7 @@ admin.get("/services-price-history", async (req, res) => {
     }
   }
 });
+
 
 admin.post("/addDriverServices", async (req, res) => {
   let connect,
