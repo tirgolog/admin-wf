@@ -131,41 +131,41 @@ admin.post("/refreshToken", async (req, res) => {
   }
 });
 
-admin.use((req, res, next) => {
-  let token =
-    req.body.token ||
-    req.headers["token"] ||
-    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-  let appData = {};
-  if (token && token !== undefined && token !== 'undefined') {
-    jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
-      if (err) {
-        console.log('Admin middleware error', err.name)
-        if (err.name === 'TokenExpiredError') {
-          appData["error"] = "Token has expired";
-          return res.status(401).json(appData);
-        } else {
-          console.error("JWT Verification Error:", err);
-          appData["error"] = "Token is invalid";
-          return res.status(401).json(appData);
-        }
-      } else {
-        // Check if token has expired
-        const currentTimestamp = Math.floor(Date.now() / 1000);
-        if (decoded.exp < currentTimestamp) {
-          appData["data"] = "Token has expired";
-          return res.status(401).json(appData);
-        }
-        // Attach user information from the decoded token to the request
-        req.user = decoded;
-        next();
-      }
-    });
-  } else {
-    appData["error"] = "Token is null";
-    res.status(401).json(appData);
-  }
-});
+// admin.use((req, res, next) => {
+//   let token =
+//     req.body.token ||
+//     req.headers["token"] ||
+//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+//   let appData = {};
+//   if (token && token !== undefined && token !== 'undefined') {
+//     jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
+//       if (err) {
+//         console.log('Admin middleware error', err.name)
+//         if (err.name === 'TokenExpiredError') {
+//           appData["error"] = "Token has expired";
+//           return res.status(401).json(appData);
+//         } else {
+//           console.error("JWT Verification Error:", err);
+//           appData["error"] = "Token is invalid";
+//           return res.status(401).json(appData);
+//         }
+//       } else {
+//         // Check if token has expired
+//         const currentTimestamp = Math.floor(Date.now() / 1000);
+//         if (decoded.exp < currentTimestamp) {
+//           appData["data"] = "Token has expired";
+//           return res.status(401).json(appData);
+//         }
+//         // Attach user information from the decoded token to the request
+//         req.user = decoded;
+//         next();
+//       }
+//     });
+//   } else {
+//     appData["error"] = "Token is null";
+//     res.status(401).json(appData);
+//   }
+// });
 
 admin.get("/getAllAgent", async (req, res) => {
   let connect,
@@ -4042,33 +4042,40 @@ admin.get("/services-price-history", async (req, res) => {
   
   try {
     connect = await database.connection.getConnection();
-    
-    // Subquery approach
+  
     let query = `
-    SELECT 
-    s.*,
+    SELECT
+    s.id,
+    s.name,
+    s.code,
+    s.rate,
+    s.without_subscription,
     COALESCE(
-      (
-        SELECT JSON_ARRAYAGG(
-          JSON_OBJECT(
-            'price', sh.price_tir,
-            'updated_at', sh.updated_at
-          )
-        )
-        FROM service_price_history sh
-        WHERE sh.service_id = s.id
-        ${date ? `AND DATE(sh.updated_at) <= ?` : ""}
-      ),
-      JSON_ARRAY()
-    ) AS price_history
-    FROM 
-        services s
-    `;
+      sph.price_uzs,
+      s.price_uzs
+    ) AS price_uzs,
+    COALESCE(
+      sph.price_kzs,
+      s.price_kzs
+    ) AS price_kzs,
+    COALESCE(
+      sph.price_tir,
+      s.price_tir
+    ) AS price_tir
+  FROM
+    services s
+  LEFT JOIN (
+    SELECT *
+    FROM service_price_history
+    WHERE Date(updated_at) <= ?
+    ORDER BY id DESC
+    LIMIT 1
+  ) sph ON s.id = sph.service_id;
+    `
 
-    query += ` GROUP BY s.id`;
 
     // Execute the query
-    const [serviceHistory] = await connect.query(query, date ? [new Date(date).toISOString().split('T')[0]] : []);
+    const [serviceHistory] = await connect.query(query, [new Date(date).toISOString().split('T')[0]]);
     
     if (serviceHistory.length) {
       appData.status = true;
