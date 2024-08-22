@@ -3985,6 +3985,12 @@ admin.post("/services", async (req, res) => {
         "INSERT INTO services SET name = ?, code = ?, price_uzs = ?, price_kzs = ?, price_tir = ?, rate = ?, without_subscription = ?, comment = ?",
         [name, code, price_uzs, price_kzs, price_tir, rate, withoutSubscription, comment]
       );
+
+      await connect.query(
+        `INSERT INTO service_price_history (price_tir, price_uzs, price_kzs, service_id) VALUES (?, ?, ?, ?)`,
+        [price_tir, price_uzs, price_kzs, services.insertId]
+      );
+
       appData.status = true;
       appData.data = services;
       res.status(200).json(appData);
@@ -4050,32 +4056,44 @@ admin.get("/services-price-history", async (req, res) => {
     s.code,
     s.rate,
     s.without_subscription,
-    COALESCE(
-      sph.price_uzs,
-      s.price_uzs
-    ) AS price_uzs,
-    COALESCE(
-      sph.price_kzs,
-      s.price_kzs
-    ) AS price_kzs,
-    COALESCE(
-      sph.price_tir,
-      s.price_tir
-    ) AS price_tir
-  FROM
+    sph.price_uzs,
+    sph.price_kzs,
+    sph.price_tir,
+    sph.updated_at
+FROM
     services s
-  LEFT JOIN (
-    SELECT *
-    FROM service_price_history
-    WHERE Date(updated_at) <= ?
-    ORDER BY id DESC
-    LIMIT 1
-  ) sph ON s.id = sph.service_id;
+LEFT JOIN (
+    SELECT
+        service_id,
+        price_uzs,
+        price_kzs,
+        price_tir,
+        updated_at
+    FROM
+        service_price_history
+    WHERE
+        Date(updated_at) <= ?
+        AND (service_id, updated_at) IN (
+            SELECT
+                service_id,
+                MAX(updated_at)
+            FROM
+                service_price_history
+            WHERE
+                Date(updated_at) <= ?
+            GROUP BY
+                service_id
+        )
+    ORDER BY
+        updated_at DESC
+) sph ON s.id = sph.service_id
+WHERE
+    Date(s.createdAt) <= ?;
+;
     `
 
-
     // Execute the query
-    const [serviceHistory] = await connect.query(query, [new Date(date).toISOString().split('T')[0]]);
+    const [serviceHistory] = await connect.query(query, [new Date(date).toISOString().split('T')[0], new Date(date).toISOString().split('T')[0], new Date(date).toISOString().split('T')[0]]);
     
     if (serviceHistory.length) {
       appData.status = true;
@@ -4088,7 +4106,7 @@ admin.get("/services-price-history", async (req, res) => {
   } catch (e) {
     console.log(e);
     appData.error = e.message;
-    res.status(400).json(appData);
+    res.status(400).json(appData);  
   } finally {
     if (connect) {
       connect.release();
