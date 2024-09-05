@@ -55,7 +55,7 @@ admin.post("/loginAdmin", async (req, res) => {
     );
     if (rows.length) {
       const token = jwt.sign({ id: rows[0].id }, process.env.SECRET_KEY, {
-        expiresIn: "1440m",
+        expiresIn: "1m",
       });
       const refreshToken = jwt.sign({ id: rows[0].id }, process.env.SECRET_KEY);
       const [setToken] = await connect.query(
