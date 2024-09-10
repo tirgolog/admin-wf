@@ -4165,6 +4165,7 @@ admin.post("/addDriverServices", async (req, res) => {
         if (result.affectedRows > 0) {
           appData.status = true;
           socket.updateAllMessages("update-alpha-balance", "1");
+          socket.updateAllMessages("update-service-request", "1");
           res.status(200).json(appData);
         }
       } else {
