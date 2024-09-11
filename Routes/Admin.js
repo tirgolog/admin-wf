@@ -1620,7 +1620,7 @@ admin.post("/getAllAdmins", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "SELECT * FROM users_list WHERE user_type = 3 OR user_type = 4"
+      "SELECT * FROM users_list WHERE user_type = 3 OR user_type = 4 OR user_type = 5"
     );
     if (rows.length) {
       appData.data = rows;
