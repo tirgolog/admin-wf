@@ -170,10 +170,11 @@ admin.use((req, res, next) => {
 admin.get("/getAllAgent", async (req, res) => {
   let connect,
     appData = { status: false };
+    const userType = req.query.userType ? req.query.userType : 4;
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "SELECT * FROM users_list WHERE user_type = 4 ORDER BY id DESC"
+      `SELECT * FROM users_list WHERE user_type = ${userType} ORDER BY id DESC`
     );
     if (rows.length) {
       appData.data = rows;
@@ -1677,6 +1678,9 @@ admin.post("/addAdmin", async (req, res) => {
     const [roleAgent] = await connect.query(
       "SELECT * FROM role_user where name ='Агент'"
     );
+    const [roleAgentTransport] = await connect.query(
+      "SELECT * FROM role_user where name ='Агент транспортной компании'"
+    );
     if (roleAgent[0].id == role) {
       if (editaid > 0) {
         if (password === "") {
@@ -1700,6 +1704,34 @@ admin.post("/addAdmin", async (req, res) => {
         const [rows] = await connect.query(
           "INSERT INTO users_list SET phone = ?,name = ?,username = ?,role = ?,password = ?,user_type = ?",
           [phone, name, username, role, password, 4]
+        );
+        if (rows.affectedRows) {
+          appData.status = true;
+        }
+      }
+    } else if (roleAgentTransport[0].id == role) {
+      if (editaid > 0) {
+        if (password === "") {
+          const [edit] = await connect.query(
+            "UPDATE users_list SET phone = ?,name = ?,username = ?,role = ?,user_type = ?  WHERE id = ?",
+            [phone, name, username, role, 5, editaid]
+          );
+          if (edit.affectedRows) {
+            appData.status = true;
+          }
+        } else {
+          const [edit] = await connect.query(
+            "UPDATE users_list SET phone = ?,name = ?,username = ?,role = ?,password = ?,user_type = ? WHERE id = ?",
+            [phone, name, username, role, password, 5, editaid]
+          );
+          if (edit.affectedRows) {
+            appData.status = true;
+          }
+        }
+      } else {
+        const [rows] = await connect.query(
+          "INSERT INTO users_list SET phone = ?,name = ?,username = ?,role = ?,password = ?,user_type = ?",
+          [phone, name, username, role, password, 5]
         );
         if (rows.affectedRows) {
           appData.status = true;
