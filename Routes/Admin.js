@@ -2499,7 +2499,7 @@ admin.get("/checkSessionAdmin", async function (req, res) {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "SELECT * FROM users_list WHERE id = ? AND  (user_type = 3 OR user_type = 4)  AND ban <> 1",
+      "SELECT * FROM users_list WHERE id = ? AND  (user_type = 3 OR user_type = 4 OR user_type = 5)  AND ban <> 1",
       [userInfo.id]
     );
     if (rows.length) {
