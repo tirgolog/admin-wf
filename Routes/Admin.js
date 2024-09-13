@@ -3799,6 +3799,45 @@ admin.post("/connectDriverToAgent", async (req, res) => {
   }
 });
 
+admin.post("/removeDriverFromAgent", async (req, res) => {
+  let connect,
+    appData = { status: false };
+  const { user_id } = req.body;
+  try {
+    connect = await database.connection.getConnection();
+    const [driver] = await connect.query(
+      "SELECT * FROM users_list where id=? AND user_type = 1 AND ban <> 1 AND deleted <> 1 ",
+      [user_id]
+    );
+    if (driver[0].agent_id) {
+
+      const [userUpdate] = await connect.query(
+        "UPDATE users_list SET agent_id = ? WHERE id = ?",
+        [null, user_id]
+      );
+      if (userUpdate.affectedRows == 1) {
+        appData.status = true;
+        res.status(200).json(appData);
+      } else {
+        appData.error = "Невозможно обновить данные пользователя";
+        appData.status = false;
+        res.status(400).json(appData);
+      }
+    } else {
+      appData.error = "У этого водителя нет агента";
+      appData.status = false;
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 admin.post("/subscription-history", async (req, res) => {
   let connect,
     appData = { status: false };
