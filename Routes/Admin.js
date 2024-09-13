@@ -50,7 +50,7 @@ admin.post("/loginAdmin", async (req, res) => {
     password = crypto.createHash("md5").update(password).digest("hex");
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "SELECT * FROM users_list WHERE username = ? AND password = ? AND (user_type = 3 OR user_type = 4) AND ban <> 1",
+      "SELECT * FROM users_list WHERE username = ? AND password = ? AND (user_type = 3 OR user_type = 4 OR user_type = 5) AND ban <> 1",
       [login, password]
     );
     if (rows.length) {
@@ -170,11 +170,11 @@ admin.use((req, res, next) => {
 admin.get("/getAllAgent", async (req, res) => {
   let connect,
     appData = { status: false };
-    const userType = req.query.userType ? req.query.userType : 4;
+    const userType = req.query.userType;
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      `SELECT * FROM users_list WHERE user_type = ${userType} ORDER BY id DESC`
+      `SELECT * FROM users_list ${userType ? `WHERE user_type = ${userType}` : ''} ORDER BY id DESC`
     );
     if (rows.length) {
       appData.data = rows;
