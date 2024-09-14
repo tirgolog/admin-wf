@@ -174,7 +174,7 @@ admin.get("/getAllAgent", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      `SELECT * FROM users_list ${userType ? `WHERE user_type = ${userType}` : 'user_type In (4, 5)'} ORDER BY id DESC`
+      `SELECT * FROM users_list WHERE ${userType ? `user_type = ${userType}` : 'user_type IN (4, 5)'} ORDER BY id DESC`
     );
     if (rows.length) {
       appData.data = rows;
