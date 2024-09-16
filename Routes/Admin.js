@@ -5879,6 +5879,52 @@ admin.get("/messages/bot-users", async (req, res) => {
   }
 });
 
+admin.get('/messages/tms-users', async (req, res) => {
+  let connect,
+    appData = { status: false };
+  try {
+    
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(`
+       SELECT 
+       tms.id,
+       tms.name,
+       (
+           SELECT JSON_ARRAYAGG(
+               JSON_OBJECT(
+                   'id', d.id,
+                   'firstName', sbu.first_name,
+                   'last_name', sbu.last_name,
+                   'phoneNumber', sbu.phone_number,
+                   'tgUsername', sbu.tg_username,
+                   'chatId', sbu.chat_id
+               )
+           )
+           FROM users_list d
+           LEFT JOIN services_bot_users sbu ON sbu.user_id = d.id
+           WHERE d.user_type = 1 AND d.agent_id = tms.id
+       ) AS drivers
+       FROM 
+           users_list tms
+       WHERE 
+           tms.user_type = 5
+       ORDER BY 
+           tms.id DESC;`);
+    appData.status = true;
+    appData.data = rows;
+    res.status(200).json(appData);
+
+  } catch (err) {
+    console.log(err);
+    appData.error = err.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 admin.get("/messages/by-bot-user", async (req, res) => {
   let connect,
     appData = { status: false },
