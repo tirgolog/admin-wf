@@ -1445,7 +1445,7 @@ admin.post("/addUser", async (req, res) => {
     } else {
       if (data.agent_id) {
         const [agent] = await connect.query(
-          "SELECT * FROM users_list where  user_type=4 AND id=? ",
+          "SELECT * FROM users_list where  user_type IN (4, 5) AND id=? ",
           [data.agent_id]
         );
         if (agent.length > 0) {
