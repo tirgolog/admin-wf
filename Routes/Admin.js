@@ -5896,7 +5896,9 @@ admin.get('/messages/tms-users', async (req, res) => {
        sbu.chat_id as chatId,
        (SELECT created_at from service_bot_message 
         WHERE sender_user_id = ul.id OR receiver_user_id = ul.id 
-        ORDER BY created_at DESC LIMIT 1) as lastMessageDate
+        ORDER BY created_at DESC LIMIT 1) as lastMessageDate,
+        tms.id as tmsId,
+        tms.name as tmsName
       FROM users_list ul
       LEFT JOIN services_bot_users sbu ON sbu.user_id = ul.id
       LEFT JOIN users_list tms ON tms.id = ul.agent_id
