@@ -5883,33 +5883,25 @@ admin.get('/messages/tms-users', async (req, res) => {
   let connect,
     appData = { status: false };
   try {
-    
+    const { tmsId } = req.query;
     connect = await database.connection.getConnection();
-    const [rows] = await connect.query(`
-       SELECT 
-       tms.id,
-       tms.name,
-       (
-           SELECT JSON_ARRAYAGG(
-               JSON_OBJECT(
-                   'id', d.id,
-                   'firstName', sbu.first_name,
-                   'last_name', sbu.last_name,
-                   'phoneNumber', sbu.phone_number,
-                   'tgUsername', sbu.tg_username,
-                   'chatId', sbu.chat_id
-               )
-           )
-           FROM users_list d
-           LEFT JOIN services_bot_users sbu ON sbu.user_id = d.id
-           WHERE d.user_type = 1 AND d.agent_id = tms.id
-       ) AS drivers
-       FROM 
-           users_list tms
-       WHERE 
-           tms.user_type = 5
-       ORDER BY 
-           tms.id DESC;`);
+    const [rows] = await connect.query(`       
+      SELECT
+       ul.id,
+       ul.name,
+       sbu.first_name as firstName,
+       sbu.last_name as lastName,
+       sbu.phone_number as phoneNumber,
+       sbu.tg_username as tgUsername,
+       sbu.chat_id as chatId,
+       (SELECT created_at from service_bot_message 
+        WHERE sender_user_id = ul.id OR receiver_user_id = ul.id 
+        ORDER BY created_at DESC LIMIT 1) as lastMessageDate
+      FROM users_list ul
+      LEFT JOIN services_bot_users sbu ON sbu.user_id = ul.id
+      LEFT JOIN users_list tms ON tms.id = ul.agent_id
+      WHERE user_type = 1 AND agent_id IS NOT NULL AND tms.user_type = 5 ${tmsId ? ` AND tms.id = ${tmsId}` : ''}
+      ORDER BY lastMessageDate DESC`);
     appData.status = true;
     appData.data = rows;
     res.status(200).json(appData);
