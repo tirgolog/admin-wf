@@ -5912,7 +5912,7 @@ admin.get("/messages/by-bot-user", async (req, res) => {
       receiver_user_id receiverUserId,
       created_at createdAt
       FROM service_bot_message
-      WHERE sender_user_id = ${userId} OR receiver_user_id = ${userId}
+      WHERE sender_user_id = ${userId} OR receiver_user_id = ${userId} AND deleted = false
       ORDER BY created_at DESC LIMIT ${from}, ${limit}
     `);
       await connect.query(`
