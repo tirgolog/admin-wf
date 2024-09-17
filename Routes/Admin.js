@@ -5879,46 +5879,6 @@ admin.get("/messages/bot-users", async (req, res) => {
   }
 });
 
-admin.get('/messages/tms-users', async (req, res) => {
-  let connect,
-    appData = { status: false };
-  try {
-    const { tmsId } = req.query;
-    connect = await database.connection.getConnection();
-    const [rows] = await connect.query(`       
-      SELECT
-       ul.id,
-       ul.name,
-       sbu.first_name as firstName,
-       sbu.last_name as lastName,
-       sbu.phone_number as phoneNumber,
-       sbu.tg_username as tgUsername,
-       sbu.chat_id as chatId,
-       (SELECT created_at from service_bot_message 
-        WHERE sender_user_id = ul.id OR receiver_user_id = ul.id 
-        ORDER BY created_at DESC LIMIT 1) as lastMessageDate,
-        tms.id as tmsId,
-        tms.name as tmsName
-      FROM users_list ul
-      LEFT JOIN services_bot_users sbu ON sbu.user_id = ul.id
-      LEFT JOIN users_list tms ON tms.id = ul.agent_id
-      WHERE user_type = 1 AND agent_id IS NOT NULL AND tms.user_type = 5 ${tmsId ? ` AND tms.id = ${tmsId}` : ''}
-      ORDER BY lastMessageDate DESC`);
-    appData.status = true;
-    appData.data = rows;
-    res.status(200).json(appData);
-
-  } catch (err) {
-    console.log(err);
-    appData.error = err.message;
-    res.status(400).json(appData);
-  } finally {
-    if (connect) {
-      connect.release();
-    }
-  }
-});
-
 admin.get("/messages/by-bot-user", async (req, res) => {
   let connect,
     appData = { status: false },
@@ -6003,6 +5963,90 @@ admin.get("/messages/by-bot-user", async (req, res) => {
     }
   }
 })
+
+admin.get('/messages/tms-users', async (req, res) => {
+  let connect,
+    appData = { status: false };
+  try {
+    const { tmsId } = req.query;
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query(`       
+      SELECT
+       ul.id,
+       ul.name,
+       sbu.first_name as firstName,
+       sbu.last_name as lastName,
+       sbu.phone_number as phoneNumber,
+       sbu.tg_username as tgUsername,
+       sbu.chat_id as chatId,
+       (SELECT created_at from service_bot_message 
+        WHERE sender_user_id = ul.id OR receiver_user_id = ul.id 
+        ORDER BY created_at DESC LIMIT 1) as lastMessageDate,
+        tms.id as tmsId,
+        tms.name as tmsName
+      FROM users_list ul
+      LEFT JOIN services_bot_users sbu ON sbu.user_id = ul.id
+      LEFT JOIN users_list tms ON tms.id = ul.agent_id
+      WHERE ul.user_type = 1 AND ul.agent_id IS NOT NULL AND tms.user_type = 5 ${tmsId ? ` AND tms.id = ${tmsId}` : ''}
+      ORDER BY lastMessageDate DESC`);
+    appData.status = true;
+    appData.data = rows;
+    res.status(200).json(appData);
+
+  } catch (err) {
+    console.log(err);
+    appData.error = err.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.post("/message/by-tms-user", async (req, res) => {
+  let appData = { status: false };
+  let connect;
+  let { messageType, message, driverId } = req.body;
+
+  try {
+    connect = await database.connection.getConnection();
+
+      const insertResult = await connect.query(
+        `
+      INSERT INTO service_bot_message set 
+        message_type = ?,
+        message = ?,
+        message_sender_type = ?,
+        sender_user_id = ?
+      `,
+        [
+          messageType,
+          message,
+          'tms-user',
+          driverId
+        ]
+      );
+      if (insertResult[0].affectedRows) {
+        socket.updateAllMessages('tms-text', JSON.stringify({ driverId, text: message, textType: messageType, insertId: insertResult[0].insertId }));
+        appData.data = insertResult;
+        appData.status = true;
+        res.status(200).json(appData);
+      } else {
+        appData.status = false;
+        res.status(400).json(appData);
+      }
+  
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
 
 admin.get("/excel/agent-tirgo-balance-transactions", async (req, res) => {
   let connect,
