@@ -5693,16 +5693,28 @@ admin.delete("/message/bot-user", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
 
+    const [driver] = await connect.query(`
+    SELECT 
+    u.id, 
+    tms.user_type as "agentUserType",
+    tms.id as "agentId"
+    FROM users_list u
+    LEFT JOIN users_list tms on tms.id = u.agent_id
+    WHERE u.id = ${receiverUserId}`);
+
     const [botUser] = await connect.query(`
     SELECT user_id, chat_id FROM services_bot_users WHERE user_id = ${receiverUserId}`);
     // senderBotId,
-    if (!botUser.length) {
+    if (!botUser.length && driver[0].agentUserType !== 5) {
       appData.error = 'User not registered in bot'
       appData.status = false;
       res.status(400).json(appData);
     } else {
       let receiverBotId = botUser[0]?.chat_id;
       socket.emit(14, 'user-delete-message', JSON.stringify({ userChatId: receiverBotId, messageId }));
+      if(driver[0]?.agentUserType === 5) {
+        socket.emit(driver[0]?.agentId, 'user-text', JSON.stringify({ userId: driver[0]?.id, userChatId: receiverBotId, text: message, insertId: insertResult[0].insertId }));
+      }
       appData.status = true;
       res.status(200).json(appData);
     }
@@ -5730,16 +5742,28 @@ admin.put("/message/bot-user", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
 
+    const [driver] = await connect.query(`
+    SELECT 
+    u.id, 
+    tms.user_type as "agentUserType",
+    tms.id as "agentId"
+    FROM users_list u
+    LEFT JOIN users_list tms on tms.id = u.agent_id
+    WHERE u.id = ${receiverUserId}`);
+
     const [botUser] = await connect.query(`
     SELECT user_id, chat_id FROM services_bot_users WHERE user_id = ${receiverUserId}`);
     // senderBotId,
-    if (!botUser.length) {
+    if (!botUser.length && driver[0].agentUserType !== 5) {
       appData.error = 'User not registered in bot'
       appData.status = false;
       res.status(400).json(appData);
     } else {
       let receiverBotId = botUser[0]?.chat_id;
       socket.emit(14, 'user-edit-message', JSON.stringify({ userChatId: receiverBotId, text: message, messageId }));
+      if(driver[0]?.agentUserType === 5) {
+        socket.emit(driver[0]?.agentId, 'user-text', JSON.stringify({ userId: driver[0]?.id, userChatId: receiverBotId, text: message, insertId: insertResult[0].insertId }));
+      }
       appData.status = true;
       res.status(200).json(appData);
     }
@@ -5774,10 +5798,20 @@ admin.post("/reply-message/bot-user", async (req, res) => {
       res.status(400).json(appData);
       return
     }
+
+    const [driver] = await connect.query(`
+    SELECT 
+    u.id, 
+    tms.user_type as "agentUserType",
+    tms.id as "agentId"
+    FROM users_list u
+    LEFT JOIN users_list tms on tms.id = u.agent_id
+    WHERE u.id = ${receiverUserId}`);
+
     const [botUser] = await connect.query(`
     SELECT user_id, chat_id FROM services_bot_users WHERE user_id = ${receiverUserId}`);
     // senderBotId,
-    if (!botUser.length) {
+    if (!botUser.length && driver[0].agentUserType !== 5) {
       appData.error = 'User not registered in bot'
       appData.status = false;
       res.status(400).json(appData);
@@ -5810,6 +5844,9 @@ admin.post("/reply-message/bot-user", async (req, res) => {
       ]);
       if (insertResult[0].affectedRows) {
         socket.emit(14, 'user-reply', JSON.stringify({ userChatId: receiverBotId, text: message, replyMessageId, insertId: insertResult[0].insertId }));
+        if(driver[0]?.agentUserType === 5) {
+          socket.emit(driver[0]?.agentId, 'user-text', JSON.stringify({ userId: driver[0]?.id, userChatId: receiverBotId, text: message, insertId: insertResult[0].insertId }));
+        }
         appData.data = insertResult;
         appData.status = true;
         res.status(200).json(appData);
@@ -6050,6 +6087,65 @@ admin.post("/message/by-tms-user", async (req, res) => {
       }
   
   } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.post("/reply-message/tms-user", async (req, res) => {
+  let appData = { status: false };
+  let connect;
+  let {
+    messageType,
+    message,
+    replyMessageId,
+    replyMessage,
+    driverId
+  } = req.body;
+
+  try {
+    connect = await database.connection.getConnection();
+    if (!messageType || !message || !replyMessageId || !replyMessage) {
+      appData.status = false;
+      appData.error = 'All fields are required!'
+      res.status(400).json(appData);
+      return
+    }
+
+      const insertResult = await connect.query(`
+      INSERT INTO service_bot_message set 
+        message_type = ?,
+        message = ?,
+        message_sender_type = ?,
+        sender_user_id = ?,
+        is_reply = ?,
+        replied_message_id = ?,
+        replied_message = ?
+      `, [
+        messageType,
+        message,
+        'tms-user',
+        driverId,
+        true,
+        replyMessageId,
+        replyMessage
+      ]);
+      if (insertResult[0].affectedRows) {
+          socket.emit(driver[0]?.agentId, 'user-text', JSON.stringify({ userId: driverId, text: message, insertId: insertResult[0].insertId }));
+        appData.data = insertResult;
+        appData.status = true;
+        res.status(200).json(appData);
+      } else {
+        appData.status = false;
+        res.status(400).json(appData);
+      }
+
+    } catch (e) {
     console.log(e);
     appData.error = e.message;
     res.status(400).json(appData);
