@@ -5618,10 +5618,19 @@ admin.post("/message/bot-user", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
 
+    const [driver] = await connect.query(`
+    SELECT 
+    u.id, 
+    tms.user_type as "agentUserType",
+    tms.id as "agentId"
+    FROM uses_list 
+    LEFT JOIN users_list tms on tms.id = u.agent_id
+    WHERE u.id = ${receiverUserId}`);
+
     const [botUser] = await connect.query(`
     SELECT user_id, chat_id FROM services_bot_users WHERE user_id = ${receiverUserId}`);
     // senderBotId,
-    if (!botUser.length) {
+    if (!botUser.length && driver[0].agentUserType !== 5) {
       appData.error = "User not registered in bot";
       appData.status = false;
       res.status(400).json(appData);
@@ -5651,6 +5660,9 @@ admin.post("/message/bot-user", async (req, res) => {
       );
       if (insertResult[0].affectedRows) {
         socket.emit(14, 'user-text', JSON.stringify({ userChatId: receiverBotId, text: message, insertId: insertResult[0].insertId }));
+        if(driver[0]?.agentUserType === 5) {
+          socket.emit(driver[0]?.agentId, 'user-text', JSON.stringify({ userChatId: receiverBotId, text: message, insertId: insertResult[0].insertId }));
+        }
         appData.data = insertResult;
         appData.status = true;
         res.status(200).json(appData);
