@@ -5623,7 +5623,7 @@ admin.post("/message/bot-user", async (req, res) => {
     u.id, 
     tms.user_type as "agentUserType",
     tms.id as "agentId"
-    FROM uses_list 
+    FROM users_list 
     LEFT JOIN users_list tms on tms.id = u.agent_id
     WHERE u.id = ${receiverUserId}`);
 
