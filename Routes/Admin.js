@@ -5762,7 +5762,7 @@ admin.put("/message/bot-user", async (req, res) => {
       let receiverBotId = botUser[0]?.chat_id;
       socket.emit(14, 'user-edit-message', JSON.stringify({ userChatId: receiverBotId, text: message, messageId }));
       if(driver[0]?.agentUserType === 5) {
-        socket.emit(driver[0]?.agentId, 'user-edit-text', JSON.stringify({ userId: driver[0]?.id, userChatId: receiverBotId, message, messageType, messageId, insertId: insertResult[0].insertId }));
+        socket.emit(driver[0]?.agentId, 'user-edit-text', JSON.stringify({ userId: driver[0]?.id, userChatId: receiverBotId, message, messageType, messageId }));
       }
       appData.status = true;
       res.status(200).json(appData);
