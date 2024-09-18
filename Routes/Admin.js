@@ -6080,7 +6080,7 @@ admin.post("/message/by-tms-user", async (req, res) => {
         ]
       );
       if (insertResult[0].affectedRows) {
-        socket.updateAllMessages('tms-text', JSON.stringify({ driverId, text: message, textType: messageType, insertId: insertResult[0].insertId }));
+        socket.updateAllMessages('tms-text', JSON.stringify({ userId: driverId, message, messageType, insertId: insertResult[0].insertId }));
         appData.data = insertResult;
         appData.status = true;
         res.status(200).json(appData);
