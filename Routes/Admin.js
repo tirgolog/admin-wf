@@ -5661,7 +5661,7 @@ admin.post("/message/bot-user", async (req, res) => {
       if (insertResult[0].affectedRows) {
         socket.emit(14, 'user-text', JSON.stringify({ userChatId: receiverBotId, text: message, insertId: insertResult[0].insertId }));
         if(driver[0]?.agentUserType === 5) {
-          socket.emit(driver[0]?.agentId, 'user-text', JSON.stringify({ userChatId: receiverBotId, text: message, insertId: insertResult[0].insertId }));
+          socket.emit(driver[0]?.agentId, 'user-text', JSON.stringify({ userId: driver[0]?.id, userChatId: receiverBotId, text: message, insertId: insertResult[0].insertId }));
         }
         appData.data = insertResult;
         appData.status = true;
