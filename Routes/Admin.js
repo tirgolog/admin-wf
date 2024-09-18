@@ -5661,7 +5661,7 @@ admin.post("/message/bot-user", async (req, res) => {
       if (insertResult[0].affectedRows) {
         socket.emit(14, 'user-text', JSON.stringify({ userChatId: receiverBotId, text: message, insertId: insertResult[0].insertId }));
         if(driver[0]?.agentUserType === 5) {
-          socket.emit(driver[0]?.agentId, 'user-text', JSON.stringify({ userId: driver[0]?.id, userChatId: receiverBotId, text: message, insertId: insertResult[0].insertId }));
+          socket.emit(driver[0]?.agentId, 'user-text', JSON.stringify({ userId: driver[0]?.id, userChatId: receiverBotId, message, messageType, insertId: insertResult[0].insertId }));
         }
         appData.data = insertResult;
         appData.status = true;
@@ -5713,7 +5713,7 @@ admin.delete("/message/bot-user", async (req, res) => {
       let receiverBotId = botUser[0]?.chat_id;
       socket.emit(14, 'user-delete-message', JSON.stringify({ userChatId: receiverBotId, messageId }));
       if(driver[0]?.agentUserType === 5) {
-        socket.emit(driver[0]?.agentId, 'user-text', JSON.stringify({ userId: driver[0]?.id, userChatId: receiverBotId, text: message, insertId: insertResult[0].insertId }));
+        socket.emit(driver[0]?.agentId, 'user-delete-text', JSON.stringify({ userId: driver[0]?.id, userChatId: receiverBotId, messageId, insertId: insertResult[0].insertId }));
       }
       appData.status = true;
       res.status(200).json(appData);
@@ -5762,7 +5762,7 @@ admin.put("/message/bot-user", async (req, res) => {
       let receiverBotId = botUser[0]?.chat_id;
       socket.emit(14, 'user-edit-message', JSON.stringify({ userChatId: receiverBotId, text: message, messageId }));
       if(driver[0]?.agentUserType === 5) {
-        socket.emit(driver[0]?.agentId, 'user-text', JSON.stringify({ userId: driver[0]?.id, userChatId: receiverBotId, text: message, insertId: insertResult[0].insertId }));
+        socket.emit(driver[0]?.agentId, 'user-edit-text', JSON.stringify({ userId: driver[0]?.id, userChatId: receiverBotId, message, messageType, messageId, insertId: insertResult[0].insertId }));
       }
       appData.status = true;
       res.status(200).json(appData);
@@ -5845,7 +5845,7 @@ admin.post("/reply-message/bot-user", async (req, res) => {
       if (insertResult[0].affectedRows) {
         socket.emit(14, 'user-reply', JSON.stringify({ userChatId: receiverBotId, text: message, replyMessageId, insertId: insertResult[0].insertId }));
         if(driver[0]?.agentUserType === 5) {
-          socket.emit(driver[0]?.agentId, 'user-text', JSON.stringify({ userId: driver[0]?.id, userChatId: receiverBotId, text: message, insertId: insertResult[0].insertId }));
+          socket.emit(driver[0]?.agentId, 'user-reply-text', JSON.stringify({ userId: driver[0]?.id, userChatId: receiverBotId, message, messageType,  replyMessageId, replyMessage, insertId: insertResult[0].insertId }));
         }
         appData.data = insertResult;
         appData.status = true;
@@ -6029,10 +6029,13 @@ admin.get('/messages/tms-users', async (req, res) => {
        sbu.tg_username as tgUsername,
        sbu.chat_id as chatId,
        (SELECT created_at from service_bot_message 
-        WHERE sender_user_id = ul.id OR receiver_user_id = ul.id 
-        ORDER BY created_at DESC LIMIT 1) as lastMessageDate,
-        tms.id as tmsId,
-        tms.name as tmsName
+       WHERE sender_user_id = ul.id OR receiver_user_id = ul.id 
+       ORDER BY created_at DESC LIMIT 1) as lastMessageDate,
+       (SELECT COUNT(*) 
+       FROM service_bot_message 
+       WHERE (sender_user_id = ul.id OR receiver_user_id = ul.id) AND is_read = false) AS unreadMessagesCount,
+       tms.id as tmsId,
+       tms.name as tmsName
       FROM users_list ul
       LEFT JOIN services_bot_users sbu ON sbu.user_id = ul.id
       LEFT JOIN users_list tms ON tms.id = ul.agent_id
@@ -6136,7 +6139,7 @@ admin.post("/reply-message/tms-user", async (req, res) => {
         replyMessage
       ]);
       if (insertResult[0].affectedRows) {
-          socket.emit(driver[0]?.agentId, 'user-text', JSON.stringify({ userId: driverId, text: message, insertId: insertResult[0].insertId }));
+          socket.emit(driver[0]?.agentId, 'user-text', JSON.stringify({ userId: driverId, message, messageType, replyMessageId, replyMessage, insertId: insertResult[0].insertId }));
         appData.data = insertResult;
         appData.status = true;
         res.status(200).json(appData);
