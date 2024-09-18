@@ -5908,7 +5908,7 @@ admin.get("/messages/bot-users", async (req, res) => {
         ORDER BY created_at DESC LIMIT 1) as lastMessageDate,
       (SELECT COUNT(*) 
       FROM service_bot_message 
-      WHERE (sender_user_id = ul.id OR receiver_user_id = ul.id) AND is_read = false) AS unreadMessagesCount
+      WHERE sender_user_id = ul.id AND is_read = false) AS unreadMessagesCount
     FROM services_bot_users sbu
     LEFT JOIN users_list ul on ul.id = sbu.user_id
     ORDER BY lastMessageDate DESC;
@@ -6033,7 +6033,7 @@ admin.get('/messages/tms-users', async (req, res) => {
        ORDER BY created_at DESC LIMIT 1) as lastMessageDate,
        (SELECT COUNT(*) 
        FROM service_bot_message 
-       WHERE (sender_user_id = ul.id OR receiver_user_id = ul.id) AND is_read = false) AS unreadMessagesCount,
+       WHERE receiver_user_id = ul.id AND is_read = false) AS unreadMessagesCount,
        tms.id as tmsId,
        tms.name as tmsName
       FROM users_list ul
