@@ -3931,15 +3931,15 @@ admin.put("/services/:id", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const { id } = req.params;
-    const { name, code, price_uzs, price_kzs, price_tir, rate, withoutSubscription, comment } =
+    const { name, code, rate, withoutSubscription, comment } =
       req.body;
-    if (!id || !name || !code || !price_uzs || !price_kzs || !price_tir || !rate) {
+    if (!id || !name || !code || !rate) {
       appData.error = "All fields are required";
       return res.status(400).json(appData);
     }
     const [rows] = await connect.query(
-      `UPDATE services SET name = ? , price_uzs = ?, price_kzs = ?, price_tir = ?, rate = ?, code = ?, without_subscription = ?, comment = ? WHERE id = ?`,
-      [name, price_uzs, price_kzs, price_tir, rate, code, withoutSubscription, comment, id]
+      `UPDATE services SET name = ?, rate = ?, code = ?, without_subscription = ?, comment = ? WHERE id = ?`,
+      [name, rate, code, withoutSubscription, comment, id]
     );
     if (rows.affectedRows > 0) {
       appData.status = true;
