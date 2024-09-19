@@ -5994,7 +5994,8 @@ admin.get("/messages/by-bot-user", async (req, res) => {
       bot_message_id botMessageId,
       sender_user_id senderUserId,
       receiver_user_id receiverUserId,
-      created_at createdAt
+      created_at createdAt,
+      is_price isPrice,
       FROM service_bot_message
       WHERE sender_user_id = ${userId} OR receiver_user_id = ${userId} AND deleted = false
       ORDER BY created_at DESC LIMIT ${from}, ${limit}
