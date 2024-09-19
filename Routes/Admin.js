@@ -5999,7 +5999,7 @@ admin.get("/messages/by-bot-user", async (req, res) => {
       receiver_user_id receiverUserId,
       created_at createdAt,
       is_price isPrice,
-      service_transaction_id serviceTransctionId,
+      service_transaction_id serviceTransactionId,
       is_price_confimed isPriceConfirmed
       FROM service_bot_message
       WHERE sender_user_id = ${userId} OR receiver_user_id = ${userId} AND deleted = false
