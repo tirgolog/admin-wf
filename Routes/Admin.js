@@ -5693,6 +5693,10 @@ admin.delete("/message/bot-user", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
 
+    if(!messageId || !receiverUserId) {
+      return res.status(400).json({ status: false, error: 'messageId and receiverUserId are required' })
+    }
+
     const [driver] = await connect.query(`
     SELECT 
     u.id, 
