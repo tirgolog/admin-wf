@@ -5963,8 +5963,13 @@ admin.get("/messages/by-bot-user", async (req, res) => {
     appData = { status: false },
     userId = req.query.userId,
     from = req.query.from,
-    limit = req.query.limit;
+    limit = req.query.limit,
+    tmsId,
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);;
   try {
+    if(userInfo.user_type == 5) {
+      tmsId = userInfo.id;
+    }
     connect = await database.connection.getConnection();
     if (!from) {
       from = 0;
@@ -5996,7 +6001,7 @@ admin.get("/messages/by-bot-user", async (req, res) => {
     `);
       await connect.query(`
         UPDATE service_bot_message
-        SET is_read = 1 WHERE sender_user_id = ${userId} OR receiver_user_id = ${userId} AND is_read = 0
+        SET is_read = 1 WHERE ${tmsId ? `receiver_user_id = ${userId}` : `sender_user_id = ${userId}`} AND is_read = 0
       `);
 
       const [rowsCount] = await connect.query(`
@@ -6045,10 +6050,14 @@ admin.get("/messages/by-bot-user", async (req, res) => {
 
 admin.get('/messages/tms-users', async (req, res) => {
   let connect,
-    appData = { status: false };
+    tmsId,
+    appData = { status: false },
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   try {
-    const { tmsId } = req.query;
     connect = await database.connection.getConnection();
+    if(userInfo.user_type == 5) {
+      tmsId = userInfo.id;
+    }
     const [rows] = await connect.query(`       
       SELECT
        ul.id,
@@ -6063,7 +6072,7 @@ admin.get('/messages/tms-users', async (req, res) => {
        ORDER BY created_at DESC LIMIT 1) as lastMessageDate,
        (SELECT COUNT(*) 
        FROM service_bot_message 
-       WHERE receiver_user_id = ul.id AND is_read = false) AS unreadMessagesCount,
+       WHERE ${tmsId ? 'receiver_user_id' : 'sender_user_id'} = ul.id AND is_read = false) AS unreadMessagesCount,
        tms.id as tmsId,
        tms.name as tmsName
       FROM users_list ul
