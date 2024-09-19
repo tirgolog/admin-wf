@@ -462,7 +462,7 @@ admin.post("/agent-service/confirm-price", async (req, res) => {
       );
 
       await connect.query(`UPDATE service_bot_message SET is_price_confimed = true WHERE id = ?`, [id]);
-      
+
     if (updateResult.affectedRows > 0) {
       if (status == 2 && user.length) {
         socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Предоставленные документы приняты. Обработка документов начато, наши модераторы свяжутся с вами` }));
@@ -5999,7 +5999,7 @@ admin.get("/messages/by-bot-user", async (req, res) => {
       receiver_user_id receiverUserId,
       created_at createdAt,
       is_price isPrice,
-      service_transction_id serviceTransctionId,
+      service_transaction_id serviceTransctionId,
       is_price_confimed isPriceConfirmed
       FROM service_bot_message
       WHERE sender_user_id = ${userId} OR receiver_user_id = ${userId} AND deleted = false
