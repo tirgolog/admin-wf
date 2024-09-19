@@ -5713,7 +5713,7 @@ admin.delete("/message/bot-user", async (req, res) => {
       let receiverBotId = botUser[0]?.chat_id;
       socket.emit(14, 'user-delete-message', JSON.stringify({ userChatId: receiverBotId, messageId }));
       if(driver[0]?.agentUserType === 5) {
-        socket.emit(driver[0]?.agentId, 'user-delete-text', JSON.stringify({ userId: driver[0]?.id, userChatId: receiverBotId, messageId, insertId: insertResult[0].insertId }));
+        socket.emit(driver[0]?.agentId, 'user-delete-text', JSON.stringify({ userId: driver[0]?.id, userChatId: receiverBotId, messageId }));
       }
       appData.status = true;
       res.status(200).json(appData);
