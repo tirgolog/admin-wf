@@ -6153,7 +6153,7 @@ admin.post("/reply-message/tms-user", async (req, res) => {
     message,
     replyMessageId,
     replyMessage,
-    driverId
+    receiverUserId
   } = req.body;
 
   try {
@@ -6178,13 +6178,13 @@ admin.post("/reply-message/tms-user", async (req, res) => {
         messageType,
         message,
         'tms-user',
-        driverId,
+        receiverUserId,
         true,
         replyMessageId,
         replyMessage
       ]);
       if (insertResult[0].affectedRows) {
-          socket.emit(driver[0]?.agentId, 'user-text', JSON.stringify({ userId: driverId, message, messageType, replyMessageId, replyMessage, insertId: insertResult[0].insertId }));
+          socket.updateAllMessages('user-reply-text', JSON.stringify({ userId: receiverUserId, message, messageType, replyMessageId, replyMessage }));
         appData.data = insertResult;
         appData.status = true;
         res.status(200).json(appData);
