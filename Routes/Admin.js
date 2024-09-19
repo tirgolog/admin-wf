@@ -5708,7 +5708,7 @@ admin.delete("/message/bot-user", async (req, res) => {
 
     if(driver[0].agentUserType == 5) {
 
-     const [result] = await database.query(
+     const [result] = await connect.query(
         "UPDATE service_bot_message SET deleted = true WHERE bot_message_id = ?",
         messageId
       );
