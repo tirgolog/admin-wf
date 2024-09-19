@@ -461,7 +461,7 @@ admin.post("/agent-service/confirm-price", async (req, res) => {
         [status, id]
       );
 
-      await connect.query(`UPDATE service_bot_message SET is_price_confimed = true WHERE id = ?`, [id]);
+      await connect.query(`UPDATE service_bot_message SET is_price_confirmed = true WHERE id = ?`, [id]);
 
     if (updateResult.affectedRows > 0) {
       if (status == 2 && user.length) {
