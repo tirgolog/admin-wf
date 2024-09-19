@@ -54,7 +54,7 @@ admin.post("/loginAdmin", async (req, res) => {
       [login, password]
     );
     if (rows.length) {
-      const token = jwt.sign({ id: rows[0].id }, process.env.SECRET_KEY, {
+      const token = jwt.sign({ id: rows[0].id, user_type: rows[0]?.user_type }, process.env.SECRET_KEY, {
         expiresIn: "1440m",
       });
       const refreshToken = jwt.sign({ id: rows[0].id }, process.env.SECRET_KEY);
@@ -5689,10 +5689,10 @@ admin.delete("/message/bot-user", async (req, res) => {
     messageId,
     receiverUserId,
   } = req.body;
+  let userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
 
   try {
     connect = await database.connection.getConnection();
-
     if(!messageId || !receiverUserId) {
       return res.status(400).json({ status: false, error: 'messageId and receiverUserId are required' })
     }
@@ -5706,22 +5706,48 @@ admin.delete("/message/bot-user", async (req, res) => {
     LEFT JOIN users_list tms on tms.id = u.agent_id
     WHERE u.id = ${receiverUserId}`);
 
-    const [botUser] = await connect.query(`
-    SELECT user_id, chat_id FROM services_bot_users WHERE user_id = ${receiverUserId}`);
-    // senderBotId,
-    if (!botUser.length && driver[0].agentUserType !== 5) {
-      appData.error = 'User not registered in bot'
-      appData.status = false;
-      res.status(400).json(appData);
-    } else {
-      let receiverBotId = botUser[0]?.chat_id;
-      socket.emit(14, 'user-delete-message', JSON.stringify({ userChatId: receiverBotId, messageId }));
-      if(driver[0]?.agentUserType === 5) {
-        socket.emit(driver[0]?.agentId, 'user-delete-text', JSON.stringify({ userId: driver[0]?.id, userChatId: receiverBotId, messageId }));
+    if(driver[0].agentUserType == 5) {
+
+     const [result] = await database.query(
+        "UPDATE service_bot_message SET deleted = true WHERE bot_message_id = ?",
+        messageId
+      );
+
+      if(result.affectedRows) {
+        
+        switch (userInfo.user_type) {
+          case 3: 
+            socket.emit(driver[0]?.agentId, 'user-delete-text', JSON.stringify({ userId: driver[0]?.id, messageId }));
+            break;
+          case 5: 
+            socket.updateAllMessages('tms-delete-text', JSON.stringify({ userId: driver[0]?.id, messageId }));
+            break;
+        }
+
+        appData.status = true;
+        res.status(200).json(appData);
+      } else {
+        appData.error = 'Message not found'
+        appData.status = false;
+        res.status(400).json(appData);
       }
-      appData.status = true;
-      res.status(200).json(appData);
+    } else {
+
+      const [botUser] = await connect.query(`
+      SELECT user_id, chat_id FROM services_bot_users WHERE user_id = ${receiverUserId}`);
+      // senderBotId,
+      if (!botUser.length) {
+        appData.error = 'User not registered in bot'
+        appData.status = false;
+        res.status(400).json(appData);
+      } else {
+        let receiverBotId = botUser[0]?.chat_id;
+        socket.emit(14, 'user-delete-message', JSON.stringify({ userChatId: receiverBotId, messageId }));
+        appData.status = true;
+        res.status(200).json(appData);
+      }
     }
+
   } catch (e) {
     console.log(e);
     appData.error = e.message;
