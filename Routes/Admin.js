@@ -3215,6 +3215,85 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
   }
 });
 
+admin.post("/kzt-uzs", async (req, res) => {
+  let connect,
+    uzs = req.body.uzs,
+    userInfo = await jwt.decode(req.headers.authorization.split(" ")[1]),
+    appData = { status: false };
+  try {
+    connect = await database.connection.getConnection();
+
+      const [tirCurrency] = await connect.query(
+        `INSERT INTO kzt_uzs_rate SET 
+          currency_name = ?,
+          rate_uzs = ?`,
+        ['kzt', uzs]
+
+      );
+
+      appData.status = true;
+      appData.data = tirCurrency;
+      res.status(200).json(appData);
+
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.put("/kzt-uzs", async (req, res) => {
+  let connect,
+    id = req.body.id,
+    uzs = req.body.uzs,
+    userInfo = await jwt.decode(req.headers.authorization.split(" ")[1]),
+    appData = { status: false };
+  try {
+    connect = await database.connection.getConnection();
+
+    const [tirCurrency] = await connect.query(
+      `UPDATE kzt_uzs_rate SET 
+          rate_uzs = ?
+          WHERE id = ?`,
+      [uzs, id]
+
+    );
+    appData.status = true;
+    appData.data = tirCurrency;
+    res.status(200).json(appData);
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get("/kzt-uzs", async (req, res) => {
+  let connect,
+    userInfo = await jwt.decode(req.headers.authorization.split(" ")[1]),
+    appData = { status: false };
+  try {
+    connect = await database.connection.getConnection();
+    const [rows] = await connect.query("SELECT * FROM kzt_uzs_rate limit 1");
+    appData.status = true;
+    appData.data = rows;
+    res.status(200).json(appData);
+  } catch (e) {
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 admin.post("/tir-currency", async (req, res) => {
   let connect,
     currencyName = req.body.currencyName,
