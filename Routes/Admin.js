@@ -4392,6 +4392,7 @@ admin.post("/agent/add-services", async (req, res) => {
           appData.status = true;
 
         for(let service of services) {
+          const message = `Пользователь отправил запрос на ${service[0]?.code} ${service[0]?.name}`;
           const insertData = await connect.query(`
           INSERT INTO service_bot_message set 
             message_type = ?,
@@ -4400,11 +4401,12 @@ admin.post("/agent/add-services", async (req, res) => {
             sender_user_id = ?
           `, [
               'text',
-              `Пользователь отправил запрос на ${service[0]?.code} ${service[0]?.name}`,
+              message,
               userInfo.user_type == 5 ? 'tms-user' : 'agent',
               user_id
             ]
              );
+             socket.updateAllMessages('tms-text', JSON.stringify({ userId: user_id, message, messageType: 'text' }));
         }
 
           socket.updateAllMessages("update-alpha-balance", "1");
