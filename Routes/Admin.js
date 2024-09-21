@@ -4392,7 +4392,7 @@ admin.post("/agent/add-services", async (req, res) => {
           appData.status = true;
 
         for(let service of services) {
-          const message = `Пользователь отправил запрос на ${service[0]?.code} ${service[0]?.name}`;
+          const message = `Пользователь отправил запрос на ${service?.code} ${service?.name}`;
           const insertData = await connect.query(`
           INSERT INTO service_bot_message set 
             message_type = ?,
