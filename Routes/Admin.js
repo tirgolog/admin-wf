@@ -4992,7 +4992,7 @@ admin.post("/services-transaction/status/to-priced", async (req, res) => {
     if (updateResult.affectedRows) {
 
       const [user] = await connect.query(`
-      SELECT sbu.chat_id, ul.id user_id, ul.driver_group_id groupId FROM tir_balance_transaction st
+      SELECT sbu.chat_id, ul.id user_id, ul.driver_group_id groupId, ul.agent_id FROM tir_balance_transaction st
       LEFT JOIN services_bot_users sbu on sbu.user_id = st.user_id
       LEFT JOIN users_list ul on ul.id = st.user_id
       WHERE st.deleted = 0 AND st.id = ${id}`
