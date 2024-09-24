@@ -6137,6 +6137,20 @@ admin.get("/messages/by-bot-user", async (req, res) => {
         WHERE bot_message_id = ${row.botMessageId}
       `);
           row.files = res;
+        } else if (row.messageType == 'document') {
+          const [res] = await connect.query(`
+        SELECT 
+        id,
+        width,
+        height,
+        minio_file_name minioFileName,
+        bot_message_id botMessageId,
+        mime_type mimeType,
+        created_at createdAt
+        FROM service_bot_document_details
+        WHERE bot_message_id = ${row.botMessageId}
+      `);
+          row.files = res;          
         }
       }
       if (rows.length) {
