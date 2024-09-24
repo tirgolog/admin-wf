@@ -5005,12 +5005,12 @@ admin.post("/services-transaction/status/to-priced", async (req, res) => {
           COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE deleted = 0 AND group_id = ${user[0]?.groupId} AND transaction_type = 'service' AND status In(2, 3) ), 0) AS serviceBalance
         `);
         balance = result[0]?.serviceBalance;
-      } else if (users[0]?.agent_id) {
+      } else if (user[0]?.agent_id) {
         const [rows] = await connect.query(
           `SELECT 
-          COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${users[0]?.agent_id} AND user_id = ${users[0]?.agent_id} AND balance_type = 'tirgo_service' ), 0) -
-          COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${users[0]?.agent_id} AND created_by_id = ${users[0]?.agent_id} AND balance_type = 'tirgo_service' ), 0) -
-          COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE status In(2, 3) AND deleted = 0 AND agent_id = ${users[0]?.agent_id} AND transaction_type = 'service'), 0) AS serviceBalance
+          COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${user[0]?.agent_id} AND user_id = ${user[0]?.agent_id} AND balance_type = 'tirgo_service' ), 0) -
+          COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${user[0]?.agent_id} AND created_by_id = ${user[0]?.agent_id} AND balance_type = 'tirgo_service' ), 0) -
+          COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE status In(2, 3) AND deleted = 0 AND agent_id = ${user[0]?.agent_id} AND transaction_type = 'service'), 0) AS serviceBalance
         `);
         balance = rows[0]?.serviceBalance;
       } else {
