@@ -6141,8 +6141,6 @@ admin.get("/messages/by-bot-user", async (req, res) => {
           const [res] = await connect.query(`
         SELECT 
         id,
-        width,
-        height,
         minio_file_name minioFileName,
         bot_message_id botMessageId,
         mime_type mimeType,
