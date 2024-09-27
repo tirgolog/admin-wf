@@ -765,12 +765,12 @@ admin.get("/agent-service-transactions", async (req, res) => {
       WHERE tbt.deleted = 0 AND tbt.transaction_type = 'service' 
             AND tbt.agent_id = ${agentId} 
             ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''} 
-            ${dateFilterCondition} ${serviceStatusId ? `AND tbt.status = ${serviceStatusId}` : ""};`);
+            ${dateFilterCondition} ${serviceStatusId ? ` AND tbt.status = ${serviceStatusId}` : ""};`);
       tran = await connect.query(`
       SELECT 
         Count(*) as count
       FROM tir_balance_transaction tbt
-      WHERE tbt.deleted = 0 AND transaction_type = 'service' AND tbt.agent_id = ${agentId}  ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''};
+      WHERE tbt.deleted = 0 AND transaction_type = 'service' AND tbt.agent_id = ${agentId}  ${serviceId ? ` AND tbt.service_id = ${serviceId}` : ''};
       `);
       }
       const data = ([...rows, ...trans].sort((a, b) => {
@@ -6611,7 +6611,7 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
               hour: "2-digit",
               minute: "2-digit",
             }) : '',
-            uzsAmount: 0,
+            uzsAmount: el.uzsAmount,
             transactionType: el.transactionType,
             amount: el.amount,
             adminName: el.adminName,
