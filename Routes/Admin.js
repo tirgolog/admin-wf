@@ -6501,6 +6501,9 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
     sortByDate = req.query.sortByDate == "true",
     sortType = req.query.sortType,
     serviceId = req.query.serviceId,
+    fromCompletedDate = req.query.fromCompletedDate,
+    toCompletedDate = req.query.toCompletedDate,
+    serviceStatusId = req.query.serviceStatusId,
     rows = [],
     row = [],
     trans = [],
@@ -6517,6 +6520,16 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
       }
       if(!limit) {
         limit = 10;
+      }
+
+      // Filter condition based on "completedAt" field
+      let dateFilterCondition = '';     
+      if (fromCompletedDate && toCompletedDate) {
+        dateFilterCondition = `AND tbt.completed_at BETWEEN '${fromCompletedDate}' AND '${toCompletedDate}'`;
+      } else if (fromCompletedDate && !toCompletedDate) {
+        dateFilterCondition = `AND tbt.completed_at >= '${fromCompletedDate}'`;
+      } else if (!fromCompletedDate && toCompletedDate) {
+        dateFilterCondition = `AND tbt.completed_at <= '${toCompletedDate}'`;
       }
 
       if(!transactionType || transactionType == 'service_balance') {
@@ -6558,12 +6571,16 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
           tbt.amount_tir amount,
           'Оформления сервиса' transactionType,
           tbt.created_at createdAt,
-          tbt.status
+          tbt.status,
+          tbt.completed_at completedAt
         FROM tir_balance_transaction tbt
         LEFT JOIN users_list dl on dl.id = tbt.user_id AND dl.user_type = 1
         LEFT JOIN users_list adl on adl.id = tbt.created_by_id AND adl.user_type = 3
         LEFT JOIN services s on s.id = tbt.service_id
-        WHERE tbt.deleted = 0 AND tbt.transaction_type = 'service' AND tbt.agent_id = ${agentId} ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''};`);
+        WHERE tbt.deleted = 0 AND tbt.transaction_type = 'service' 
+         AND tbt.agent_id = ${agentId} 
+         ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''}
+         ${dateFilterCondition} ${serviceStatusId ? `AND tbt.status = ${serviceStatusId}` : ""};`);
         tran = await connect.query(`
         SELECT 
           Count(*) as count
@@ -6586,6 +6603,14 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
               hour: "2-digit",
               minute: "2-digit",
             }),
+            completedAt: new Date(el.completedAt).toLocaleString("ru-RU", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            uzsAmount: 0,
             transactionType: el.transactionType,
             amount: el.amount,
             adminName: el.adminName,
@@ -6610,12 +6635,14 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
         XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
         ws["A1"] = { v: "Админ", t: "s" };
         ws["B1"] = { v: "Тип", t: "s" };
-        ws["C1"] = { v: "Сумма", t: "s" };
-        ws["D1"] = { v: "Сумма", t: "s" };
-        ws["E1"] = { v: "DriverId", t: "s" };
+        ws["C1"] = { v: "Сумма (Tir)", t: "s" };
+        ws["D1"] = { v: "Сумма (Tir)", t: "s" };
+        ws["E1"] = { v: "Сумма (UZS)", t: "s" };
         ws["F1"] = { v: "Имя драйвера", t: "s" };
         ws["G1"] = { v: "Дата", t: "s" };
-        ws["H1"] = { v: "Статус", t: "s" };
+        ws["H1"] = { v: "Дата виполнения", t: "s" };
+        ws["L1"] = { v: "Статус", t: "s" };
+        ws["I1"] = { v: "ID водителя", t: "s" };
         data.forEach((item, index) => {
           let status;
           switch (item.status) {
@@ -6654,10 +6681,12 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
                 : "",
             t: "n",
           };
-          ws[`E${index + 2}`] = { v: item.driverId ? item.driverId : '', t: "n" };
+          ws[`E${index + 2}`] = { v: item.uzsAmount ? item.uzsAmount : '', t: "n" };
           ws[`F${index + 2}`] = { v: item.driverName ? item.driverName : '', t: "s" };
           ws[`G${index + 2}`] = { v: item.createdAt, t: "s" };
-          ws[`H${index + 2}`] = { v: status, t: "s" };
+          ws[`H${index + 2}`] = { v: item.completedAt, t: "s" };
+          ws[`L${index + 2}`] = { v: status, t: "s" };
+          ws[`I${index + 2}`] = { v: item.driverId ? item.driverId : '', t: "n" };
         });
         const wopts = { bookType: "xlsx", bookSST: false, type: "array" };
         const wbout = XLSX.write(wb, wopts);
