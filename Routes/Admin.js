@@ -6558,7 +6558,7 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
         );
       }
   
-        if(!transactionType || transactionType == 'service') {
+         if(!transactionType || transactionType == 'service') {
           trans = await connect.query(`
         SELECT 
           tbt.id,
@@ -6572,6 +6572,7 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
           'Оформления сервиса' transactionType,
           tbt.created_at createdAt,
           tbt.status,
+          (SELECT price_uzs FROM service_price_history WHERE created_at <= tbt.created_at AND service_id = tbt.service_id ORDER BY created_at DESC LIMIT 1) uzsAmount,
           tbt.completed_at completedAt
         FROM tir_balance_transaction tbt
         LEFT JOIN users_list dl on dl.id = tbt.user_id AND dl.user_type = 1
