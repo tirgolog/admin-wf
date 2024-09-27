@@ -765,7 +765,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
       WHERE tbt.deleted = 0 AND tbt.transaction_type = 'service' 
             AND tbt.agent_id = ${agentId} 
             ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''} 
-            ${dateFilterCondition} ${serviceStatusId ? `AND tbt.status = ${serviceStatusId}` : ""};`);
+            ${dateFilterCondition} ${serviceStatusId ? ` AND tbt.status = ${serviceStatusId}` : ""};`);
       tran = await connect.query(`
       SELECT 
         Count(*) as count
