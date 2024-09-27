@@ -693,6 +693,9 @@ admin.get("/agent-service-transactions", async (req, res) => {
     balanceRows = [],
     balanceRow = [],
     alphaRows = [],
+    fromCompletedDate = req.query.fromCompletedDate,
+    toCompletedDate = req.query.toCompletedDate,
+    serviceStatusId = req.query.serviceStatusId,
     alphaRow = [];
   if (!limit) {
     limit = 10;
@@ -703,6 +706,17 @@ admin.get("/agent-service-transactions", async (req, res) => {
   try {
     if (agentId) {
       connect = await database.connection.getConnection();
+
+         // Filter condition based on "completedAt" field
+      let dateFilterCondition = '';     
+      if (fromCompletedDate && toCompletedDate) {
+        dateFilterCondition = `AND tbt.completed_at BETWEEN '${fromCompletedDate}' AND '${toCompletedDate}'`;
+      } else if (fromCompletedDate && !toCompletedDate) {
+        dateFilterCondition = `AND tbt.completed_at >= '${fromCompletedDate}'`;
+      } else if (!fromCompletedDate && toCompletedDate) {
+        dateFilterCondition = `AND tbt.completed_at <= '${toCompletedDate}'`;
+      }
+
 
       if(!transactionType || transactionType == 'service_balance') {
       [rows] = await connect.query(
@@ -748,7 +762,10 @@ admin.get("/agent-service-transactions", async (req, res) => {
       LEFT JOIN users_list dl on dl.id = tbt.user_id AND dl.user_type = 1
       LEFT JOIN users_list adl on adl.id = tbt.created_by_id AND adl.user_type = 3
       LEFT JOIN services s on s.id = tbt.service_id
-      WHERE tbt.deleted = 0 AND tbt.transaction_type = 'service' AND tbt.agent_id = ${agentId} ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''};`);
+      WHERE tbt.deleted = 0 AND tbt.transaction_type = 'service' 
+            AND tbt.agent_id = ${agentId} 
+            ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''} 
+            ${dateFilterCondition} ${serviceStatusId ? `AND tbt.status = ${serviceStatusId}` : ""};`);
       tran = await connect.query(`
       SELECT 
         Count(*) as count
@@ -756,7 +773,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
       WHERE tbt.deleted = 0 AND transaction_type = 'service' AND tbt.agent_id = ${agentId}  ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''};
       `);
       }
-      const data = ([...rows, ...trans[0]].sort((a, b) => {
+      const data = ([...rows, ...trans].sort((a, b) => {
         return b.createdAt - a.createdAt
       })).splice(0, limit)
 
@@ -4942,17 +4959,24 @@ admin.post("/services-transaction/status/by", async (req, res) => {
       }
     }
     let updateResult;
-     if(user[0]?.groupId) {
-      [updateResult] = await connect.query(   
-        "UPDATE tir_balance_transaction SET status = ?, group_id = ? WHERE id = ?",
+    if (user[0]?.groupId) {
+      [updateResult] = await connect.query(
+        `UPDATE tir_balance_transaction 
+         SET status = ?, group_id = ?, 
+         ${status === 3 ? "completed_at = NOW()," : ""}
+         WHERE id = ?`,
         [status, user[0]?.groupId, id]
       );
     } else {
-      [updateResult] = await connect.query(   
-        "UPDATE tir_balance_transaction SET status = ? WHERE id = ?",
+      [updateResult] = await connect.query(
+        `UPDATE tir_balance_transaction 
+         SET status = ?, 
+         ${status === 3 ? "completed_at = NOW()," : ""}
+         WHERE id = ?`,
         [status, id]
       );
     }
+    
     if (updateResult.affectedRows > 0) {
       if (status == 2 && user.length) {
         socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Предоставленные документы приняты. Обработка документов начато, наши модераторы свяжутся с вами` }));
