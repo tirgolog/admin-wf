@@ -745,7 +745,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
     }
 
       if(!transactionType || transactionType == 'service') {
-        trans = await connect.query(`
+        [trans] = await connect.query(`
       SELECT 
         tbt.id,
         s.code serviceCode,
