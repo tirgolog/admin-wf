@@ -6611,7 +6611,7 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
               hour: "2-digit",
               minute: "2-digit",
             }) : '',
-            uzsAmount: el.uzsAmount,
+            uzsAmount: el.amount * 1000,
             transactionType: el.transactionType,
             amount: el.amount,
             adminName: el.adminName,
