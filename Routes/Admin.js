@@ -4962,16 +4962,16 @@ admin.post("/services-transaction/status/by", async (req, res) => {
     if (user[0]?.groupId) {
       [updateResult] = await connect.query(
         `UPDATE tir_balance_transaction 
-         SET status = ?, group_id = ?, 
-         ${status === 3 ? "completed_at = NOW()," : ""}
+         SET status = ?, group_id = ?
+         ${status === 3 ? ", completed_at = NOW()" : ""}
          WHERE id = ?`,
         [status, user[0]?.groupId, id]
       );
-    } else {
+    } else {  
       [updateResult] = await connect.query(
         `UPDATE tir_balance_transaction 
-         SET status = ?, 
-         ${status === 3 ? "completed_at = NOW()," : ""}
+         SET status = ?
+         ${status === 3 ? ", completed_at = NOW()" : ""}
          WHERE id = ?`,
         [status, id]
       );
