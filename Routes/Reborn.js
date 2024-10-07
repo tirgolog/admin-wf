@@ -55,11 +55,11 @@ reborn.post('/getAllDrivers', async (req, res) => {
             }
 
             if(dateReg) {
-                queryFilter += ` AND ul.date_reg = '%${dateReg}%'`;
+                queryFilter += ` AND ul.date_reg = '${dateReg}'`;
             }
-
+            
             if(dateLogin) {
-                queryFilter += ` AND ul.date_last_login = '%${dateLogin}%'`;
+                queryFilter += ` AND ul.date_last_login = '${dateLogin}'`;
             }
 
             // Check if transportType parameter is provided
