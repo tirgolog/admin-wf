@@ -534,59 +534,6 @@ async function sendSmsOson(phone, code) {
     console.log("finally");
   }
 }
-async function sendSms(phone, code, country_code) {
-  let connect;
-  try {
-    connect = await database.connection.getConnection();
-    const [row] = await connect.query(
-      "SELECT * FROM config WHERE id = 1 LIMIT 1"
-    );
-    const optionsRefresh = {
-      method: "PATCH",
-      uri: "https://notify.eskiz.uz/api/auth/refresh",
-      json: true,
-      headers: {
-        Authorization: "Bearer " + row[0].token_sms,
-      },
-    };
-    await rp(optionsRefresh);
-    const optionsUpdate = {
-      method: "POST",
-      body: {
-        email: "tirgolog@gmail.com",
-        password: "G0ZwuvgWNTqesEjqrYzG9CuE4Gc3MFKiUhsppiNh",
-      },
-      json: true,
-      uri: "https://notify.eskiz.uz/api/auth/login",
-    };
-    const rp_res_update = await rp(optionsUpdate);
-    if (rp_res_update.data) {
-      await connect.query("UPDATE config SET token_sms = ? WHERE id = 1", [
-        rp_res_update.data.token,
-      ]);
-      const options = {
-        method: "POST",
-        uri: "https://notify.eskiz.uz/api/message/sms/send",
-        json: true,
-        body: {
-          mobile_phone: phone,
-          message: "Confirmation code " + code,
-        },
-        headers: {
-          Authorization: "Bearer " + rp_res_update.data.token,
-        },
-      };
-      const rp_res = await rp(options);
-      return rp_res.status;
-    }
-  } catch (err) {
-    return false;
-  } finally {
-    if (connect) {
-      connect.release();
-    }
-  }
-}
 
 function generateUniqueId() {
   return crypto.randomBytes(16).toString("hex");

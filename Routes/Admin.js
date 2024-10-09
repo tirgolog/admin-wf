@@ -6,6 +6,7 @@ const express = require("express"),
   cors = require("cors"),
   fs = require("fs"),
   path = require("path"),
+  { sendTextSms } = require('./sms-service'),
   push = require("../Modules/Push"),
   jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -4920,9 +4921,10 @@ admin.post("/services-transaction/status/by", async (req, res) => {
     connect = await database.connection.getConnection();
     let user;
     [user] = await connect.query(
-      `SELECT sbu.chat_id, s.name serviceName, ul.id user_id, st.amount_tir serviceAmount, st.is_by_agent, st.agent_id, ul.driver_group_id groupId FROM tir_balance_transaction st
+      `SELECT sbu.chat_id, s.id serviceId, s.name serviceName, ul.id user_id, st.amount_tir serviceAmount, st.is_by_agent, st.agent_id, ul.driver_group_id groupId, dg.chat_id groupChatId, dg.owner_phone_number groupOwnerPhoneNumber FROM tir_balance_transaction st
       LEFT JOIN services_bot_users sbu on sbu.user_id = st.user_id
       LEFT JOIN users_list ul on ul.id = st.user_id
+      LEFT JOIN driver_group dg on dg.id = ul.driver_group_id
       LEFT JOIN services s on s.id = st.service_id
       WHERE st.deleted = 0 AND st.id = ${id}`
     );
@@ -4984,6 +4986,14 @@ admin.post("/services-transaction/status/by", async (req, res) => {
         socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Услуга "${user[0]?.serviceName}" отменена` }));
       } else if (status == 3) {
         socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Услуга "${user[0]?.serviceName}" выполнен` }));
+
+        if(user[0]?.groupId) {
+          const text = `Заказ #${user[0]?.serviceId} выполнен. Все детали успешно завершены`;
+          if(user[0]?.groupChatId) {
+            socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text }));
+          }
+          await sendTextSms(user[0]?.groupOwnerPhoneNumber, `Заказ #${user[0]?.serviceId} выполнен. Все детали успешно завершены`);
+        }
       }
 
       appData.status = true;
@@ -5105,7 +5115,7 @@ admin.get("/driver-groups", async (req, res) => {
     }
     connect = await database.connection.getConnection();
     const [driverGroups] = await connect.query(`
-      SELECT * FROM driver_group ORDER BY id DESC LIMIT ${pageIndex}, ${pageSize}; 
+      SELECT *, owner_phone_number as "ownerPhoneNumber", owner_full_name as "ownerFullName" FROM driver_group ORDER BY id DESC LIMIT ${pageIndex}, ${pageSize}; 
     `);
     appData.data = driverGroups;
     const [rows_count] = await connect.query(
@@ -5231,11 +5241,11 @@ admin.get("/drivers-by-group", async (req, res) => {
 admin.post("/driver-group", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
-  const { name } = req.body;
+  const { name, ownerPhoneNumber, ownerFullName } = req.body;
   try {
     connect = await database.connection.getConnection();
     const [row] = await connect.query(`
-      INSERT INTO driver_group (name) values ('${name}');
+      INSERT INTO driver_group (name, owner_full_name, owner_phone_number) values ('${name}', '${ownerFullName}', '${ownerPhoneNumber}');
     `);
     if (row.affectedRows) {
       appData.data = row;
