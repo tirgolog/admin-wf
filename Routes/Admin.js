@@ -5115,7 +5115,7 @@ admin.get("/driver-groups", async (req, res) => {
     }
     connect = await database.connection.getConnection();
     const [driverGroups] = await connect.query(`
-      SELECT * FROM driver_group ORDER BY id DESC LIMIT ${pageIndex}, ${pageSize}; 
+      SELECT *, owner_phone_number as "ownerPhoneNumber", owner_full_name as "ownerFullName" FROM driver_group ORDER BY id DESC LIMIT ${pageIndex}, ${pageSize}; 
     `);
     appData.data = driverGroups;
     const [rows_count] = await connect.query(
