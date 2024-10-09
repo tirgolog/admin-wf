@@ -4921,10 +4921,10 @@ admin.post("/services-transaction/status/by", async (req, res) => {
     connect = await database.connection.getConnection();
     let user;
     [user] = await connect.query(
-      `SELECT sbu.chat_id, s.id serviceId, s.name serviceName, ul.id user_id, st.amount_tir serviceAmount, st.is_by_agent, st.agent_id, ul.driver_group_id groupId, du.chat_id groupChatId, du.owner_phone_number groupOwnerPhoneNumber FROM tir_balance_transaction st
+      `SELECT sbu.chat_id, s.id serviceId, s.name serviceName, ul.id user_id, st.amount_tir serviceAmount, st.is_by_agent, st.agent_id, ul.driver_group_id groupId, dg.chat_id groupChatId, dg.owner_phone_number groupOwnerPhoneNumber FROM tir_balance_transaction st
       LEFT JOIN services_bot_users sbu on sbu.user_id = st.user_id
       LEFT JOIN users_list ul on ul.id = st.user_id
-      LEFT JOIN users_list du on du.id = ul.driver_group_id
+      LEFT JOIN driver_group dg on dg.id = ul.driver_group_id
       LEFT JOIN services s on s.id = st.service_id
       WHERE st.deleted = 0 AND st.id = ${id}`
     );
