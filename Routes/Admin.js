@@ -4988,6 +4988,7 @@ admin.post("/services-transaction/status/by", async (req, res) => {
         socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Услуга "${user[0]?.serviceName}" выполнен` }));
 
         if(user[0]?.groupId) {
+          console.log(user)
           const text = `Заказ #${user[0]?.serviceId} выполнен. Все детали успешно завершены`;
           if(user[0]?.groupChatId) {
             socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text }));
