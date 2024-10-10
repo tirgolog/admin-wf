@@ -708,12 +708,18 @@ users.post("/login", async (req, res) => {
       "SELECT * FROM users_contacts WHERE text = ? AND user_type = 1",
       [phone]
     );
+    const [chatBotuser] = await connect.query(
+      "SELECT chat_id FROM services_bot_users WHERE phone_number = ?",
+      [phone]
+    );
+
     if (rows.length > 0) {
       if (send_sms_res === "waiting") {
         await connect.query(
           "UPDATE users_contacts SET verify_code = ?, is_tg = ?, verify_code_date_time = ? WHERE text = ? AND user_type = 1",
           [code, isTelegram, new Date().getTime(), phone]
         );
+        socket.emit(14, 'login-code', JSON.stringify({ userChatId: chatBotuser[0]?.chat_id, code }));
         appData.status = true;
       } else {
         appData.error = "Не удалось отправить SMS";
@@ -742,6 +748,8 @@ users.post("/login", async (req, res) => {
         );
         appData.status = true;
       }
+      socket.emit(14, 'login-code', JSON.stringify({ userChatId: chatBotuser[0]?.chat_id, code }));
+
       // } else {
       //   appData.error = "Не удалось отправить SMS";
       // }
