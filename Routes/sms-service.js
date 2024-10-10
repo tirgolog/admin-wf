@@ -82,7 +82,7 @@ async function sendTextSmsOson(phone, text) {
 
 async function sendTextSms(phone, text) {
     if (phone.substr(0, 3) === "998") {
-        send_sms_res = await sendTextSmsPlayMobile(phone, text, country_code);
+        send_sms_res = await sendTextSmsPlayMobile(phone, text);
         console.log("send_sms_res", send_sms_res);
         //send_sms_res = await sendSms(phone,code,country_code)
       } else if (phone.substr(0, 3) === "992") {
