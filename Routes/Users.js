@@ -245,7 +245,6 @@ users.post("/alphaCompleteClickPay", async function (req, res) {
       WHERE click_trans_id = ? LIMIT 1`,
       [req.body.click_trans_id]
     );
-    console.log(rows.length, req.body.merchant_trans_id)
     console.log({ user: rows[0] })
     if (rows.length > 0 && rows[0].status === 0 && +req.body.error >= 0) {
       await connect.query("UPDATE alpha_payment SET status = 1 WHERE id = ?", [
@@ -255,7 +254,6 @@ users.post("/alphaCompleteClickPay", async function (req, res) {
         "UPDATE users_list SET balance = balance + ? WHERE id = ?",
         [rows[0].amount, +req.body.merchant_trans_id]
       );
-      console.log({ amount: rows[0].amount })
       const [currency] = await connect.query(`
       SELECT * from tirgo_balance_currency WHERE code = ${tirgoBalanceCurrencyCodes.uzs} 
       `);
@@ -263,7 +261,6 @@ users.post("/alphaCompleteClickPay", async function (req, res) {
       await connect.query(`
       INSERT INTO tir_balance_exchanges SET user_id = ?, currency_name = ?, rate_uzs = ?, rate_kzt = ?, amount_uzs = ?, amount_kzt = ?, amount_tir = ?, balance_type = 'tirgo_service', click_id = ?, created_by_id = ?
       `, [+rows[0]?.userid, currency[0]?.currency_name, currency[0]?.rate, 0, +rows[0].amount, 0, +rows[0].amount / currency[0]?.rate, +rows[0]?.id, +rows[0]?.userid]);
-      console.log({ chat_id: rows[0].chat_id })
       console.log(rows[0])
       socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: rows[0].chat_id, text: `Вы пополнили TirgoService баланс на\n${rows[0].amount} ${currency[0]?.currency_name}\n${+rows[0].amount / currency[0]?.rate} tir` }));
 
@@ -752,6 +749,7 @@ users.post("/login", async (req, res) => {
     }
     res.status(200).json(appData);
   } catch (err) {
+    console.log(err)
     appData.status = false;
     appData.error = err;
     appData.message = err.message;
@@ -940,7 +938,6 @@ users.post("/loginClient", async (req, res) => {
           async function (res) {
             sendpulse.smsSend(
               function (data) {
-                console.log(data, "senpulse");
               },
               "TIRGO",
               ["+" + phone],
@@ -1889,7 +1886,6 @@ users.post("/saveCityInfo", async (req, res) => {
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
   try {
     connect = await database.connection.getConnection();
-    console.log(city.country);
     const [rows] = await connect.query(
       "UPDATE users_list SET country = ?,city = ?,geo_id = ?,iso_code = ?,city_lat = ?,city_lng = ? WHERE id = ?",
       [
@@ -2704,7 +2700,6 @@ users.patch("/verify-driver", async (req, res) => {
       "UPDATE verification SET verified = 1 WHERE id = ?",
       [id]
     );
-    console.log(rows);
     if (rows.affectedRows) {
       appData.status = true;
       res.status(200).json(appData);
@@ -3237,7 +3232,6 @@ users.post("/acceptDriverClient", async (req, res) => {
         Push.sendToCarrierDevice(user[0].token, 'Одобрение предложения', `Ваше предложение было одобрено на заказ ID: ${orderid}`)
       }
     }
-    console.log({affectedRows: rows.affectedRows})
     if (rows.affectedRows) {
       appData.status = true;
       // const [check_secure] = await connect.query(
