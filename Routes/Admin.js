@@ -132,41 +132,41 @@ admin.post("/refreshToken", async (req, res) => {
   }
 });
 
-// admin.use((req, res, next) => {
-//   let token =
-//     req.body.token ||
-//     req.headers["token"] ||
-//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-//   let appData = {};
-//   if (token && token !== undefined && token !== 'undefined') {
-//     jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
-//       if (err) {
-//         console.log('Admin middleware error', err.name)
-//         if (err.name === 'TokenExpiredError') {
-//           appData["error"] = "Token has expired";
-//           return res.status(401).json(appData);
-//         } else {
-//           console.error("JWT Verification Error:", err);
-//           appData["error"] = "Token is invalid";
-//           return res.status(401).json(appData);
-//         }
-//       } else {
-//         // Check if token has expired
-//         const currentTimestamp = Math.floor(Date.now() / 1000);
-//         if (decoded.exp < currentTimestamp) {
-//           appData["data"] = "Token has expired";
-//           return res.status(401).json(appData);
-//         }
-//         // Attach user information from the decoded token to the request
-//         req.user = decoded;
-//         next();
-//       }
-//     });
-//   } else {
-//     appData["error"] = "Token is null";
-//     res.status(401).json(appData);
-//   }
-// });
+admin.use((req, res, next) => {
+  let token =
+    req.body.token ||
+    req.headers["token"] ||
+    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+  let appData = {};
+  if (token && token !== undefined && token !== 'undefined') {
+    jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
+      if (err) {
+        console.log('Admin middleware error', err.name)
+        if (err.name === 'TokenExpiredError') {
+          appData["error"] = "Token has expired";
+          return res.status(401).json(appData);
+        } else {
+          console.error("JWT Verification Error:", err);
+          appData["error"] = "Token is invalid";
+          return res.status(401).json(appData);
+        }
+      } else {
+        // Check if token has expired
+        const currentTimestamp = Math.floor(Date.now() / 1000);
+        if (decoded.exp < currentTimestamp) {
+          appData["data"] = "Token has expired";
+          return res.status(401).json(appData);
+        }
+        // Attach user information from the decoded token to the request
+        req.user = decoded;
+        next();
+      }
+    });
+  } else {
+    appData["error"] = "Token is null";
+    res.status(401).json(appData);
+  }
+});
 
 admin.get("/getAllAgent", async (req, res) => {
   let connect,
@@ -435,52 +435,50 @@ admin.post("/agent-service/confirm-price", async (req, res) => {
     appData = { status: false, timestamp: new Date().getTime() };
   const { id, status, agentId } = req.body;
   try {
-    console.log('asd')
-    await sendTextSms('98946437676', `Заказ #${user[0]?.serviceId} выполнен. Все детали успешно завершены`);
-    // connect = await database.connection.getConnection();
-    // let user;
-    // [user] = await connect.query(
-    //   `SELECT sbu.chat_id, s.name serviceName, ul.id user_id, st.amount_tir serviceAmount, ul.driver_group_id groupId FROM tir_balance_transaction st
-    //   LEFT JOIN services_bot_users sbu on sbu.user_id = st.user_id
-    //   LEFT JOIN users_list ul on ul.id = st.user_id
-    //   LEFT JOIN services s on s.id = st.service_id
-    //   WHERE st.deleted = 0 AND st.id = ${id}`
-    // );
-    // if (status == 2) {
-    //   const [rows] = await connect.query(
-    //     `SELECT 
-    //     COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND user_id = ${agentId} AND balance_type = 'tirgo_service' ), 0) -
-    //     COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND created_by_id = ${agentId} AND balance_type = 'tirgo_service' ), 0) -
-    //     COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE status In(2, 3) AND deleted = 0 AND agent_id = ${agentId} AND transaction_type = 'service'), 0) AS serviceBalance
-    //   `);
-    //   if (Number(rows[0]?.serviceBalance) < Number(user[0]?.serviceAmount)) {
-    //     appData.error = "Недостаточно средств в балансе";
-    //     res.status(400).json(appData);
-    //     return;
-    //   }
-    // }
-    //  const [updateResult] = await connect.query(   
-    //     "UPDATE tir_balance_transaction SET status = ? WHERE id = ?",
-    //     [status, id]
-    //   );
+    connect = await database.connection.getConnection();
+    let user;
+    [user] = await connect.query(
+      `SELECT sbu.chat_id, s.name serviceName, ul.id user_id, st.amount_tir serviceAmount, ul.driver_group_id groupId FROM tir_balance_transaction st
+      LEFT JOIN services_bot_users sbu on sbu.user_id = st.user_id
+      LEFT JOIN users_list ul on ul.id = st.user_id
+      LEFT JOIN services s on s.id = st.service_id
+      WHERE st.deleted = 0 AND st.id = ${id}`
+    );
+    if (status == 2) {
+      const [rows] = await connect.query(
+        `SELECT 
+        COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND user_id = ${agentId} AND balance_type = 'tirgo_service' ), 0) -
+        COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND created_by_id = ${agentId} AND balance_type = 'tirgo_service' ), 0) -
+        COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE status In(2, 3) AND deleted = 0 AND agent_id = ${agentId} AND transaction_type = 'service'), 0) AS serviceBalance
+      `);
+      if (Number(rows[0]?.serviceBalance) < Number(user[0]?.serviceAmount)) {
+        appData.error = "Недостаточно средств в балансе";
+        res.status(400).json(appData);
+        return;
+      }
+    }
+     const [updateResult] = await connect.query(   
+        "UPDATE tir_balance_transaction SET status = ? WHERE id = ?",
+        [status, id]
+      );
 
-    //   await connect.query(`UPDATE service_bot_message SET is_price_confirmed = true WHERE service_transaction_id = ?`, [id]);
+      await connect.query(`UPDATE service_bot_message SET is_price_confirmed = true WHERE service_transaction_id = ?`, [id]);
 
-    // if (updateResult.affectedRows > 0) {
-    //   if (status == 2 && user.length) {
-    //     socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Предоставленные документы приняты. Обработка документов начато, наши модераторы свяжутся с вами` }));
-    //   } else if (status == 4) {
-    //     socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Услуга "${user[0]?.serviceName}" отменена` }));
-    //   } else if (status == 3) {
-    //     socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Услуга "${user[0]?.serviceName}" выполнен` }));
-    //   }
+    if (updateResult.affectedRows > 0) {
+      if (status == 2 && user.length) {
+        socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Предоставленные документы приняты. Обработка документов начато, наши модераторы свяжутся с вами` }));
+      } else if (status == 4) {
+        socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Услуга "${user[0]?.serviceName}" отменена` }));
+      } else if (status == 3) {
+        socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Услуга "${user[0]?.serviceName}" выполнен` }));
+      }
 
-    //   appData.status = true;
-    //   res.status(200).json(appData);
-    // } else {
-    //   appData.error = "История транзакций не изменилась";
-    //   res.status(400).json(appData);
-    // }
+      appData.status = true;
+      res.status(200).json(appData);
+    } else {
+      appData.error = "История транзакций не изменилась";
+      res.status(400).json(appData);
+    }
   } catch (e) {
     console.log(e);
     appData.error = e.message;
@@ -4920,92 +4918,90 @@ admin.post("/services-transaction/status/by", async (req, res) => {
     appData = { status: false, timestamp: new Date().getTime() };
   const { id, status } = req.body;
   try {
-    // connect = await database.connection.getConnection();
-    // let user;
-    // [user] = await connect.query(
-    //   `SELECT sbu.chat_id, s.id serviceId, s.name serviceName, ul.id user_id, st.amount_tir serviceAmount, st.is_by_agent, st.agent_id, ul.driver_group_id groupId, dg.chat_id groupChatId, dg.owner_phone_number groupOwnerPhoneNumber FROM tir_balance_transaction st
-    //   LEFT JOIN services_bot_users sbu on sbu.user_id = st.user_id
-    //   LEFT JOIN users_list ul on ul.id = st.user_id
-    //   LEFT JOIN driver_group dg on dg.id = ul.driver_group_id
-    //   LEFT JOIN services s on s.id = st.service_id
-    //   WHERE st.deleted = 0 AND st.id = ${id}`
-    // );
-    // if (status == 2) {
-    //   let balance;
-    //   if(user[0]?.is_by_agent) {
-    //     const [rows] = await connect.query(
-    //       `SELECT 
-    //       COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${user[0]?.agent_id} AND user_id = ${user[0]?.agent_id} AND balance_type = 'tirgo_service' ), 0) -
-    //       COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${user[0]?.agent_id} AND created_by_id = ${user[0]?.agent_id} AND balance_type = 'tirgo_service' ), 0) -
-    //       COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE status In(2, 3) AND deleted = 0 AND agent_id = ${user[0]?.agent_id} AND transaction_type = 'service'), 0) AS serviceBalance
-    //     `);
-    //     balance = rows[0]?.serviceBalance;
-    //   } else if (user[0]?.groupId) {
-    //     const [result] = await connect.query(`
-    //       SELECT 
-    //       COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE group_id = ${user[0]?.groupId} AND user_id = ${user[0]?.groupId} AND balance_type = 'tirgo_service' ), 0) -
-    //       COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE deleted = 0 AND group_id = ${user[0]?.groupId} AND transaction_type = 'service' AND status In(2, 3)), 0) AS serviceBalance
-    //     `);
-    //     balance = result[0]?.serviceBalance;
-    //   } else {
-    //     const [result] = await connect.query(
-    //       `SELECT 
-    //       COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE user_id = ? AND balance_type = 'tirgo_service'), 0) - 
-    //       COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction  WHERE deleted = 0 AND user_id = ? AND transaction_type = 'service' AND status In(2, 3)), 0) AS balance;`,
-    //       [user[0]?.user_id, user[0]?.user_id]
-    //     );
-    //     balance = result[0]?.balance;
-    //   }
-    //   if (Number(balance) < Number(user[0]?.serviceAmount)) {
-    //     appData.error = "Недостаточно средств в балансе";
-    //     res.status(400).json(appData);
-    //     return;
-    //   }
-    // }
-    // let updateResult;
-    // if (user[0]?.groupId) {
-    //   [updateResult] = await connect.query(
-    //     `UPDATE tir_balance_transaction 
-    //      SET status = ?, group_id = ?
-    //      ${status === 3 ? ", completed_at = NOW()" : ""}
-    //      WHERE id = ?`,
-    //     [status, user[0]?.groupId, id]
-    //   );
-    // } else {  
-    //   [updateResult] = await connect.query(
-    //     `UPDATE tir_balance_transaction 
-    //      SET status = ?
-    //      ${status === 3 ? ", completed_at = NOW()" : ""}
-    //      WHERE id = ?`,
-    //     [status, id]
-    //   );
-    // }
+    connect = await database.connection.getConnection();
+    let user;
+    [user] = await connect.query(
+      `SELECT sbu.chat_id, s.id serviceId, s.name serviceName, ul.id user_id, st.amount_tir serviceAmount, st.is_by_agent, st.agent_id, ul.driver_group_id groupId, dg.chat_id groupChatId, dg.owner_phone_number groupOwnerPhoneNumber FROM tir_balance_transaction st
+      LEFT JOIN services_bot_users sbu on sbu.user_id = st.user_id
+      LEFT JOIN users_list ul on ul.id = st.user_id
+      LEFT JOIN driver_group dg on dg.id = ul.driver_group_id
+      LEFT JOIN services s on s.id = st.service_id
+      WHERE st.deleted = 0 AND st.id = ${id}`
+    );
+    if (status == 2) {
+      let balance;
+      if(user[0]?.is_by_agent) {
+        const [rows] = await connect.query(
+          `SELECT 
+          COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${user[0]?.agent_id} AND user_id = ${user[0]?.agent_id} AND balance_type = 'tirgo_service' ), 0) -
+          COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${user[0]?.agent_id} AND created_by_id = ${user[0]?.agent_id} AND balance_type = 'tirgo_service' ), 0) -
+          COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE status In(2, 3) AND deleted = 0 AND agent_id = ${user[0]?.agent_id} AND transaction_type = 'service'), 0) AS serviceBalance
+        `);
+        balance = rows[0]?.serviceBalance;
+      } else if (user[0]?.groupId) {
+        const [result] = await connect.query(`
+          SELECT 
+          COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE group_id = ${user[0]?.groupId} AND user_id = ${user[0]?.groupId} AND balance_type = 'tirgo_service' ), 0) -
+          COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE deleted = 0 AND group_id = ${user[0]?.groupId} AND transaction_type = 'service' AND status In(2, 3)), 0) AS serviceBalance
+        `);
+        balance = result[0]?.serviceBalance;
+      } else {
+        const [result] = await connect.query(
+          `SELECT 
+          COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE user_id = ? AND balance_type = 'tirgo_service'), 0) - 
+          COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction  WHERE deleted = 0 AND user_id = ? AND transaction_type = 'service' AND status In(2, 3)), 0) AS balance;`,
+          [user[0]?.user_id, user[0]?.user_id]
+        );
+        balance = result[0]?.balance;
+      }
+      if (Number(balance) < Number(user[0]?.serviceAmount)) {
+        appData.error = "Недостаточно средств в балансе";
+        res.status(400).json(appData);
+        return;
+      }
+    }
+    let updateResult;
+    if (user[0]?.groupId) {
+      [updateResult] = await connect.query(
+        `UPDATE tir_balance_transaction 
+         SET status = ?, group_id = ?
+         ${status === 3 ? ", completed_at = NOW()" : ""}
+         WHERE id = ?`,
+        [status, user[0]?.groupId, id]
+      );
+    } else {  
+      [updateResult] = await connect.query(
+        `UPDATE tir_balance_transaction 
+         SET status = ?
+         ${status === 3 ? ", completed_at = NOW()" : ""}
+         WHERE id = ?`,
+        [status, id]
+      );
+    }
     
-    // if (updateResult.affectedRows > 0) {
-    //   if (status == 2 && user.length) {
-    //     socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Предоставленные документы приняты. Обработка документов начато, наши модераторы свяжутся с вами` }));
-    //   } else if (status == 4) {
-    //     socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Услуга "${user[0]?.serviceName}" отменена` }));
-    //   } else if (status == 3) {
-    //     socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Услуга "${user[0]?.serviceName}" выполнен` }));
+    if (updateResult.affectedRows > 0) {
+      if (status == 2 && user.length) {
+        socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Предоставленные документы приняты. Обработка документов начато, наши модераторы свяжутся с вами` }));
+      } else if (status == 4) {
+        socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Услуга "${user[0]?.serviceName}" отменена` }));
+      } else if (status == 3) {
+        socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Услуга "${user[0]?.serviceName}" выполнен` }));
 
-    //     if(user[0]?.groupId) {
-    //       console.log(user)
-    //       const text = `Заказ #${user[0]?.serviceId} выполнен. Все детали успешно завершены`;
-    //       if(user[0]?.groupChatId) {
-    //         socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.groupChatId, text }));
-    //       }
-    console.log('asd')
-          await sendTextSms('98946437676', `Заказ #${user[0]?.serviceId} выполнен. Все детали успешно завершены`);
-    //     }
-    //   }
+        if(user[0]?.groupId) {
+          console.log(user)
+          const text = `Заказ #${user[0]?.serviceId} выполнен. Все детали успешно завершены`;
+          if(user[0]?.groupChatId) {
+            socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.groupChatId, text }));
+          }
+        }
+      }
 
-    //   appData.status = true;
-    //   res.status(200).json(appData);
-    // } else {
-    //   appData.error = "История транзакций не изменилась";
-    //   res.status(400).json(appData);
-    // }
+      appData.status = true;
+      res.status(200).json(appData);
+    } else {
+      appData.error = "История транзакций не изменилась";
+      res.status(400).json(appData);
+    }
   } catch (e) {
     console.log(e);
     appData.error = e.message;
