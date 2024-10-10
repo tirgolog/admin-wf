@@ -4399,7 +4399,6 @@ admin.post("/agent/add-services", async (req, res) => {
             true
           ];
         })
-        console.log({insertValues})
         // const sql =
         //   "INSERT INTO services_transaction (userid, service_id, service_name, price_uzs, price_kzs, rate, status, created_by_id, is_agent) VALUES ?";
         // const [result] = await connect.query(sql, [insertValues]);
@@ -4484,7 +4483,6 @@ admin.post("/agent/add-subscription-to-driver", async (req, res) => {
         `);
 
         if (agentBalance.length) {
-          console.log(Number(agentBalance[0].tirgoBalance),  Number(subscription[0]?.value))
             if (Number(agentBalance[0].tirgoBalance) >= Number(subscription[0]?.value)) {
 
            const [insertResult] = await connect.query(`
@@ -5485,7 +5483,6 @@ admin.post("/driver-group/add-subscription", async (req, res) => {
           COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE group_id = ${groupId} AND user_id = ${groupId} AND balance_type = 'tirgo' ), 0) -
           COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE deleted = 0 AND group_id = ${groupId} AND transaction_type = 'subscription' ), 0)  AS tirgoBalance
         `);
-        console.log(driverGroupBalance)
         if (driverGroupBalance.length) {
 
             if (Number(driverGroupBalance[0].tirgoBalance) >= Number(subscription[0]?.value)) {
@@ -5723,12 +5720,10 @@ admin.post("/remove-driver-subscription", async (req, res) => {
             res.status(400).json(appData)
           } else {
             const [sRes] = await connect.query(`UPDATE tir_balance_transaction set deleted = true, deleted_by = ${userInfo.id} WHERE id = ${subTrans[0].id}`);
-            console.log('sRes', sRes.affectedRows)
             if (!sRes.affectedRows) {
               throw new Error()
             }
             const [usRes] = await connect.query(`UPDATE users_list set to_subscription = null, from_subscription = null WHERE id = ${user_id}`);
-            console.log('usRes', usRes.affectedRows)
             if (!usRes.affectedRows) {
               throw new Error()
             }
@@ -6043,9 +6038,7 @@ admin.get("/messages/bot-users", async (req, res) => {
   let connect,
     appData = { status: false };
   try {
-    console.log(1, new Date().getTime())
     connect = await database.connection.getConnection();
-    console.log(2, new Date().getTime())
     const [rows] = await connect.query(`
     SELECT 
       ul.to_subscription,
@@ -7321,7 +7314,6 @@ admin.post("/push-notification", async (req, res) => {
         }
       } else {
         const [users] = await connect.query(`SELECT id, token, user_type FROM users_list WHERE token IS NOT NULL AND user_type = ?`, [topic == 'drivers' ? 1 : 2]);
-        console.log(users)
         for(let user of users) {
           if(user.token) {
             if(user.user_type == 1) {
