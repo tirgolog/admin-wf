@@ -737,8 +737,8 @@ users.post("/login", async (req, res) => {
           [code, phone]
         );
         await connect.query(
-          "INSERT INTO users_contacts SET is_tg = ?, verify_code=?,text=?,user_type = 1,user_id = ?",
-          [isTelegram, code, phone, insert.insertId]
+          "INSERT INTO users_contacts SET is_tg = ?, verify_code=?,text=?,user_type = 1,user_id = ?, verify_code_date_time",
+          [isTelegram, code, phone, insert.insertId, new Date().getTime()]
         );
         appData.status = true;
       }
