@@ -712,27 +712,10 @@ users.post("/login", async (req, res) => {
       [phone]
     );
     if (rows.length > 0) {
-
-      if (isTelegram) {
-        const [chatBotuser] = await connect.query(
-          "SELECT chat_id FROM services_bot_users WHERE phone_number = ?",
-          [phone]
-        );
-
-        if (!chatBotuser.length) {
-          appData.status = false;
-          appData.message = 'User is not registered in bot';
-          res.status(403).json(appData);
-          return;
-        }
-        socket.emit(14, 'login-code', JSON.stringify({ userChatId: chatBotuser[0]?.chat_id, code }));
-        send_sms_res = "waiting"
-      }
-
       if (send_sms_res === "waiting") {
         await connect.query(
-          "UPDATE users_contacts SET verify_code = ?, is_tg = ? WHERE text = ? AND user_type = 1",
-          [code, isTelegram, phone]
+          "UPDATE users_contacts SET verify_code = ?, is_tg = ?, verify_code_date_time = ? WHERE text = ? AND user_type = 1",
+          [code, isTelegram, new Date().getTime(), phone]
         );
         appData.status = true;
       } else {
@@ -740,27 +723,15 @@ users.post("/login", async (req, res) => {
       }
     } else {
 
-      const [chatBotuser] = await connect.query(
-        "SELECT chat_id FROM services_bot_users WHERE phone_number = ?",
-        [phone]
-      );
-
-      if (!chatBotuser.length) {
-        appData.status = false;
-        appData.message = 'User is not registered in bot';
-        res.status(403).json(appData);
-        return;
-      }
-
-      // if (send_sms_res === "waiting") {
+        // if (send_sms_res === "waiting") {
       const [notVerified] = await connect.query(
         "SELECT * FROM users_contacts WHERE text = ? AND user_type = 1 AND verify = 0",
         [phone]
       );
       if (notVerified.length > 0) {
         await connect.query(
-          "UPDATE users_contacts SET verify_code = ?, is_tg = ? WHERE text = ? AND user_type = 1",
-          [code, isTelegram, phone]
+          "UPDATE users_contacts SET verify_code = ?, is_tg = ?, verify_code_date_time = ? WHERE text = ? AND user_type = 1",
+          [code, isTelegram, new Date().getTime(), phone]
         );
         appData.status = true;
       } else {
