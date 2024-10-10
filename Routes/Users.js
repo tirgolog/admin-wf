@@ -740,6 +740,18 @@ users.post("/login", async (req, res) => {
       }
     } else {
 
+      const [chatBotuser] = await connect.query(
+        "SELECT chat_id FROM services_bot_users WHERE phone_number = ?",
+        [phone]
+      );
+
+      if (!chatBotuser.length) {
+        appData.status = false;
+        appData.message = 'User is not registered in bot';
+        res.status(403).json(appData);
+        return;
+      }
+
       // if (send_sms_res === "waiting") {
       const [notVerified] = await connect.query(
         "SELECT * FROM users_contacts WHERE text = ? AND user_type = 1 AND verify = 0",
