@@ -111,7 +111,7 @@ module.exports = {
     emit: function (room, name, data) {
         // const activeRooms = Object.keys(socketIO.nsps['/'].adapter.rooms);
         // console.log("Active rooms:", activeRooms);
-        console.log(room)
+        console.log(room, name, data)
         socketIO.in('s' + room).emit(name, data)
     },
     updatebalance: function (name, data) {
