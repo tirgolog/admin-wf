@@ -4066,15 +4066,15 @@ admin.put("/services/:id", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const { id } = req.params;
-    const { name, code, rate, withoutSubscription, comment } =
+    const { name, code, rate, withoutSubscription, comment, type } =
       req.body;
     if (!id || !name || !code || !rate) {
       appData.error = "All fields are required";
       return res.status(400).json(appData);
     }
     const [rows] = await connect.query(
-      `UPDATE services SET name = ?, rate = ?, code = ?, without_subscription = ?, comment = ? WHERE id = ?`,
-      [name, rate, code, withoutSubscription, comment, id]
+      `UPDATE services SET name = ?, rate = ?, code = ?, without_subscription = ?, comment = ?, type = ? WHERE id = ?`,
+      [name, rate, code, withoutSubscription, comment, type, id]
     );
     if (rows.affectedRows > 0) {
       appData.status = true;
@@ -4172,6 +4172,7 @@ admin.post("/services", async (req, res) => {
   let connect,
     name = req.body.name,
     code = req.body.code,
+    type = req.body.type,
     price_uzs = req.body.price_uzs,
     price_kzs = req.body.price_kzs,
     price_tir = req.body.price_tir,
@@ -4194,8 +4195,8 @@ admin.post("/services", async (req, res) => {
       res.status(400).json(appData);
     } else {
       const [services] = await connect.query(
-        "INSERT INTO services SET name = ?, code = ?, price_uzs = ?, price_kzs = ?, price_tir = ?, rate = ?, without_subscription = ?, comment = ?",
-        [name, code, price_uzs, price_kzs, price_tir, rate, withoutSubscription, comment]
+        "INSERT INTO services SET name = ?, code = ?, price_uzs = ?, price_kzs = ?, price_tir = ?, rate = ?, without_subscription = ?, comment = ?, type = ?",
+        [name, code, price_uzs, price_kzs, price_tir, rate, withoutSubscription, comment, type]
       );
 
       await connect.query(
@@ -4231,6 +4232,7 @@ admin.get("/services", async (req, res) => {
     price_tir,
     rate, 
     code, 
+    type,
     comment,
     without_subscription
     FROM services`);
@@ -4267,6 +4269,7 @@ admin.get("/services-price-history", async (req, res) => {
     s.name,
     s.code,
     s.rate,
+    s.type serviceType
     s.without_subscription,
     sph.price_uzs,
     sph.price_kzs,
