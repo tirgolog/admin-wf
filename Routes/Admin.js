@@ -484,12 +484,27 @@ admin.post("/agent-service/confirm-price", async (req, res) => {
       WHERE st.deleted = 0 AND st.id = ${id}`
     );
     if (status == 2) {
-      const [rows] = await connect.query(`SELECT balance_limit as "balanceLimit" FROM users_list WHERE id = ${agentId}`);
+      const [limitBalance] = await connect.query(`SELECT balance_limit as "balanceLimit" FROM users_list WHERE id = ${agentId}`);
 
-      if (Number(rows[0]?.balanceLimit) <= Number(user[0]?.serviceAmount)) {
-        appData.error = "Недостаточно средств в балансе";
-        res.status(400).json(appData);
-        return;
+      const [rows] = await connect.query(
+        `SELECT 
+        COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND user_id = ${agentId} AND balance_type = 'tirgo_service' ), 0) -
+        COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND created_by_id = ${agentId} AND balance_type = 'tirgo_service' ), 0) -
+        COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE status In(2, 3) AND deleted = 0 AND agent_id = ${agentId} AND transaction_type = 'service'), 0) AS serviceBalance
+      `);
+      if(rows[0]?.serviceBalance > 0) {
+        if (Number(limitBalance[0]?.balanceLimit) > (Number(rows[0]?.serviceBalance) - Number(user[0]?.serviceAmount))) {
+          appData.error = "Недостаточно средств в балансе";
+          res.status(400).json(appData);
+          return;
+        }
+      } else {
+        if (Number(limitBalance[0]?.balanceLimit) > (Number(rows[0]?.serviceBalance) + -user[0]?.serviceAmount)) {
+          appData.error = "Недостаточно средств в балансе";
+          res.status(400).json(appData);
+          return;
+        }
+
       }
     }
      const [updateResult] = await connect.query(   
@@ -4990,7 +5005,6 @@ admin.post("/services-transaction/status/by", async (req, res) => {
         );
         balance = result[0]?.balance;
       }
-      console.log(balance, user[0]?.serviceAmount)
       if (Number(balance) < Number(user[0]?.serviceAmount) && Number(user[0]?.serviceAmount) > 0) {
         appData.error = "Недостаточно средств в балансе";
         res.status(400).json(appData);
