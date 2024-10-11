@@ -265,6 +265,45 @@ admin.put("/changeAgentBalance", async (req, res) => {
   }
 });
 
+admin.post("/change-agent-balance-limit", async (req, res) => {
+  let connect,
+  appData = { status: false },
+  agentId = req.body.agentId,
+  amount = req.body.amount,
+  userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+  try {
+    connect = await database.connection.getConnection()
+    const [agent] = await connect.query(`SELECT id FROM users_list WHERE id = ${agentId}`);
+    if(!agent.length) {
+      appData.error = 'Agent Not Found';
+    } else {
+      if(!amount) {
+        appData.error = 'Amount is required';
+      } else {
+        const [res] = await connect.query(`UPDATE users_list set balance_limit = ${amount} WHERE id = ${agentId}`);
+        if(res.affectedRows) {
+          appData.status = true;
+        } else {
+          appData.error = "Operation failed";
+        }
+      }
+    }
+    if(appData.status) {
+      res.status(200).json(appData);
+    } else {
+      res.status(400).json(appData);
+    }
+  } catch(err) {
+    console.log(err)
+    appData.error = err.message;
+    return res.status(400).json(appData)
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 admin.post("/agent-service/add-balance", async (req, res) => {
   let connect,
     appData = { status: false },
@@ -445,13 +484,9 @@ admin.post("/agent-service/confirm-price", async (req, res) => {
       WHERE st.deleted = 0 AND st.id = ${id}`
     );
     if (status == 2) {
-      const [rows] = await connect.query(
-        `SELECT 
-        COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND user_id = ${agentId} AND balance_type = 'tirgo_service' ), 0) -
-        COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND created_by_id = ${agentId} AND balance_type = 'tirgo_service' ), 0) -
-        COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE status In(2, 3) AND deleted = 0 AND agent_id = ${agentId} AND transaction_type = 'service'), 0) AS serviceBalance
-      `);
-      if (Number(rows[0]?.serviceBalance) < Number(user[0]?.serviceAmount)) {
+      const [rows] = await connect.query(`SELECT balance_limit as "balanceLimit" FROM users_list WHERE id = ${agentId}`);
+
+      if (Number(rows[0]?.balanceLimit) <= Number(user[0]?.serviceAmount)) {
         appData.error = "Недостаточно средств в балансе";
         res.status(400).json(appData);
         return;
