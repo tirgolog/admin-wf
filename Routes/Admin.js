@@ -4269,7 +4269,7 @@ admin.get("/services-price-history", async (req, res) => {
     s.name,
     s.code,
     s.rate,
-    s.type serviceType
+    s.type serviceType,
     s.without_subscription,
     sph.price_uzs,
     sph.price_kzs,
