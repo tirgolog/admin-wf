@@ -4990,7 +4990,8 @@ admin.post("/services-transaction/status/by", async (req, res) => {
         );
         balance = result[0]?.balance;
       }
-      if (Number(balance) < Number(user[0]?.serviceAmount)) {
+      console.log(balance, user[0]?.serviceAmount)
+      if (Number(balance) < Number(user[0]?.serviceAmount) && Number(user[0]?.serviceAmount) > 0) {
         appData.error = "Недостаточно средств в балансе";
         res.status(400).json(appData);
         return;
