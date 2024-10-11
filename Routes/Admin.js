@@ -6393,18 +6393,9 @@ admin.get("/excel/agent-tirgo-balance-transactions", async (req, res) => {
     rows = [],
     trans = [],
     sortByDate = req.query.sortByDate == "true",
-    sortType = req.query.sortType,
-    from = req.query.from,
-    limit = req.query.limit;
+    sortType = req.query.sortType;
   try {
     connect = await database.connection.getConnection();
-
-    if(!from) {
-      from = 0;
-    } 
-    if(!limit) {
-      limit = 10;
-    }
 
     if(!transactionType || transactionType == 'tirgo_balance') {
       [rows] = await connect.query(
@@ -6422,8 +6413,7 @@ admin.get("/excel/agent-tirgo-balance-transactions", async (req, res) => {
         LEFT JOIN users_list adl on adl.id = tbe.created_by_id AND adl.user_type = 3
         WHERE tbe.balance_type = 'tirgo' AND tbe.agent_id = ${agentId} ORDER BY ${sortByDate ? "created_at" : "id"
         } ${sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
-        } LIMIT ?, ?;`,
-        [+from, +limit]
+        };`,
       );
     }
 
@@ -6447,7 +6437,7 @@ admin.get("/excel/agent-tirgo-balance-transactions", async (req, res) => {
 
     const data = ([...rows, ...trans].sort((a, b) => {
       return b.createdAt - a.createdAt
-    })).splice(0, limit)
+    }))
       .map((el) => {
         return {
           id: el.id,
@@ -6545,21 +6535,12 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
     rows = [],
     row = [],
     trans = [],
-    tran = [],
-    from = req.query.from,
-    limit = req.query.limit;
+    tran = [];
 
   try {
     if (agentId) {
       connect = await database.connection.getConnection();
    
-      if(!from) {
-        from = 0;
-      }
-      if(!limit) {
-        limit = 10;
-      }
-
       // Filter condition based on "completedAt" field
       let dateFilterCondition = '';     
       if (fromCompletedDate && toCompletedDate) {
@@ -6586,8 +6567,7 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
           LEFT JOIN users_list adl on adl.id = tbe.created_by_id AND adl.user_type = 3
           WHERE tbe.balance_type = 'tirgo_service' AND tbe.agent_id = ${agentId} ORDER BY ${sortByDate ? "created_at" : "id"
           } ${sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
-          } LIMIT ?, ?;`,
-          [+from, +limit]
+          };`,
         );
   
         [row] = await connect.query(
@@ -6629,7 +6609,7 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
         }
         const data = ([...rows, ...trans[0]].sort((a, b) => {
           return b.createdAt - a.createdAt
-        })).splice(0, limit)
+        }))
         .map((el) => {
           return {
             id: el.id,
