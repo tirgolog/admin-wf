@@ -1,4 +1,5 @@
 const sendpulse = require("sendpulse-api");
+const rp = require("request-promise");
 
 async function sendTextSmsPlayMobile(phone, text) {
     let options = {
@@ -35,6 +36,7 @@ async function sendTextSmsPlayMobile(phone, text) {
         return false;
       }
     } catch (err) {
+      console.log(err)
       return false;
     } finally {
       console.log("finally");
@@ -83,11 +85,11 @@ async function sendTextSmsOson(phone, text) {
 async function sendTextSms(phone, text) {
     if (phone.substr(0, 3) === "998") {
         send_sms_res = await sendTextSmsPlayMobile(phone, text);
-        console.log("send_sms_res", send_sms_res);
+        console.log("send_sms_res1", send_sms_res);
         //send_sms_res = await sendSms(phone,code,country_code)
       } else if (phone.substr(0, 3) === "992") {
         send_sms_res = await sendTextSmsOson(phone, text);
-        console.log("send_sms_res", send_sms_res);
+        console.log("send_sms_res2", send_sms_res);
         //send_sms_res = await sendSms(phone,code,country_code)
       } else if (phone.substr(0, 2) === "79") {
         let options = {
