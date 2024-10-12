@@ -5039,7 +5039,7 @@ admin.post("/services-transaction/status/by", async (req, res) => {
         socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.chat_id, text: `Услуга "${user[0]?.serviceName}" выполнен` }));
         if(user[0]?.groupId) {
           console.log(user)
-          const text = `Запрос на услугу #${user[0]?.serviceId} выполнен. Все детали успешно завершены`;
+          const text = `#${user[0]?.id} Запрос на услугу #${user[0]?.serviceName} выполнен. Все детали успешно завершены`;
           if(user[0]?.groupChatId) {
             socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.id, text }));
           }
@@ -5077,8 +5077,10 @@ admin.post("/services-transaction/status/to-priced", async (req, res) => {
     if (updateResult.affectedRows) {
 
       const [user] = await connect.query(`
-      SELECT sbu.chat_id, ul.id user_id, ul.driver_group_id groupId, ul.agent_id FROM tir_balance_transaction st
+      SELECT sbu.chat_id, s.name sericeName ul.id user_id, ul.driver_group_id groupId, ul.agent_id, dg.chat_id groupChatId, dg.owner_phone_number groupOwnerPhoneNumber FROM tir_balance_transaction st
       LEFT JOIN services_bot_users sbu on sbu.user_id = st.user_id
+      LEFT JOIN driver_group dg on dg.id = ul.driver_group_id
+      LEFT JOIN services s on s.id = st.service_id
       LEFT JOIN users_list ul on ul.id = st.user_id
       WHERE st.deleted = 0 AND st.id = ${id}`
       );
@@ -5108,6 +5110,15 @@ admin.post("/services-transaction/status/to-priced", async (req, res) => {
         balance = result[0]?.balance;
       }
       socket.emit(14, 'service-priced', JSON.stringify({ userChatId: user[0]?.chat_id, userId: user[0]?.user_id, serviceId: id, amount, balance }));
+
+      if(user[0]?.groupId) {
+        console.log(user)
+        const text = `#${user[0]?.id} Запрос на услугу #${user[0]?.sericeName} оценен`;
+        if(user[0]?.groupChatId) {
+          socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.id, text }));
+        }
+        await sendTextSms(user[0]?.groupOwnerPhoneNumber, text)
+      }
       appData.status = true;
       res.status(200).json(appData);
     } else {
