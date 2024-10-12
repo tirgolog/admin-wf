@@ -5077,7 +5077,7 @@ admin.post("/services-transaction/status/to-priced", async (req, res) => {
     if (updateResult.affectedRows) {
 
       const [user] = await connect.query(`
-      SELECT sbu.chat_id, s.name sericeName ul.id user_id, ul.driver_group_id groupId, ul.agent_id, dg.chat_id groupChatId, dg.owner_phone_number groupOwnerPhoneNumber FROM tir_balance_transaction st
+      SELECT sbu.chat_id, s.name sericeName, ul.id user_id, ul.driver_group_id groupId, ul.agent_id, dg.chat_id groupChatId, dg.owner_phone_number groupOwnerPhoneNumber FROM tir_balance_transaction st
       LEFT JOIN services_bot_users sbu on sbu.user_id = st.user_id
       LEFT JOIN driver_group dg on dg.id = ul.driver_group_id
       LEFT JOIN services s on s.id = st.service_id
