@@ -5346,6 +5346,38 @@ admin.post("/driver-group", async (req, res) => {
   }
 });
 
+admin.put("/driver-group", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  const { id, name, ownerPhoneNumber, ownerFullName } = req.body;
+  try {
+    if(!id) {
+      appData.error = 'Id is required';
+      return res.status(400).json(appData);
+    }
+    connect = await database.connection.getConnection();
+    const [row] = await connect.query(`
+      UPDATE driver_group set name = ? , owner_full_name = ? , owner_phone_number = ? WHERE id = ?;
+    `, [name, ownerFullName, ownerPhoneNumber, id]);
+    if (row.affectedRows) {
+      appData.data = row;
+      appData.status = true;
+      res.status(200).json(appData);
+    } else {
+      appData.status = true;
+      res.status(400).json(appData);
+    }
+  } catch (e) {
+    console.log(e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 admin.post("/add-driver-to-group", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
