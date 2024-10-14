@@ -3240,17 +3240,34 @@ admin.post("/addDriverSubscription", async (req, res) => {
   }
 });
 
-admin.get("/searchDriver/:driverId", async (req, res) => {
-  const { driverId } = req.params;
+admin.get("/searchDriver", async (req, res) => {
+  const { driverId, stateNumber } = req.query;
   let connect,
+    rows = [],
     appData = { status: false };
   try {
     connect = await database.connection.getConnection();
-    const [rows] = await connect.query(
-      "SELECT id, phone, name, to_subscription FROM users_list where id = ? ",
-      [driverId]
-    );
-    if (rows.length > 0) {
+    if(driverId) {
+      console.log(driverId,stateNumber)
+      rows = await connect.query(
+        `SELECT
+        u.id, u.phone, u.name, u.to_subscription, ut.state_number 
+        FROM users_list u
+        LEFT JOIN users_transport ut on ut.user_id = u.id
+        where u.id = ? `,
+        [driverId]
+      );
+    } else if (stateNumber) {
+      rows = await connect.query(
+        `SELECT
+        u.id, u.phone, u.name, u.to_subscription, ut.state_number 
+        FROM users_list u
+        LEFT JOIN users_transport ut on ut.user_id = u.id
+        where ut.state_number = ? `,
+        [stateNumber]
+      );
+    }
+    if (rows[0].length > 0) {
       // const [paymentUser] = await connect.query(
       //   `SELECT 
       //   COALESCE((SELECT SUM(amount) FROM alpha_payment WHERE userid = ? AND is_agent = false), 0) - 
@@ -3264,7 +3281,7 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
         COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction  WHERE deleted = 0 AND user_id = ? AND created_by_id = ? AND transaction_type = 'service' AND status In(2, 3)), 0) AS balance;`,
         [driverId, driverId, driverId]
       );
-      appData.data = rows[0];
+      appData.data = rows[0][0];
       appData.data.balance = paymentUser[0]?.balance;
       appData.status = true;
       res.status(200).json(appData);
@@ -3274,6 +3291,7 @@ admin.get("/searchDriver/:driverId", async (req, res) => {
       res.status(400).json(appData);
     }
   } catch (e) {
+    console.log(e)
     appData.error = e.message;
     res.status(400).json(appData);
   } finally {

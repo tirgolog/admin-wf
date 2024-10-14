@@ -17,6 +17,7 @@ reborn.post('/getAllDrivers', async (req, res) => {
         indentificator = req.body.indentificator ? req.body.indentificator:'',
         typetransport = req.body.typetransport ? req.body.typetransport:'',
         name = req.body.name ? req.body.name:'',
+        state_number = req.body.state_number,
         dateReg = req.body.dateReg ? req.body.dateReg:'',
         dateLogin = req.body.dateLogin ? req.body.dateLogin:'',
         subscription = req.body.subscription ? req.body.subscription:'',
@@ -127,6 +128,9 @@ reborn.post('/getAllDrivers', async (req, res) => {
                 newUser.contacts = contacts;
                 return newUser;
             }))
+            if(state_number) {
+                appData.data = appData.data.filter((el) => el.trucks.some((tr) => tr.state_number == state_number));
+            }
             appData.status = true;
         }
         res.status(200).json(appData);
