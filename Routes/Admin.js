@@ -828,6 +828,15 @@ admin.get("/agent-service-transactions", async (req, res) => {
         return b.createdAt - a.createdAt
       })).splice(0, limit)
 
+      for(let trans of data) {
+        const [transport_numbers] = await connect.query(`
+          SELECT 
+            transport_number
+          FROM users_transport
+          WHERE user_id = ${trans.driverId}`);
+          trans.transport_numbers = transport_numbers
+      }
+
       if (data.length) {
         appData.status = true;
         appData.data = {
@@ -979,7 +988,16 @@ admin.get("/agent-tirgo-balance-transactions", async (req, res) => {
       const data = ([...rows, ...trans].sort((a, b) => {
         return b.createdAt - a.createdAt
       })).splice(0, limit)
-
+      for(let trans of data) {
+        if(trans.driverId) {
+          const [transport_numbers] = await connect.query(`
+            SELECT 
+              transport_number
+            FROM users_transport
+            WHERE user_id = ${trans.driverId}`);
+            trans.transport_numbers = transport_numbers
+        }
+      }
     if (rows.length) {
       appData.status = true;
       appData.data = {
