@@ -604,7 +604,7 @@ reborn.post("/getAllDriversByAgent", async (req, res) => {
       FROM users_transport ut 
       LEFT JOIN users_list ul ON ul.id = ut.user_id  
       WHERE ul.user_type = 1  
-      AND ul.agent_id = ?  ${driver_id ? ' AND id = '+driver_id : ''}
+      AND ul.agent_id = ?  ${driver_id ? ' AND ul.id = '+driver_id : ''}
       ORDER BY ul.id DESC 
       LIMIT ?, ?;
       `,
