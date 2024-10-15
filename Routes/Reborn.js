@@ -592,6 +592,8 @@ reborn.post("/getAllDriversByAgent", async (req, res) => {
   let connect,
     from = +req.body.from,
     limit = +req.body.limit,
+    driver_id = +req.body.driver_id,
+    state_number = +req.body.state_number,
     agent_id = req.body.agent_id ? req.body.agent_id : "",
     [rows] = [],
     appData = { status: false };
@@ -602,14 +604,14 @@ reborn.post("/getAllDriversByAgent", async (req, res) => {
       FROM users_transport ut 
       LEFT JOIN users_list ul ON ul.id = ut.user_id  
       WHERE ul.user_type = 1  
-      AND ul.agent_id = ? 
+      AND ul.agent_id = ?  ${driver_id ? ' AND id = '+driver_id : ''}
       ORDER BY ul.id DESC 
       LIMIT ?, ?;
       `,
       [agent_id, from, limit]
     );
     const [rows_count] = await connect.query(
-      `SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND agent_id = ${agent_id}  ORDER BY id DESC`
+      `SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND agent_id = ${agent_id} ${driver_id ? ' AND id = '+driver_id : ''}  ORDER BY id DESC`
     );
     if (rows.length) {
       appData.data_count = rows_count[0].allcount;
@@ -660,6 +662,9 @@ reborn.post("/getAllDriversByAgent", async (req, res) => {
           return newUser;
         })
       );
+      if(state_number) {
+        appData.data = appData.data.filter((el) => el.trucks.some((tr) => tr.state_number == state_number));
+      }
       appData.status = true;
     }
     res.status(200).json(appData);
