@@ -3320,6 +3320,34 @@ admin.get("/searchDriver", async (req, res) => {
   }
 });
 
+admin.post("/update-driver-paid-way", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() },
+    isPaidWay = req.body.isPaidWay,
+    driver_id = req.body.driver_id;
+  try {
+    connect = await database.connection.getConnection();
+    const [update] = await connect.query(
+      "UPDATE users_list SET paid_way = ? WHERE id = ?",
+      [isPaidWay, driver_id]
+    );
+    if (update.affectedRows) {
+      appData.status = true;
+    } else {
+      appData.error = "Что то пошло не так";
+    }
+    res.status(200).json(appData);
+  } catch (err) {
+    appData.status = false;
+    appData.error = err;
+    res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 admin.post("/kzt-uzs", async (req, res) => {
   let connect,
     uzs = req.body.uzs,
