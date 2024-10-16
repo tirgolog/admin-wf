@@ -3335,7 +3335,7 @@ admin.post("/update-driver-paid-way", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [update] = await connect.query(
-      "UPDATE users_list SET paid_way = ? WHERE id = ?",
+      "UPDATE users_list SET paid_way_kz = ? WHERE id = ?",
       [isPaidWay, driver_id]
     );
     if (update.affectedRows) {
