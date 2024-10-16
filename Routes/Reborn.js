@@ -22,6 +22,7 @@ reborn.post('/getAllDrivers', async (req, res) => {
         dateLogin = req.body.dateLogin ? req.body.dateLogin:'',
         subscription = req.body.subscription ? req.body.subscription:'',
         isSubscribed = req.body.is_subscribed,
+        paid_way_kz = req.body.paid_way_kz,
         appData = {status: false};
     try {
         connect = await database.connection.getConnection();
@@ -37,6 +38,10 @@ reborn.post('/getAllDrivers', async (req, res) => {
             
             if (id) {
                 queryFilter += ` AND ul.id = '${id}'`;
+            }
+
+            if (paid_way_kz) {
+                queryFilter += ` AND ul.paid_way_kz = '${paid_way_kz}'`;
             }
 
             if (phone) {
@@ -595,6 +600,7 @@ reborn.post("/getAllDriversByAgent", async (req, res) => {
     driver_id = +req.body.driver_id,
     transport_number = req.body.transport_number,
     agent_id = req.body.agent_id ? req.body.agent_id : "",
+    paid_way_kz = req.body.paid_way_kz,
     [rows] = [],
     appData = { status: false };
   try {
@@ -604,7 +610,7 @@ reborn.post("/getAllDriversByAgent", async (req, res) => {
       FROM users_transport ut 
       LEFT JOIN users_list ul ON ul.id = ut.user_id  
       WHERE ul.user_type = 1  
-      AND ul.agent_id = ?  ${driver_id ? ' AND ul.id = '+driver_id : ''}
+      AND ul.agent_id = ?  ${driver_id ? ' AND ul.id = '+driver_id : ''} ${paid_way_kz ? ' AND ul.paid_way_kz = '+paid_way_kz : ''}
       ORDER BY ul.id DESC 
       LIMIT ?, ?;
       `,
