@@ -4401,6 +4401,10 @@ admin.post("/addDriverServices", async (req, res) => {
       appData.status = false;
       res.status(400).json(appData);
     } else {
+      const [user] = await connect.query(
+        "SELECT ul.driver_group_id groupId, dg.owner_phone_number groupOwnerPhoneNumber, chat_id groupChatId FROM users_list ul LEFT JOIN driver_group dg on dg.id = u.driver_group_id WHERE ul.id = ?",
+        [user_id]
+      );
 
       const [editUser] = await connect.query(
         "UPDATE users_list SET is_service = 1  WHERE id = ?",
@@ -4426,6 +4430,14 @@ admin.post("/addDriverServices", async (req, res) => {
           appData.status = true;
           socket.updateAllMessages("update-alpha-balance", "1");
           socket.updateAllMessages("update-service-request", "1");
+
+          if(user[0]?.groupId) {
+            await sendTextSms(user[0]?.groupOwnerPhoneNumber, `Создан новый запрос на услугу #${result.insertId}. Статус: Ожидающий. Проверьте детали.`)
+            if(user[0]?.groupChatId) {
+                await bot.sendMessage(+user[0]?.groupChatId, `Создан новый запрос на услугу #${result.insertId}. Статус: Ожидающий. Проверьте детали.`);
+            }
+        }
+
           res.status(200).json(appData);
         }
       } else {
@@ -4516,6 +4528,18 @@ admin.post("/agent/add-services", async (req, res) => {
         }
 
           socket.updateAllMessages("update-alpha-balance", "1");
+
+          const [user] = await connect.query(
+            "SELECT ul.driver_group_id groupId, dg.owner_phone_number groupOwnerPhoneNumber, chat_id groupChatId FROM users_list ul LEFT JOIN driver_group dg on dg.id = u.driver_group_id WHERE ul.id = ?",
+            [user_id]
+          );
+           if(user[0]?.groupId) {
+            await sendTextSms(user[0]?.groupOwnerPhoneNumber, `Создан новый запрос на услугу #${result.insertId}. Статус: Ожидающий. Проверьте детали.`)
+            if(user[0]?.groupChatId) {
+                await bot.sendMessage(+user[0]?.groupChatId, `Создан новый запрос на услугу #${result.insertId}. Статус: Ожидающий. Проверьте детали.`);
+            }
+          }
+
           res.status(200).json(appData);
         }
       } else {
