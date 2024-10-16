@@ -129,7 +129,7 @@ reborn.post('/getAllDrivers', async (req, res) => {
                 return newUser;
             }))
             if(transport_number) {
-                appData.data = appData.data.filter((el) => el.trucks.some((tr) => tr.transport_number == transport_number));
+                appData.data = appData.data.filter((el) => el.trucks?.length && el?.trucks.some((tr) => tr.transport_number == transport_number));
             }
             appData.status = true;
         }
@@ -593,7 +593,7 @@ reborn.post("/getAllDriversByAgent", async (req, res) => {
     from = +req.body.from,
     limit = +req.body.limit,
     driver_id = +req.body.driver_id,
-    transport_number = +req.body.transport_number,
+    transport_number = req.body.transport_number,
     agent_id = req.body.agent_id ? req.body.agent_id : "",
     [rows] = [],
     appData = { status: false };
@@ -663,7 +663,7 @@ reborn.post("/getAllDriversByAgent", async (req, res) => {
         })
       );
       if(transport_number) {
-        appData.data = appData.data.filter((el) => el.trucks.some((tr) => tr.transport_number == transport_number));
+        appData.data = appData.data.filter((el) => el.trucks?.length && el?.trucks.some((tr) => tr.transport_number == transport_number));
       }
       appData.status = true;
     }
