@@ -5077,7 +5077,7 @@ admin.post("/services-transaction/status/by", async (req, res) => {
           console.log(user)
           const text = `#${user[0]?.id} Запрос на услугу #${user[0]?.serviceName} выполнен. Все детали успешно завершены`;
           if(user[0]?.groupChatId) {
-            socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.id, text }));
+            socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.groupChatId, text }));
           }
           await sendTextSms(user[0]?.groupOwnerPhoneNumber, text)
         }
