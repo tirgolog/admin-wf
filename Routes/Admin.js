@@ -4847,6 +4847,15 @@ admin.get("/services-transaction", async (req, res) => {
     const [services_transaction] = await connect.query(query, queryParams);
     const [services_transaction_total_count] = await connect.query(countQuery, queryParams);
 
+      for(let trans of services_transaction) {
+        const [transport_numbers] = await connect.query(`
+          SELECT 
+            transport_number
+          FROM users_transport
+          WHERE user_id = ${trans.driverId}`);
+          trans.transport_numbers = transport_numbers
+      }
+
       appData.status = true;
       appData.totalCount = services_transaction_total_count[0].count;
       appData.data = services_transaction;
