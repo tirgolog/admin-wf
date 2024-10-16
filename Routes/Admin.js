@@ -3276,14 +3276,14 @@ admin.get("/searchDriver", async (req, res) => {
         where u.id = ? `,
         [driverId]
       );
-    } else if (transportNumber) {
+    } else if (transportNumber.trim()) {
       rows = await connect.query(
         `SELECT
         ul.id, ul.phone, ul.name, ul.to_subscription, ut.transport_number 
         FROM users_transport ut
         LEFT JOIN users_list ul on ut.user_id = ul.id
         where ut.transport_number = ? `,
-        [transportNumber]
+        [transportNumber.trim()]
       );
     }
     if (rows[0].length > 0) {
