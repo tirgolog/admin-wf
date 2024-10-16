@@ -4402,7 +4402,9 @@ admin.post("/addDriverServices", async (req, res) => {
       res.status(400).json(appData);
     } else {
       const [user] = await connect.query(
-        "SELECT ul.driver_group_id groupId, dg.owner_phone_number groupOwnerPhoneNumber, chat_id groupChatId FROM users_list ul LEFT JOIN driver_group dg on dg.id = u.driver_group_id WHERE ul.id = ?",
+        `SELECT ul.driver_group_id groupId, dg.owner_phone_number groupOwnerPhoneNumber, dg.chat_id groupChatId FROM users_list ul 
+        LEFT JOIN driver_group dg on dg.id = ul.driver_group_id 
+        WHERE ul.id = ?`,
         [user_id]
       );
 
@@ -4530,7 +4532,9 @@ admin.post("/agent/add-services", async (req, res) => {
           socket.updateAllMessages("update-alpha-balance", "1");
 
           const [user] = await connect.query(
-            "SELECT ul.driver_group_id groupId, dg.owner_phone_number groupOwnerPhoneNumber, chat_id groupChatId FROM users_list ul LEFT JOIN driver_group dg on dg.id = u.driver_group_id WHERE ul.id = ?",
+            `SELECT ul.driver_group_id groupId, dg.owner_phone_number groupOwnerPhoneNumber, dg.chat_id groupChatId FROM users_list ul 
+            LEFT JOIN driver_group dg on dg.id = ul.driver_group_id 
+            WHERE ul.id = ?`,
             [user_id]
           );
            if(user[0]?.groupId) {
