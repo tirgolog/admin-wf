@@ -4434,9 +4434,10 @@ admin.post("/addDriverServices", async (req, res) => {
           socket.updateAllMessages("update-service-request", "1");
 
           if(user[0]?.groupId) {
-            await sendTextSms(user[0]?.groupOwnerPhoneNumber, `Создан новый запрос на услугу #${result.insertId}. Статус: Ожидающий. Проверьте детали.`)
+            let text = `Создан новый запрос на услугу #${result.insertId}. Статус: Ожидающий. Проверьте детали.`;
+            await sendTextSms(user[0]?.groupOwnerPhoneNumber, text)
             if(user[0]?.groupChatId) {
-                await bot.sendMessage(+user[0]?.groupChatId, `Создан новый запрос на услугу #${result.insertId}. Статус: Ожидающий. Проверьте детали.`);
+              socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.groupChatId, text }));
             }
         }
 
@@ -4537,12 +4538,13 @@ admin.post("/agent/add-services", async (req, res) => {
             WHERE ul.id = ?`,
             [user_id]
           );
-           if(user[0]?.groupId) {
-            await sendTextSms(user[0]?.groupOwnerPhoneNumber, `Создан новый запрос на услугу #${result.insertId}. Статус: Ожидающий. Проверьте детали.`)
+          if(user[0]?.groupId) {
+            let text = `Создан новый запрос на услугу #${result.insertId}. Статус: Ожидающий. Проверьте детали.`;
+            await sendTextSms(user[0]?.groupOwnerPhoneNumber, text)
             if(user[0]?.groupChatId) {
-                await bot.sendMessage(+user[0]?.groupChatId, `Создан новый запрос на услугу #${result.insertId}. Статус: Ожидающий. Проверьте детали.`);
+              socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.groupChatId, text }));
             }
-          }
+        }
 
           res.status(200).json(appData);
         }
@@ -5179,7 +5181,7 @@ admin.post("/services-transaction/status/to-priced", async (req, res) => {
         console.log(user)
         const text = `#${user[0]?.id} Запрос на услугу #${user[0]?.sericeName} оценен`;
         if(user[0]?.groupChatId) {
-          socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.id, text }));
+          socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.groupChatId, text }));
         }
         await sendTextSms(user[0]?.groupOwnerPhoneNumber, text)
       }
