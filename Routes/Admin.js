@@ -175,7 +175,14 @@ admin.get("/getAllAgent", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      `SELECT * FROM users_list WHERE ${userType ? `user_type = ${userType}` : 'user_type IN (4, 5)'} ORDER BY id DESC`
+      `SELECT 
+      ul.*,
+      (SELECT 
+      COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges tbe WHERE agent_id = ul.id AND user_id = ul.id AND balance_type = 'tirgo_service' ), 0) -
+      COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ul.id AND created_by_id = ul.id AND balance_type = 'tirgo_service' ), 0) -
+      COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE status In(2, 3) AND deleted = 0 AND agent_id = ul.id AND transaction_type = 'service'), 0) )AS serviceBalance 
+      FROM users_list ul
+      WHERE ${userType ? `user_type = ${userType}` : 'user_type IN (4, 5)'} ORDER BY id DESC`
     );
     if (rows.length) {
       appData.data = rows;
@@ -5270,7 +5277,7 @@ admin.get("/get-all-drivers/reference", async (req, res) => {
 admin.get("/driver-groups", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
-  const { id, status, pageIndex, pageSize } = req.query;
+  let { id, status, pageIndex, pageSize } = req.query;
 
   try {
     if (!pageSize) {
@@ -5281,7 +5288,14 @@ admin.get("/driver-groups", async (req, res) => {
     }
     connect = await database.connection.getConnection();
     const [driverGroups] = await connect.query(`
-      SELECT *, owner_phone_number as "ownerPhoneNumber", owner_full_name as "ownerFullName" FROM driver_group ORDER BY id DESC LIMIT ${pageIndex}, ${pageSize}; 
+      SELECT 
+      dg.*, 
+      dg.owner_phone_number as "ownerPhoneNumber", 
+      dg.owner_full_name as "ownerFullName",
+      ( SELECT 
+        COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE group_id = dg.id AND user_id = dg.id AND balance_type = 'tirgo_service' ), 0) -
+        COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE deleted = 0 AND group_id = dg.id AND transaction_type = 'service' AND status In(2, 3)), 0)) AS serviceBalance 
+      FROM driver_group dg ORDER BY id DESC LIMIT ${pageIndex}, ${pageSize}; 
     `);
     appData.data = driverGroups;
     const [rows_count] = await connect.query(
