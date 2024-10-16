@@ -2021,13 +2021,14 @@ admin.post("/addTransportToUser", async (req, res) => {
     //tech_passport_files = req.body.tech_passport_files,
     cubature = req.body.data.cubature,
     state_number = req.body.data.state_number,
+    transport_number = req.body.transport_number,
     adr = req.body.data.adr,
     userid = req.body.data.userid;
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "INSERT INTO users_transport SET name = ?,description = ?,type = ?,max_weight = ?,user_id = ?,adr = ?,cubature = ?,state_number = ?",
-      [name, description, type, maxweight, userid, adr, cubature, state_number]
+      "INSERT INTO users_transport SET name = ?,description = ?,type = ?,max_weight = ?,user_id = ?,adr = ?,cubature = ?,state_number = ?, transport_number = ?",
+      [name, description, type, maxweight, userid, adr, cubature, state_number, transport_number]
     );
     if (rows.affectedRows) {
       appData.status = true;
@@ -3259,30 +3260,30 @@ admin.post("/addDriverSubscription", async (req, res) => {
 });
 
 admin.get("/searchDriver", async (req, res) => {
-  const { driverId, stateNumber } = req.query;
+  const { driverId, transportNumber } = req.query;
   let connect,
     rows = [],
     appData = { status: false };
   try {
     connect = await database.connection.getConnection();
     if(driverId) {
-      console.log(driverId,stateNumber)
+      console.log(driverId,transportNumber)
       rows = await connect.query(
         `SELECT
-        u.id, u.phone, u.name, u.to_subscription, ut.state_number 
+        u.id, u.phone, u.name, u.to_subscription, ut.transport_number 
         FROM users_list u
         LEFT JOIN users_transport ut on ut.user_id = u.id
         where u.id = ? `,
         [driverId]
       );
-    } else if (stateNumber) {
+    } else if (transportNumber) {
       rows = await connect.query(
         `SELECT
-        u.id, u.phone, u.name, u.to_subscription, ut.state_number 
-        FROM users_list u
-        LEFT JOIN users_transport ut on ut.user_id = u.id
-        where ut.state_number = ? `,
-        [stateNumber]
+        ul.id, ul.phone, ul.name, ul.to_subscription, ut.transport_number 
+        FROM users_transport ut
+        LEFT JOIN users_list ul on ut.user_id = ul.id
+        where ut.transport_number = ? `,
+        [transportNumber]
       );
     }
     if (rows[0].length > 0) {
