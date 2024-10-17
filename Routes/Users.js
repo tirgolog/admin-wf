@@ -2231,7 +2231,7 @@ users.post("/addTransport", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "INSERT INTO users_transport SET name = ?,description = ?,type = ?,max_weight = ?,user_id = ?,adr = ?,cubature = ?,state_number = ?",
+      "INSERT INTO users_transport SET name = ?,description = ?,type = ?,max_weight = ?,user_id = ?,adr = ?,cubature = ?,transport_number = ?",
       [
         name,
         description,
@@ -2300,7 +2300,7 @@ users.post("/editTransport", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "UPDATE users_transport SET name = ?,description = ?,type = ?,max_weight = ?,user_id = ?,adr = ?,cubature = ? ,state_number = ? WHERE id = ?",
+      "UPDATE users_transport SET name = ?,description = ?,type = ?,max_weight = ?,user_id = ?,adr = ?,cubature = ? ,transport_number = ? WHERE id = ?",
       [
         name,
         description,
