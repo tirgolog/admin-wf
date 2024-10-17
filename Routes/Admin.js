@@ -4471,7 +4471,9 @@ admin.post("/addDriverServices", async (req, res) => {
 
           if(user[0]?.groupId) {
             let text = `Создан новый запрос на услугу #${result.insertId}. Статус: Ожидающий. Проверьте детали.`;
-            await sendTextSms(user[0]?.groupOwnerPhoneNumber, text)
+            if(user[0]?.groupOwnerPhoneNumber) {
+              await sendTextSms(user[0]?.groupOwnerPhoneNumber, text)
+            }
             if(user[0]?.groupChatId) {
               socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.groupChatId, text }));
             }
@@ -4576,7 +4578,9 @@ admin.post("/agent/add-services", async (req, res) => {
           );
           if(user[0]?.groupId) {
             let text = `Создан новый запрос на услугу #${result.insertId}. Статус: Ожидающий. Проверьте детали.`;
-            await sendTextSms(user[0]?.groupOwnerPhoneNumber, text)
+            if(user[0]?.groupOwnerPhoneNumber) {
+              await sendTextSms(user[0]?.groupOwnerPhoneNumber, text)
+            }
             if(user[0]?.groupChatId) {
               socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.groupChatId, text }));
             }
@@ -5154,7 +5158,9 @@ admin.post("/services-transaction/status/by", async (req, res) => {
           if(user[0]?.groupChatId) {
             socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.groupChatId, text }));
           }
-          await sendTextSms(user[0]?.groupOwnerPhoneNumber, text)
+          if(user[0]?.groupOwnerPhoneNumber) {
+            await sendTextSms(user[0]?.groupOwnerPhoneNumber, text)
+          }
         }
       }
 
@@ -5228,7 +5234,9 @@ admin.post("/services-transaction/status/to-priced", async (req, res) => {
         if(user[0]?.groupChatId) {
           socket.emit(14, 'service-status-change', JSON.stringify({ userChatId: user[0]?.groupChatId, text }));
         }
-        await sendTextSms(user[0]?.groupOwnerPhoneNumber, text)
+        if(user[0]?.groupOwnerPhoneNumber) {
+          await sendTextSms(user[0]?.groupOwnerPhoneNumber, text)
+        }
       }
       appData.status = true;
       res.status(200).json(appData);
