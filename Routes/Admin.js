@@ -5412,6 +5412,24 @@ admin.get("/drivers-by-group", async (req, res) => {
     const [rows_count] = await connect.query(
       `SELECT count(*) as allcount FROM users_list WHERE user_type = 1 AND driver_group_id = ${groupId}`
     );
+
+    appData.data = await Promise.all(driverGroups.map(async (row) => {
+      let newUser = row;
+      const [trucks] = await connect.query('SELECT * FROM users_transport WHERE user_id = ?',[row.id]);
+      newUser.trucks = await Promise.all(trucks.map(async (truck) => {
+          const [filestruck] = await connect.query('SELECT * FROM users_transport_files WHERE transport_id = ?', [truck.id]);
+          let newTruck = truck;
+          newTruck.docks = await Promise.all(filestruck.map(async (filetruck) => {
+              let docks = filetruck;
+              docks.preview = fs.existsSync(process.env.FILES_PATCH +'tirgo/drivers/'+row.id+'/'+ filetruck.name)?process.env.SERVER_URL +'tirgo/drivers/'+row.id+'/'+ filetruck.name : null;
+              return docks;
+          }))
+          return newTruck;
+      }));
+      return newUser;
+  }))
+
+
     appData.data_count = rows_count[0].allcount;
     appData.status = true;
     res.status(200).json(appData);
