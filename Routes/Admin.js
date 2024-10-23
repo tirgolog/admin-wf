@@ -843,14 +843,14 @@ admin.get("/agent-service-transactions", async (req, res) => {
           WHERE user_id = ${trans.driverId}`);
           trans.transport_numbers = transport_numbers
       }
-
+      const transCount = tran[0]
       if (data.length) {
         appData.status = true;
         appData.data = {
           content: data,
           from,
           limit,
-          totalCount: row[0]?.count + tran[0][0]?.count
+          totalCount: transCount && transCount.length ? row[0]?.count + +transCount[0]?.count : row[0]?.count
         };
       }
       res.status(200).json(appData);
