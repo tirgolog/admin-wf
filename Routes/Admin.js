@@ -554,7 +554,7 @@ admin.get("/getAgent/:agent_id", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "SELECT * FROM users_list WHERE user_type = 4 AND id = ?",
+      "SELECT * FROM users_list WHERE user_type IN(4, 5) AND id = ?",
       [agent_id]
     );
     if (rows.length) {
