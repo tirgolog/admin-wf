@@ -132,41 +132,41 @@ admin.post("/refreshToken", async (req, res) => {
   }
 });
 
-admin.use((req, res, next) => {
-  let token =
-    req.body.token ||
-    req.headers["token"] ||
-    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-  let appData = {};
-  if (token && token !== undefined && token !== 'undefined') {
-    jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
-      if (err) {
-        console.log('Admin middleware error', err.name)
-        if (err.name === 'TokenExpiredError') {
-          appData["error"] = "Token has expired";
-          return res.status(401).json(appData);
-        } else {
-          console.error("JWT Verification Error:", err);
-          appData["error"] = "Token is invalid";
-          return res.status(401).json(appData);
-        }
-      } else {
-        // Check if token has expired
-        const currentTimestamp = Math.floor(Date.now() / 1000);
-        if (decoded.exp < currentTimestamp) {
-          appData["data"] = "Token has expired";
-          return res.status(401).json(appData);
-        }
-        // Attach user information from the decoded token to the request
-        req.user = decoded;
-        next();
-      }
-    });
-  } else {
-    appData["error"] = "Token is null";
-    res.status(401).json(appData);
-  }
-});
+// admin.use((req, res, next) => {
+//   let token =
+//     req.body.token ||
+//     req.headers["token"] ||
+//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+//   let appData = {};
+//   if (token && token !== undefined && token !== 'undefined') {
+//     jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
+//       if (err) {
+//         console.log('Admin middleware error', err.name)
+//         if (err.name === 'TokenExpiredError') {
+//           appData["error"] = "Token has expired";
+//           return res.status(401).json(appData);
+//         } else {
+//           console.error("JWT Verification Error:", err);
+//           appData["error"] = "Token is invalid";
+//           return res.status(401).json(appData);
+//         }
+//       } else {
+//         // Check if token has expired
+//         const currentTimestamp = Math.floor(Date.now() / 1000);
+//         if (decoded.exp < currentTimestamp) {
+//           appData["data"] = "Token has expired";
+//           return res.status(401).json(appData);
+//         }
+//         // Attach user information from the decoded token to the request
+//         req.user = decoded;
+//         next();
+//       }
+//     });
+//   } else {
+//     appData["error"] = "Token is null";
+//     res.status(401).json(appData);
+//   }
+// });
 
 admin.get("/getAllAgent", async (req, res) => {
   let connect,
@@ -7713,8 +7713,8 @@ admin.post("/addDriverTransport", async (req, res) => {
       appData.error = "Не получилось добавить транспорт. Попробуйте позже.";
     }
     res.status(200).json(appData);
-  } catch (err) {
-    appData.status = false;
+  } catch (err) {s
+    appData.status = false;s
     appData.error = err;
     res.status(403).json(appData);
   } finally {
@@ -7723,5 +7723,155 @@ admin.post("/addDriverTransport", async (req, res) => {
     }
   }
 });
+
+admin.post("/paid-way-transactions", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  try {
+      connect = await database.connection.getConnection();
+      await connect.beginTransaction();
+    const [driverTransports] = await connect.query(
+      `SELECT ut.*, al.paid_kz_comission, al.id agent_id FROM users_transport ut 
+      LEFT JOIN users_list ul ON ut.user_id = ul.id
+      LEFT JOIN users_list al ON ul.agent_id = al.id
+      WHERE ut.active = 1 AND ut.transport_number IS NOT NULL AND LENGTH(ut.transport_number) = 8 
+            AND POSITION(' ' IN ut.transport_number) = 0 AND ul.agent_id IS NOT NULL AND al.user_type = 5`
+    )
+
+    let lastUpdateDate;
+    const [tirgoPaidKzWayAccount] = await connect.query(`SELECT * FROM tirgoPaidKzWayAccount`);
+    let lastUpdateTransactionsDate = new Date(tirgoPaidKzWayAccount[0].lastUpdateTransactionsDate);
+    // Add 5 hours (5 * 60 * 60 * 1000 milliseconds)
+    lastUpdateTransactionsDate.setTime(lastUpdateTransactionsDate.getTime() + 5 * 60 * 60 * 1000);
+    console.log(lastUpdateTransactionsDate); 
+    const updatingSetTime = genearatePaidWayUpdatedAt();
+    console.log(updatingSetTime);
+    const [paidKzWayRefundService] = await connect.query(`SELECT * FROM services WHERE id = 27`);
+    const [paidKzWayComissionService] = await connect.query(`SELECT * FROM services WHERE id = 29`);
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3NfdXVpZCI6IjNhNTkyMjliLTMwMDktNDk5Yi1iZGJkLTVjOTgyNGUwNWE2YyIsImF1dGhvcml6ZWQiOnRydWUsImV4cCI6MTczMTA0NTc3MywidXNlcl9pZCI6ImYyZTFkNmQyLTM4ZTAtNDcyMC1hM2ZhLTI3NWUzMDc3ZGQ4NCIsInVzZXJuYW1lIjoiIn0.uIRLGKBNgP6bg6EohVuRI-AqauXE4Tfsn-NotujPbDI`
+      }
+    };
+
+
+    const data = await Promise.all(driverTransports.map(async(transport) => {
+      const transportNumber = transport.transport_number.replaceAll(' ', '').trim();
+      const body = {
+        "licencePlate": transportNumber,
+        "perPage": 10,
+        "currentPage": 1
+      }
+      const dataFromPaidWay = await axios.post('https://law.kaztoll.kz/api/law/carpayments', body, config);
+      
+      const totalElements = dataFromPaidWay.data.answer.totalElements;
+      const results = [];
+      const pages = Math.ceil(totalElements / 10);
+      
+      for (let index = 0; index < pages; index++) {
+        body['currentPage'] = index +1
+        const res = await axios.post('https://law.kaztoll.kz/api/law/carpayments', body, config);
+        const transportAllTransactions = res.data.answer.content;
+
+        // Check condition: if any transaction's `createdDate` is older than `lastUpdateTransactionsDate`
+        const meetsCondition = paidWayKzDateParser(transportAllTransactions[transportAllTransactions.length - 1]?.createdDate) < lastUpdateTransactionsDate;
+
+        results.push(...transportAllTransactions);
+        
+        // If the condition is met, stop and return the data
+        if (meetsCondition) {
+          break;
+        }
+      }
+      const data = results.filter(el => el.sourceCode == tirgoPaidKzWayAccount[0].accountType && paidWayKzDateParser(el.createdDate) >= lastUpdateTransactionsDate && el.total > 0);
+      const paidWayContent = data.flat();
+      console.log('paidWayContent.length', paidWayContent.length);
+          for(let transaction of paidWayContent){
+          const [dataExists] = await connect.query(
+            `SELECT 1 FROM tir_balance_transaction WHERE transport_number = ? AND paid_kz_way_transaction_id = ? AND paid_kz_way_transaction_source_id = ?`,
+            [transport.transport_number, transaction.uuid, transaction.sourceId]
+          );
+          
+          console.log('dataExists', dataExists)
+          const adminId = 7770;  // admin that stands for only these transactions
+          // if(!dataExists.length){
+          //   await connect.query(
+          //     `INSERT INTO tir_balance_transaction SET 
+          //     user_id = ?, 
+          //     service_id = ?, transaction_type = ?, transport_number = ?, paid_kz_way_transaction_id = ?, 
+          //     paid_kz_way_transaction_source_id = ?, amount_tir = ?, paid_kz_way_transaction_created_at = ?, created_by_id = ?, is_by_agent = ?, agent_id = ?`,
+          //     [transport.user_id, paidKzWayRefundService[0]?.id, 'service', transport.transport_number, transaction.uuid,
+          //      transaction.sourceId, transaction.total, 
+          //      new Date(transaction.createdDate.split(' ')[0].split('-').reverse().join('-') + 'T'+transaction.createdDate.split(' ')[1]),
+          //      adminId, true, transport.agent_id]
+          //   );
+  
+          //   await connect.query(
+          //     `INSERT INTO tir_balance_transaction SET 
+          //     user_id = ?, 
+          //     service_id = ?, transaction_type = ?, transport_number = ?, paid_kz_way_transaction_id = ?, 
+          //     paid_kz_way_transaction_source_id = ?, amount_tir = ?, paid_kz_way_transaction_created_at = ?, created_by_id = ?, is_by_agent = ?, agent_id = ?`,
+          //     [transport.user_id, paidKzWayComissionService[0]?.id, 'service', transport.transport_number, transaction.uuid,
+          //      transaction.sourceId, ((transaction.total / 100) * +transport.paid_kz_comission), 
+          //      new Date(transaction.createdDate.split(' ')[0].split('-').reverse().join('-') + 'T'+transaction.createdDate.split(' ')[1]),
+          //      adminId, true, transport.agent_id]
+          //   );
+          //   return
+          // }
+        }
+    }));
+    console.log(updatingSetTime)
+    await connect.query(`UPDATE tirgoPaidKzWayAccount set lastUpdateTransactionsDate = ?`, [updatingSetTime]);
+    await connect.commit();
+    appData.status = true;
+    res.status(200).json(appData);
+  } catch (err) {
+    console.log(err)
+    appData.status = false;
+    appData.error = err;
+    if (connect) {
+      await connect.rollback();
+  }
+    res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+function paidWayKzDateParser(date) {
+ return new Date(date.split(' ')[0].split('-').reverse().join('-') + 'T'+date.split(' ')[1])
+}
+
+function genearatePaidWayUpdatedAt() {
+  // generates 1 hour before now
+  let yyyy = new Date().getFullYear();
+  let mm = new Date().getMonth() + 1;
+  let dd = new Date().getDate();
+  let hh = new Date().getHours() - 1;
+  let min = new Date().getMinutes();
+  let ss = new Date().getSeconds();
+
+  if (mm < 10) {
+    mm = `0${mm}`;
+  }
+  if (dd < 10) {
+    dd = `0${dd}`;
+  }
+  if (hh < 10) {
+    hh = `0${hh}`;
+  }
+  if (min < 10) {
+    min = `0${min}`;
+  }
+  if (ss < 10) {
+    ss = `0${ss}`;
+  }
+
+  const date = new Date(`${yyyy}-${mm}-${dd}T${hh}:${min}:${ss}.${new Date().getMilliseconds()}Z`);
+  return date
+}
 
 module.exports = admin;
