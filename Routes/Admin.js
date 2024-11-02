@@ -7854,6 +7854,55 @@ admin.post("/paid-way-transactions", async (req, res) => {
   }
 });
 
+admin.put('/tirgo-paid-kz-way-account', async (req, res) => {
+  let appData = { status: false };
+  let connect,
+  kz_tenge_rate = req.body.kz_tenge_rate,
+  token = req.body.token;
+  try {
+    connect = await database.connection.getConnection();
+    const [update] = await connect.query(`UPDATE tirgoPaidKzWayAccount SET kz_tenge_rate = ?, token = ?`, [kz_tenge_rate, token]);
+    if (update.affectedRows) {
+      appData.status = true;
+    } else {
+      appData.error = "Что то пошло не так";
+    }
+    res.status(200).json(appData);
+  } catch (err) {
+    appData.status = false;
+    appData.error = err;
+    res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+admin.get('/tirgo-paid-kz-way-account', async (req, res) => {
+  let appData = { status: false };
+  let connect;
+  try {
+    connect = await database.connection.getConnection();
+    const [data] = await connect.query(`SELECT * FROM tirgoPaidKzWayAccount`);
+    if (data.length) {
+      appData.status = true;
+      appData.data = data[0];
+    } else {
+      appData.error = "Что то пошло не так";
+    }
+    res.status(200).json(appData);
+  } catch (err) {
+    appData.status = false;
+    appData.error = err;
+    res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 function paidWayKzDateParser(date) {
  return new Date(date.split(' ')[0].split('-').reverse().join('-') + 'T'+date.split(' ')[1])
 }
