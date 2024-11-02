@@ -23,6 +23,8 @@ const upload = multer({
 const XLSX = require("xlsx");
 const { Blob } = require("node:buffer");
 const { tirgoBalanceCurrencyCodes } = require("../constants");
+const { resolve } = require("dns");
+const { rejects } = require("assert");
 //Beeline
 // const minioClient = new Minio.Client({
 //   endPoint: "185.183.243.223",
@@ -7738,14 +7740,15 @@ admin.post("/paid-way-transactions", async (req, res) => {
             AND POSITION(' ' IN ut.transport_number) = 0 AND ul.agent_id IS NOT NULL AND al.user_type = 5`
     )
 
-    let lastUpdateDate;
     const [tirgoPaidKzWayAccount] = await connect.query(`SELECT * FROM tirgoPaidKzWayAccount`);
+    console.log(1, tirgoPaidKzWayAccount[0].lastUpdateTransactionsDate)
     let lastUpdateTransactionsDate = new Date(tirgoPaidKzWayAccount[0].lastUpdateTransactionsDate);
+    console.log(2, lastUpdateTransactionsDate); 
     // Add 5 hours (5 * 60 * 60 * 1000 milliseconds)
     lastUpdateTransactionsDate.setTime(lastUpdateTransactionsDate.getTime() + 5 * 60 * 60 * 1000);
-    console.log(lastUpdateTransactionsDate); 
+    console.log(3, lastUpdateTransactionsDate); 
     const updatingSetTime = genearatePaidWayUpdatedAt();
-    console.log(updatingSetTime);
+    console.log(4,updatingSetTime);
     const [paidKzWayRefundService] = await connect.query(`SELECT * FROM services WHERE id = 27`);
     const [paidKzWayComissionService] = await connect.query(`SELECT * FROM services WHERE id = 29`);
     const config = {
@@ -7756,73 +7759,84 @@ admin.post("/paid-way-transactions", async (req, res) => {
     };
 
 
-    const data = await Promise.all(driverTransports.map(async(transport) => {
-      const transportNumber = transport.transport_number.replaceAll(' ', '').trim();
-      const body = {
-        "licencePlate": transportNumber,
-        "perPage": 10,
-        "currentPage": 1
-      }
-      const dataFromPaidWay = await axios.post('https://law.kaztoll.kz/api/law/carpayments', body, config);
-      
-      const totalElements = dataFromPaidWay.data.answer.totalElements;
-      const results = [];
-      const pages = Math.ceil(totalElements / 10);
-      
-      for (let index = 0; index < pages; index++) {
-        body['currentPage'] = index +1
-        const res = await axios.post('https://law.kaztoll.kz/api/law/carpayments', body, config);
-        const transportAllTransactions = res.data.answer.content;
-
-        // Check condition: if any transaction's `createdDate` is older than `lastUpdateTransactionsDate`
-        const meetsCondition = paidWayKzDateParser(transportAllTransactions[transportAllTransactions.length - 1]?.createdDate) < lastUpdateTransactionsDate;
-
-        results.push(...transportAllTransactions);
-        
-        // If the condition is met, stop and return the data
-        if (meetsCondition) {
-          break;
-        }
-      }
-      const data = results.filter(el => el.sourceCode == tirgoPaidKzWayAccount[0].accountType && paidWayKzDateParser(el.createdDate) >= lastUpdateTransactionsDate && el.total > 0);
-      const paidWayContent = data.flat();
-      console.log('paidWayContent.length', paidWayContent.length);
-          for(let transaction of paidWayContent){
-          const [dataExists] = await connect.query(
-            `SELECT 1 FROM tir_balance_transaction WHERE transport_number = ? AND paid_kz_way_transaction_id = ? AND paid_kz_way_transaction_source_id = ?`,
-            [transport.transport_number, transaction.uuid, transaction.sourceId]
-          );
+    // const data = await Promise.all(
+    //   driverTransports.map(async (transport) => {
+    //     try {
+    //       const transportNumber = transport.transport_number.replaceAll(' ', '').trim();
+    //       const body = {
+    //         licencePlate: transportNumber,
+    //         perPage: 10,
+    //         currentPage: 1,
+    //       };
           
-          console.log('dataExists', dataExists)
-          const adminId = 7770;  // admin that stands for only these transactions
-          // if(!dataExists.length){
-          //   await connect.query(
-          //     `INSERT INTO tir_balance_transaction SET 
-          //     user_id = ?, 
-          //     service_id = ?, transaction_type = ?, transport_number = ?, paid_kz_way_transaction_id = ?, 
-          //     paid_kz_way_transaction_source_id = ?, amount_tir = ?, paid_kz_way_transaction_created_at = ?, created_by_id = ?, is_by_agent = ?, agent_id = ?`,
-          //     [transport.user_id, paidKzWayRefundService[0]?.id, 'service', transport.transport_number, transaction.uuid,
-          //      transaction.sourceId, transaction.total, 
-          //      new Date(transaction.createdDate.split(' ')[0].split('-').reverse().join('-') + 'T'+transaction.createdDate.split(' ')[1]),
-          //      adminId, true, transport.agent_id]
-          //   );
-  
-          //   await connect.query(
-          //     `INSERT INTO tir_balance_transaction SET 
-          //     user_id = ?, 
-          //     service_id = ?, transaction_type = ?, transport_number = ?, paid_kz_way_transaction_id = ?, 
-          //     paid_kz_way_transaction_source_id = ?, amount_tir = ?, paid_kz_way_transaction_created_at = ?, created_by_id = ?, is_by_agent = ?, agent_id = ?`,
-          //     [transport.user_id, paidKzWayComissionService[0]?.id, 'service', transport.transport_number, transaction.uuid,
-          //      transaction.sourceId, ((transaction.total / 100) * +transport.paid_kz_comission), 
-          //      new Date(transaction.createdDate.split(' ')[0].split('-').reverse().join('-') + 'T'+transaction.createdDate.split(' ')[1]),
-          //      adminId, true, transport.agent_id]
-          //   );
-          //   return
-          // }
-        }
-    }));
-    console.log(updatingSetTime)
-    await connect.query(`UPDATE tirgoPaidKzWayAccount set lastUpdateTransactionsDate = ?`, [updatingSetTime]);
+    //       let dataFromPaidWay = await axios.post('https://law.kaztoll.kz/api/law/carpayments', body, config);
+    //       const totalElements = dataFromPaidWay.data.answer.totalElements;
+    //       const pages = Math.ceil(totalElements / 10);
+    //       const results = [];
+    
+    //       for (let index = 0; index < pages; index++) {
+    //         body.currentPage = index + 1;
+    //         const res = await axios.post('https://law.kaztoll.kz/api/law/carpayments', body, config);
+    //         let transactions = res.data.answer.content;
+            
+    //         const meetsCondition = paidWayKzDateParser(transactions[transactions.length - 1]?.createdDate) < lastUpdateTransactionsDate;
+    //         transactions = transactions.filter(el => 
+    //           el.sourceCode === tirgoPaidKzWayAccount[0].accountType &&
+    //           paidWayKzDateParser(el.createdDate) >= lastUpdateTransactionsDate &&
+    //           el.total > 0
+    //         );
+    
+    //         if (transactions.length) results.push(...transactions);
+    //         if (meetsCondition) break;
+    //       }
+    
+    //       if (results.length) {
+    //         const paidWayContent = results;
+    //         console.log('paidWayContent', paidWayContent.length, transport.transport_number);
+    //         for (let transaction of paidWayContent) {
+    //           const [dataExists] = await connect.query(
+    //             `SELECT 1 FROM tir_balance_transaction WHERE transport_number = ? AND paid_kz_way_transaction_id = ? AND paid_kz_way_transaction_source_id = ?`,
+    //             [transport.transport_number, transaction.uuid, transaction.sourceId]
+    //           );
+    //           console.log('dataExists', dataExists)
+    //           const adminId = 7770;
+    //           if (!dataExists.length) {
+    //            const [vazRes] = await connect.query(
+    //               `INSERT INTO tir_balance_transaction SET 
+    //               user_id = ?, 
+    //               service_id = ?, transaction_type = ?, transport_number = ?, paid_kz_way_transaction_id = ?, 
+    //               paid_kz_way_transaction_source_id = ?, amount_tir = ?, paid_kz_way_transaction_created_at = ?, created_by_id = ?, is_by_agent = ?, agent_id = ?`,
+    //               [transport.user_id, paidKzWayRefundService[0]?.id, 'service', transport.transport_number, transaction.uuid,
+    //                transaction.sourceId, transaction.total, 
+    //                new Date(transaction.createdDate.split(' ')[0].split('-').reverse().join('-') + 'T' + transaction.createdDate.split(' ')[1]),
+    //                adminId, true, transport.agent_id]
+    //             );
+    //             console.log('vazResCreated', vazRes.affectedRows)
+    //             const [comRes] = await connect.query(
+    //               `INSERT INTO tir_balance_transaction SET 
+    //               user_id = ?, 
+    //               service_id = ?, transaction_type = ?, transport_number = ?, paid_kz_way_transaction_id = ?, 
+    //               paid_kz_way_transaction_source_id = ?, amount_tir = ?, paid_kz_way_transaction_created_at = ?, created_by_id = ?, is_by_agent = ?, agent_id = ?`,
+    //               [transport.user_id, paidKzWayComissionService[0]?.id, 'service', transport.transport_number, transaction.uuid,
+    //                transaction.sourceId, ((transaction.total / 100) * +transport.paid_kz_comission), 
+    //                new Date(transaction.createdDate.split(' ')[0].split('-').reverse().join('-') + 'T' + transaction.createdDate.split(' ')[1]),
+    //                adminId, true, transport.agent_id]
+    //             );
+    //             console.log('comResCreated', comRes.affectedRows)
+    //           }
+    //         }
+    //       }
+          
+    //       return transport.transport_number; // Resolve transport number
+    //     } catch (err) {
+    //       console.error(`Error processing transport ${transport.transport_number}:`, err);
+    //       throw err; // Ensure Promise.allSettled catches it as "rejected"
+    //     }
+    //   })
+    // );
+    
+    console.log(updatingSetTime, data)
+    // await connect.query(`UPDATE tirgoPaidKzWayAccount set lastUpdateTransactionsDate = ?`, [updatingSetTime]);
     await connect.commit();
     appData.status = true;
     res.status(200).json(appData);
