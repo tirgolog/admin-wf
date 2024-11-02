@@ -7748,6 +7748,7 @@ admin.post("/paid-way-transactions", async (req, res) => {
     lastUpdateTransactionsDate.setTime(lastUpdateTransactionsDate.getTime() + 5 * 60 * 60 * 1000);
     console.log(3, lastUpdateTransactionsDate); 
     const updatingSetTime = genearatePaidWayUpdatedAt();
+    updatingSetTime.setTime(updatingSetTime.getTime() + 5 * 60 * 60 * 1000);
     console.log(4,updatingSetTime);
     const [paidKzWayRefundService] = await connect.query(`SELECT * FROM services WHERE id = 27`);
     const [paidKzWayComissionService] = await connect.query(`SELECT * FROM services WHERE id = 29`);
@@ -7835,7 +7836,7 @@ admin.post("/paid-way-transactions", async (req, res) => {
     //   })
     // );
     
-    console.log(updatingSetTime, data)
+    console.log(updatingSetTime)
     // await connect.query(`UPDATE tirgoPaidKzWayAccount set lastUpdateTransactionsDate = ?`, [updatingSetTime]);
     await connect.commit();
     appData.status = true;
