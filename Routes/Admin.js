@@ -4822,6 +4822,8 @@ admin.get("/services-transaction", async (req, res) => {
       dg.id driverGroupId,
       dg.name driverGroupName,
       tbt.is_by_group isByGroup,
+      tbt.kz_description,
+      tbt.paid_kz_way_transaction_created_at,
       CASE 
       WHEN ul.to_subscription > CURDATE() THEN true
       ELSE false
