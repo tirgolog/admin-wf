@@ -7862,6 +7862,11 @@ admin.put('/tirgo-paid-kz-way-account', async (req, res) => {
   kz_tenge_rate = req.body.kz_tenge_rate,
   token = req.body.token;
   try {
+    if(!kz_tenge_rate || !token.length) {
+      appData.error = "All fields are required";
+      res.status(403).json(appData);
+      return;
+    }
     connect = await database.connection.getConnection();
     const [update] = await connect.query(`UPDATE tirgoPaidKzWayAccount SET kz_tenge_rate = ?, token = ?`, [kz_tenge_rate, token]);
     if (update.affectedRows) {
