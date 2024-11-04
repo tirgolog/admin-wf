@@ -7805,7 +7805,7 @@ admin.post("/paid-way-transactions", async (req, res) => {
                const [vazRes] = await connect.query(
                   `INSERT INTO tir_balance_transaction SET 
                   user_id = ?, 
-                  service_id = ?, transaction_type = ?, transport_number = ?, paid_kz_way_transaction_id = ?, 
+                  service_id = ?, transaction_type = ?, status = 3, transport_number = ?, paid_kz_way_transaction_id = ?, 
                   paid_kz_way_transaction_source_id = ?, amount_tir = ?, paid_kz_way_transaction_created_at = ?, created_by_id = ?, is_by_agent = ?, agent_id = ?, kz_description = ?`,
                   [transport.user_id, paidKzWayRefundService[0]?.id, 'service', transport.transport_number, transaction.uuid,
                    transaction.sourceId, amount, 
@@ -7816,7 +7816,7 @@ admin.post("/paid-way-transactions", async (req, res) => {
                 const [comRes] = await connect.query(
                   `INSERT INTO tir_balance_transaction SET 
                   user_id = ?, 
-                  service_id = ?, transaction_type = ?, transport_number = ?, paid_kz_way_transaction_id = ?, 
+                  service_id = ?, transaction_type = ?, status = 3, transport_number = ?, paid_kz_way_transaction_id = ?, 
                   paid_kz_way_transaction_source_id = ?, amount_tir = ?, paid_kz_way_transaction_created_at = ?, created_by_id = ?, is_by_agent = ?, agent_id = ?, kz_description = ?`,
                   [transport.user_id, paidKzWayComissionService[0]?.id, 'service', transport.transport_number, transaction.uuid,
                    transaction.sourceId, amountComission, 

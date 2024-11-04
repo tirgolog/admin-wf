@@ -515,6 +515,187 @@ reborn.post('/getAllOrders', async (req, res) => {
         }
     }
 });
+
+reborn.post('/getAllTmcOrders', async (req, res) => {
+    let connect,
+        id = req.body.id ? req.body.id:'',
+        sendCargoDate = req.body.sendCargoDate ? req.body.sendCargoDate:'',
+        status = req.body.status ? req.body.status:'',
+        sendLocation = req.body.sendLocation ? req.body.sendLocation:'',
+        cargoDeliveryLocation = req.body.cargoDeliveryLocation ? req.body.cargoDeliveryLocation:'',
+        isSafeOrder = req.body.isSafeOrder ? req.body.isSafeOrder:'',
+        from = +req.body.from,
+        limit = +req.body.limit,
+        appData = {status: false,timestamp: new Date().getTime()};
+    try {
+
+        if(!from) {
+            from = 0;
+        } 
+        if(!limit) {
+            limit = 10;
+        }
+        let filter = '';
+        if(sendCargoDate) {
+            if(filter.length) {
+                filter += `&sendCargoDate=${sendCargoDate}`;
+            } else {
+                filter += `?sendCargoDate=${sendCargoDate}`;    
+            } 
+        }
+        if(status) {
+            if(filter.length) {
+                filter += `&status=${status}`;
+            } else {
+                filter += `?status=${status}`;    
+            } 
+        }
+        if(sendLocation) {
+            if(filter.length) {
+                filter += `&sendLocation=${sendLocation}`;
+            } else {
+                filter += `?sendLocation=${sendLocation}`;    
+            } 
+        }
+        if(cargoDeliveryLocation) {
+            if(filter.length) {
+                filter += `&cargoDeliveryLocation=${cargoDeliveryLocation}`;
+            } else {
+                filter += `?cargoDeliveryLocation=${cargoDeliveryLocation}`;    
+            }   
+        }
+        if(isSafeOrder) {
+            if(filter.length) {
+                filter += `&isSafeOrder=${isSafeOrder}`;
+            } else {
+                filter += `?isSafeOrder=${isSafeOrder}`;    
+            } 
+        }
+        if(id) {
+            if(filter.length) {
+                filter += `&id=${id}`;
+            } else {
+                filter += `?id=${id}`;    
+            }
+        }
+        if(from && limit) {
+            if(filter.length) {
+                filter += `&from=${from}&limit=${limit}`;
+            } else {
+                filter += `?from=${from}&limit=${limit}`;    
+            }
+        }
+        const merchantCargos = await axios.get(
+            `https://merchant.tirgo.io/api/v1/cargo/all-admin${filter}`
+          );
+          if (merchantCargos.data.success) {
+            merchantData = merchantCargos.data.data.map((el) => {
+              return {
+                id: el.id,
+                isMerchant: true,
+                usernameorder: el.createdBy?.username,
+                userphoneorder: el.createdBy?.phoneNumber,
+                route: {
+                  from_city: el.sendLocation,
+                  to_city: el.cargoDeliveryLocation,
+                },
+                add_two_days: "",
+                adr: el.isDangrousCargo,
+                comment: "",
+                comment_client: "",
+                cubic: "",
+                currency: el.currency?.name,
+                date_create: new Date(el.createdAt),
+                date_send: el.sendCargoDate,
+                driver_id: el.driverId,
+                end_client: "",
+                end_date: "",
+                end_driver: "",
+                height_box: el.cargoHeight,
+                length_box: el.cargoLength,
+                loading: "",
+                mode: "",
+                no_cash: el.isCashlessPayment,
+                orders_accepted: el.acceptedOrders,
+                price: el.offeredPrice,
+                raiting_driver: "",
+                raiting_user: "",
+                route_id: "",
+                save_order: "",
+                secure_transaction: el.isSafe,
+                status: el.status,
+                transport_type: el.transportType?.name,
+                transport_types: el.transportTypes,
+                type_cargo: el.cargoType?.code,
+                user_id: el.clientId,
+                weight: el.cargoWeight,
+                width_box: el.cargoWidth,
+                created_at: new Date(el.createdAt),
+                logo: el.merchant?.logoFilePath,
+                merchant: el.merchant
+              };
+            });
+          }
+
+        connect = await database.connection.getConnection();
+        const [rows] = await connect.query('SELECT * FROM orders WHERE id = ?, date_send = ?, status = ?, secure_transaction = ? ORDER BY id DESC LIMIT ?, ?',
+            [id ? id : '%', sendCargoDate ? sendCargoDate : '%', status ? status : '%', isSafeOrder ? isSafeOrder : '%', from, limit]);
+        const [rows_count] = await connect.query('SELECT count(*) as allcount FROM orders ORDER BY id DESC');
+       
+        if (rows.length){
+            appData.data_count = rows_count[0].allcount
+            let data= [...merchantData ,...rows];
+            data = (data.sort((a,b) => {
+                if (a.date_create < b.date_create) {
+                    return 1;
+                  }
+                  if (a.date_create > b.date_create) {
+                    return -1;
+                  }
+                  return 0;
+            })).slice(0, limit)
+            appData.data = await Promise.all(data.map(async (item) => {
+                let newItem = item;
+                if (!item.isMerchant) {
+                    newItem.transport_types = JSON.parse(item.transport_types);
+                  }
+                const [orders_accepted] = await connect.query('SELECT ul.*,oa.price as priceorder,oa.one_day,oa.two_day,oa.three_day,oa.status_order,oa.date_create as date_create_accepted FROM orders_accepted oa LEFT JOIN users_list ul ON ul.id = oa.user_id WHERE oa.order_id = ?',[item.isMerchant ? +item.id.split("M")[1] : item.id]);
+                newItem.orders_accepted = await Promise.all(orders_accepted.map(async (item2) => {
+                    let newItemUsers = item2;
+                    newItemUsers.avatar = null;
+                    return newItemUsers;
+                }));
+                if (!item.isMerchant) {
+                    const [route] = await connect.query(
+                      "SELECT * FROM routes WHERE id = ? LIMIT 1",
+                      [item.route_id]
+                    );
+                    newItem.route = route[0];
+                }
+                if (!item.isMerchant) {
+                  const [userinfo] = await connect.query('SELECT * FROM users_list WHERE id = ? LIMIT 1',[item.user_id]);
+                  newItem.userinfo = userinfo[0];
+                }
+                return newItem;
+            }
+            ));
+            appData.status = true;
+        }else {
+            appData.error = 'Нет заказов';
+        }
+        res.status(200).json(appData);
+    } catch (err) {
+        console.log(err)
+        appData.status = false;
+        appData.error = err;
+        res.status(403).json(appData);
+    } finally {
+        if (connect) {
+            connect.release()
+        }
+    }
+});
+
 reborn.post('/getDeletedUsers', async (req, res) => {
     let connect,
         from = +req.body.from,
@@ -545,6 +726,7 @@ reborn.post('/getDeletedUsers', async (req, res) => {
         }
     }
 });
+
 reborn.post('/getActivityUsers', async (req, res) => {
     let connect,
         from = +req.body.from,
