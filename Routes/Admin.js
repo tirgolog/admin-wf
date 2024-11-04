@@ -7868,7 +7868,7 @@ admin.put('/tirgo-paid-kz-way-account', async (req, res) => {
       return;
     }
     connect = await database.connection.getConnection();
-    const [update] = await connect.query(`UPDATE tirgoPaidKzWayAccount SET kz_tenge_rate = ?, token = ?`, [kz_tenge_rate, token]);
+    const [update] = await connect.query(`UPDATE tirgoPaidKzWayAccount SET kz_tenge_rate = ?, token = ?`, [kz_tenge_rate, kz_token]);
     if (update.affectedRows) {
       appData.status = true;
     } else {
