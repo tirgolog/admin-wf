@@ -757,6 +757,8 @@ admin.get("/agent-service-transactions", async (req, res) => {
     fromCompletedDate = req.query.fromCompletedDate,
     toCompletedDate = req.query.toCompletedDate,
     serviceStatusId = req.query.serviceStatusId,
+    fromPaidWayDate = req.query.fromPaidWayDate,
+    toPaidWayDate = req.query.toPaidWayDate,
     alphaRow = [];
   if (!limit) {
     limit = 10;
