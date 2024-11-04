@@ -753,6 +753,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
     balanceRows = [],
     balanceRow = [],
     alphaRows = [],
+    totalServiceAmount = 0,
     fromCompletedDate = req.query.fromCompletedDate,
     toCompletedDate = req.query.toCompletedDate,
     serviceStatusId = req.query.serviceStatusId,
@@ -777,6 +778,15 @@ admin.get("/agent-service-transactions", async (req, res) => {
         dateFilterCondition = `AND tbt.completed_at <= '${toCompletedDate}'`;
       }
 
+      let paidWayDateFilterCondition = '';     
+      if (fromPaidWayDate && toPaidWayDate) {
+        paidWayDateFilterCondition = `AND tbt.paid_kz_way_transaction_created_at BETWEEN '${fromPaidWayDate}' AND '${toPaidWayDate}'`;
+      } else if (fromPaidWayDate && !toPaidWayDate) {
+        paidWayDateFilterCondition = `AND tbt.paid_kz_way_transaction_created_at >= '${fromPaidWayDate}'`;
+      } else if (!fromPaidWayDate && toPaidWayDate) {
+        paidWayDateFilterCondition = `AND tbt.paid_kz_way_transaction_created_at <= '${toPaidWayDate}'`;
+      }
+
 
       if(!transactionType || transactionType == 'service_balance') {
       [rows] = await connect.query(
@@ -793,7 +803,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
         LEFT JOIN users_list dl on dl.id = tbe.user_id AND dl.user_type = 1
         LEFT JOIN users_list adl on adl.id = tbe.created_by_id AND adl.user_type = 3
         WHERE tbe.balance_type = 'tirgo_service' AND tbe.agent_id = ${agentId} ORDER BY ${sortByDate ? "created_at" : "id"
-        } ${sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
+        } ${driverId ? "AND tbe.user_id = " + driverId : ""} ${sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
         } LIMIT ?, ?;`,
         [+from, +limit]
       );
@@ -817,20 +827,26 @@ admin.get("/agent-service-transactions", async (req, res) => {
         tbt.amount_tir amount,
         'Оформления сервиса' transactionType,
         tbt.created_at createdAt,
-        tbt.status
+        tbt.status,
+        tbt.kz_description,
+        tbt.paid_kz_way_transaction_created_at
       FROM tir_balance_transaction tbt
       LEFT JOIN users_list dl on dl.id = tbt.user_id AND dl.user_type = 1
       LEFT JOIN users_list adl on adl.id = tbt.created_by_id AND adl.user_type = 3
       LEFT JOIN services s on s.id = tbt.service_id
       WHERE tbt.deleted = 0 AND tbt.transaction_type = 'service' 
+            ${driverId ? `AND tbt.user_id = ${driverId}` : ''}
             AND tbt.agent_id = ${agentId} 
             ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''} 
-            ${dateFilterCondition} ${serviceStatusId ? ` AND tbt.status = ${serviceStatusId}` : ""};`);
+            ${dateFilterCondition} ${paidWayDateFilterCondition} ${serviceStatusId ? ` AND tbt.status = ${serviceStatusId}` : ""};`);
+            totalServiceAmount = Array.isArray(trans) && trans.length > 0 
+            ? trans.reduce((acc, transaction) => acc + transaction.amount, 0)
+            : 0;
       tran = await connect.query(`
       SELECT 
         Count(*) as count
       FROM tir_balance_transaction tbt
-      WHERE tbt.deleted = 0 AND transaction_type = 'service' AND tbt.agent_id = ${agentId}  ${serviceId ? ` AND tbt.service_id = ${serviceId}` : ''};
+      WHERE tbt.deleted = 0 AND transaction_type = 'service' AND tbt.agent_id = ${agentId} ${driverId ? `AND tbt.user_id = ${driverId}` : ''} ${dateFilterCondition} ${paidWayDateFilterCondition} ${serviceStatusId ? ` AND tbt.status = ${serviceStatusId}` : ""}   ${serviceId ? ` AND tbt.service_id = ${serviceId}` : ''};
       `);
       }
       const data = ([...rows, ...trans].sort((a, b) => {
@@ -847,6 +863,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
       }
       const transCount = tran[0]
       if (data.length) {
+        appData.totalServiceAmount = totalServiceAmount;
         appData.status = true;
         appData.data = {
           content: data,
