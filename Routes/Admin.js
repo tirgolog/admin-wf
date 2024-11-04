@@ -7860,9 +7860,9 @@ admin.put('/tirgo-paid-kz-way-account', async (req, res) => {
   let appData = { status: false };
   let connect,
   kz_tenge_rate = req.body.kz_tenge_rate,
-  token = req.body.token;
+  kz_token = req.body.kz_token;
   try {
-    if(!kz_tenge_rate || !token.length) {
+    if(!kz_tenge_rate || !kz_token.length) {
       appData.error = "All fields are required";
       res.status(403).json(appData);
       return;
