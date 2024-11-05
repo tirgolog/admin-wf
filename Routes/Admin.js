@@ -841,9 +841,18 @@ admin.get("/agent-service-transactions", async (req, res) => {
             AND tbt.agent_id = ${agentId} 
             ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''} 
             ${dateFilterCondition} ${paidWayDateFilterCondition} ${serviceStatusId ? ` AND tbt.status = ${serviceStatusId}` : ""};`);
-            totalServiceAmount = Array.isArray(trans) && trans.length > 0 
-            ? trans.reduce((acc, transaction) => acc + transaction.amount, 0)
-            : 0;
+
+           const [totalAmount] = await connect.query(`
+            SELECT 
+             sum(amount_tir) as totalAmount
+            FROM tir_balance_transaction tbt
+            WHERE tbt.deleted = 0 AND tbt.transaction_type = 'service' 
+                  ${driverId ? `AND tbt.user_id = ${driverId}` : ''}
+                  AND tbt.agent_id = ${agentId} 
+                  ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''} 
+                  ${dateFilterCondition} ${paidWayDateFilterCondition} ${serviceStatusId ? ` AND tbt.status = ${serviceStatusId}` : ""};`);
+
+            totalServiceAmount = totalAmount[0]?.totalAmount;
       tran = await connect.query(`
       SELECT 
         Count(*) as count
