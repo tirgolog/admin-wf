@@ -7825,9 +7825,10 @@ admin.post("/paid-way-transactions", async (req, res) => {
                   `INSERT INTO tir_balance_transaction SET 
                   user_id = ?, 
                   service_id = ?, transaction_type = ?, status = 3, transport_number = ?, paid_kz_way_transaction_id = ?, 
-                  paid_kz_way_transaction_source_id = ?, amount_tir = ?, paid_kz_way_transaction_created_at = ?, created_by_id = ?, is_by_agent = ?, agent_id = ?, kz_description = ?`,
+                  paid_kz_way_transaction_source_id = ?, amount_tir = ?, paid_kz_way_transaction_created_at = ?, completed_at = ?, created_by_id = ?, is_by_agent = ?, agent_id = ?, kz_description = ?`,
                   [transport.user_id, paidKzWayRefundService[0]?.id, 'service', transport.transport_number, transaction.uuid,
                    transaction.sourceId, amount, 
+                   new Date(transaction.createdDate.split(' ')[0].split('-').reverse().join('-') + 'T' + transaction.createdDate.split(' ')[1]),
                    new Date(transaction.createdDate.split(' ')[0].split('-').reverse().join('-') + 'T' + transaction.createdDate.split(' ')[1]),
                    adminId, true, transport.agent_id, transaction.descriptionRu]
                 );
@@ -7836,9 +7837,10 @@ admin.post("/paid-way-transactions", async (req, res) => {
                   `INSERT INTO tir_balance_transaction SET 
                   user_id = ?, 
                   service_id = ?, transaction_type = ?, status = 3, transport_number = ?, paid_kz_way_transaction_id = ?, 
-                  paid_kz_way_transaction_source_id = ?, amount_tir = ?, paid_kz_way_transaction_created_at = ?, created_by_id = ?, is_by_agent = ?, agent_id = ?, kz_description = ?`,
+                  paid_kz_way_transaction_source_id = ?, amount_tir = ?, paid_kz_way_transaction_created_at = ?, completed_at = ?, created_by_id = ?, is_by_agent = ?, agent_id = ?, kz_description = ?`,
                   [transport.user_id, paidKzWayComissionService[0]?.id, 'service', transport.transport_number, transaction.uuid,
                    transaction.sourceId, amountComission, 
+                   new Date(transaction.createdDate.split(' ')[0].split('-').reverse().join('-') + 'T' + transaction.createdDate.split(' ')[1]),
                    new Date(transaction.createdDate.split(' ')[0].split('-').reverse().join('-') + 'T' + transaction.createdDate.split(' ')[1]),
                    adminId, true, transport.agent_id, transaction.descriptionRu]
                 );
