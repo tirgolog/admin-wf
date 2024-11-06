@@ -1262,6 +1262,7 @@ admin.post("/appendOrderDriver", async (req, res) => {
     appData = { status: false, timestamp: new Date().getTime() },
     orderid = req.body.orderid,
     price = req.body.price,
+    additionalPrice = req.body.additionalPrice,
     userid = req.body.userid,
     isMerchant = req.body.isMerchant ? req.body.isMerchant : null;
   const amqp = require("amqplib");
@@ -1313,8 +1314,8 @@ admin.post("/appendOrderDriver", async (req, res) => {
 
         // Execute the second query to insert into orders_accepted
         const insertResult = await connection.query(
-          "INSERT INTO orders_accepted SET user_id = ?, order_id = ?, price = ?, status_order = 1, ismerchant = ?",
-          [userid, orderid, price, isMerchant]
+          "INSERT INTO orders_accepted SET user_id = ?, order_id = ?, price = ?, additional_price = ?, status_order = 1, ismerchant = ?",
+          [userid, orderid, price, isMerchant ? additionalPrice : 0, isMerchant]
         );
 
         // Check if rows were affected by the insert query
@@ -1337,8 +1338,12 @@ admin.post("/appendOrderDriver", async (req, res) => {
           );
         }
         appData.status = true;
-        push.sendToCarrierDevice(driver[0]?.token, 'Прикреплен новый заказ', `Администратор прикрепил к вам новый заказ ID: ${orderid}`)
-        push.sendToClientDevice(client[0]?.token, 'Новый заказ прикреплен', `Администратор прикрепил водителя к заказу ID: ${orderid}`)
+        if(driver[0]?.token) {
+          push.sendToCarrierDevice(driver[0]?.token, 'Прикреплен новый заказ', `Администратор прикрепил к вам новый заказ ID: ${orderid}`)
+        }
+        if(client[0]?.token) {
+          push.sendToClientDevice(client[0]?.token, 'Новый заказ прикреплен', `Администратор прикрепил водителя к заказу ID: ${orderid}`)
+        }
       } else {
         appData.error =
           "Невозможно назначить водителя, Водитель уже предложил цену";
