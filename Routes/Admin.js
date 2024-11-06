@@ -5412,10 +5412,19 @@ admin.get("/driver-group/transactions", async (req, res) => {
 admin.get("/driver-group/transactions/excell", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
-  const { groupId } = req.query;
+  const { groupId, fromDate, toDate, transactionType } = req.query;
 
   try {
     connect = await database.connection.getConnection();
+
+    let dateFilterCondition = '';     
+    if (fromDate && toDate) {
+      dateFilterCondition = `AND tbt.completed_at BETWEEN '${fromDate}' AND '${toDate}'`;
+    } else if (fromDate && !toDate) {
+      dateFilterCondition = `AND tbt.completed_at >= '${fromDate}'`;
+    } else if (!fromDate && toDate) {
+      dateFilterCondition = `AND tbt.completed_at <= '${toDate}'`;
+    }
 
     const [balances] = await connect.query(` 
     SELECT 
@@ -5432,7 +5441,7 @@ admin.get("/driver-group/transactions/excell", async (req, res) => {
       END transactionType
      FROM tir_balance_exchanges t
      LEFT JOIN users_list dl on dl.id = t.user_id AND dl.user_type = 1 
-     WHERE t.group_id = ${groupId}
+     WHERE t.group_id = ${groupId} ${dateFilterCondition}
   `);
 
     const [transactions] = await connect.query(` 
@@ -5453,9 +5462,15 @@ admin.get("/driver-group/transactions/excell", async (req, res) => {
        LEFT JOIN users_list dl on dl.id = t.user_id AND dl.user_type = 1 
        LEFT JOIN services s on s.id = t.service_id AND t.transaction_type = 'service' 
        LEFT JOIN subscription sb on sb.id = t.subscription_id AND t.transaction_type = 'subscription' 
-       WHERE t.group_id = ${groupId}
+       WHERE t.group_id = ${groupId} ${dateFilterCondition}
     `);
-    const data = [...transactions, ...balances].sort((a, b) => {
+    let data;
+    if(fromDate || toDate) {
+      data = [...transactions];
+    } else {
+      data =  [...transactions, ...balances];
+    }
+    data = data.sort((a, b) => {
       return b.createdAt - a.createdAt
     }).map((el) => {
         return {
