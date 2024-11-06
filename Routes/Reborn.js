@@ -638,8 +638,14 @@ reborn.post('/getAllTmcOrders', async (req, res) => {
           }
 
         connect = await database.connection.getConnection();
-        const [rows] = await connect.query('SELECT * FROM orders WHERE id = ?, date_send = ?, status = ?, secure_transaction = ? ORDER BY id DESC LIMIT ?, ?',
-            [id ? id : '%', sendCargoDate ? sendCargoDate : '%', status ? status : '%', isSafeOrder ? isSafeOrder : '%', from, limit]);
+        const [rows] = await connect.query(`
+            SELECT * FROM orders 
+            WHERE ${id ? `id = ${id}` : ""} 
+                    ${sendCargoDate ? `AND date_send = ${sendCargoDate}` : ""}
+                    ${status ? `AND status = ${status}` : ""}
+                    ${isSafeOrder ? `AND secure_transaction = ${isSafeOrder}` : ""}
+            ORDER BY id DESC LIMIT ?, ?`,
+            [from, limit]);
         const [rows_count] = await connect.query('SELECT count(*) as allcount FROM orders ORDER BY id DESC');
        
         if (rows.length){
