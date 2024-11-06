@@ -1476,7 +1476,7 @@ admin.post("/agent/cancel-offer-to-order", async (req, res) => {
 
       if(isset[0].status_order != 0 && isset[0].status_order != 1) {
         throw new Error(
-          "Невозможно отменить предложение."
+          "Заказ уже принят или находится в процессе выполнения, отмена невозможна."
         );
       }
 
