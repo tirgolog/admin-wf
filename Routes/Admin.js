@@ -5409,10 +5409,10 @@ admin.get("/driver-group/transactions", async (req, res) => {
   }
 });
 
-admin.get("/driver-group/transactions/excell", async (req, res) => {
+admin.post("/driver-group/transactions/excell", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
-  const { groupId, fromDate, toDate, transactionType } = req.query;
+  const { groupId, fromDate, toDate } = req.body;
 
   try {
     connect = await database.connection.getConnection();
