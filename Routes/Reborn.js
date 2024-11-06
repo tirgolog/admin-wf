@@ -640,7 +640,8 @@ reborn.post('/getAllTmcOrders', async (req, res) => {
         connect = await database.connection.getConnection();
         const [rows] = await connect.query(`
             SELECT * FROM orders 
-            WHERE ${id ? `id = ${id}` : ""} 
+            ${id || sendCargoDate || status || sendLocation || cargoDeliveryLocation || isSafeOrder ? `WHERE ` : ""}
+                    ${id ? `id = ${id}` : ""} 
                     ${sendCargoDate ? `AND date_send = ${sendCargoDate}` : ""}
                     ${status ? `AND status = ${status}` : ""}
                     ${isSafeOrder ? `AND secure_transaction = ${isSafeOrder}` : ""}
