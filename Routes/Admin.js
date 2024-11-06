@@ -1455,6 +1455,109 @@ admin.post("/acceptOrderDriver", async (req, res) => {
   }
 });
 
+admin.post("/agent/cancel-offer-to-order", async (req, res) => {
+  let connection,
+    appData = { status: false, timestamp: new Date().getTime() },
+    orderid = req.body.orderid,
+    userid = req.body.userid,
+    isMerchant = req.body.isMerchant ? req.body.isMerchant : null;
+
+  const amqp = require("amqplib");
+  const amqpConnection = await amqp.connect("amqp://13.232.83.179:5672");
+  const channel = await amqpConnection.createChannel();
+  await channel.assertQueue("agentCancelOfferToOrder");
+  try {
+    connection = await database.connection.getConnection();
+    const [isset] = await connection.query(
+      "SELECT * FROM orders_accepted WHERE user_id = ? AND order_id = ? AND status_order = 0",
+      [userid, orderid]
+    );
+    if (isset.length) {
+
+      if(isset[0].status_order != 0 && isset[0].status_order != 1) {
+        throw new Error(
+          "Невозможно отменить предложение."
+        );
+      }
+
+      // Start the transaction
+      await connection.beginTransaction();
+
+      if(isset[0].status_order == 0 && !isMerchant) {
+        // Execute the first query to update orders
+        const updateResult = await connection.query(
+          "UPDATE orders SET status = 0 WHERE id = ?",
+          [orderid]
+        );
+
+        // Check if rows were affected by the update query
+        if (updateResult[0].affectedRows === 0) {
+          throw new Error(
+            "No rows were updated. Transaction will be rolled back."
+          );
+        }
+      }
+
+
+        // Execute the query to delete from orders_accepted
+        const deleteResult = await connection.query(
+          `DELETE FROM orders_accepted WHERE user_id = ? AND order_id = ?`, 
+          [userid, orderid]
+        );
+
+        // Check if rows were affected by the delete query
+        if (deleteResult[0].affectedRows === 0) {
+          // If no rows were deleted, trigger a rollback
+          throw new Error(
+            "No rows were deleted. Transaction will be rolled back."
+          );
+        }
+
+      // Commit the transaction
+      await connection.commit();
+
+      // Notify clients about the update
+
+      const [user] = await connection.query(`
+        SELECT ul.token FROM orders o
+        LEFT JOIN users_list ul on ul.id = o.user_id
+        WHERE o.id = ?
+      `, [orderid])
+
+      if(user[0]?.token) {
+        push.sendToCarrierDevice(user[0]?.token, 'Новое предложение по цене', `На ваш заказ ID:${orderid} поступило новое предложение цены`)
+      }
+      socket.updateAllList("update-all-list", "1");
+      
+      if(isMerchant) {
+        await channel.sendToQueue(
+          "agentCancelOfferToOrder",
+          Buffer.from(JSON.stringify(orderid))
+        );
+      }
+      appData.status = true;
+    } else {
+      appData.error = "Невозможно принять водителя, Водитель не предложил цену";
+    }
+    res.status(200).json(appData);
+  } catch (err) {
+    // If an error occurs, rollback the transaction
+    if (connection) {
+      await connection.rollback();
+    }
+    console.error("Transaction rolled back:", err);
+    appData.status = false;
+    appData.error = err.message;
+    res.status(403).json(appData);
+  } finally {
+    // Release the connection back to the pool
+    if (connection) {
+      connection.release();
+    }
+  }
+});
+
+
 admin.post("/createOrder", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
