@@ -1525,7 +1525,7 @@ admin.post("/agent/cancel-offer-to-order", async (req, res) => {
       `, [orderid])
 
       if(user[0]?.token) {
-        push.sendToCarrierDevice(user[0]?.token, 'Новое предложение по цене', `На ваш заказ ID:${orderid} поступило новое предложение цены`)
+        push.sendToClientDevice(user[0]?.token, `Заказ ID:${orderid} был отменен водителем`)
       }
       socket.updateAllList("update-all-list", "1");
       
