@@ -5419,11 +5419,11 @@ admin.post("/driver-group/transactions/excell", async (req, res) => {
 
     let dateFilterCondition = '';     
     if (fromDate && toDate) {
-      dateFilterCondition = `AND tbt.completed_at BETWEEN '${fromDate}' AND '${toDate}'`;
+      dateFilterCondition = `AND t.completed_at BETWEEN '${fromDate}' AND '${toDate}'`;
     } else if (fromDate && !toDate) {
-      dateFilterCondition = `AND tbt.completed_at >= '${fromDate}'`;
+      dateFilterCondition = `AND t.completed_at >= '${fromDate}'`;
     } else if (!fromDate && toDate) {
-      dateFilterCondition = `AND tbt.completed_at <= '${toDate}'`;
+      dateFilterCondition = `AND t.completed_at <= '${toDate}'`;
     }
 
     const [balances] = await connect.query(` 
