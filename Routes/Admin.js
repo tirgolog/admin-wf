@@ -5419,7 +5419,7 @@ admin.post("/driver-group/transactions/excell", async (req, res) => {
 
     let dateFilterCondition = '';     
     if (fromDate && toDate) {
-      dateFilterCondition = `AND t.completed_at BETWEEN '${fromDate}' AND '${toDate}'`;
+      dateFilterCondition = `AND t.completed_at BETWEEN '${new Date(fromDate)}' AND '${toDate}'`;
     } else if (fromDate && !toDate) {
       dateFilterCondition = `AND t.completed_at >= '${fromDate}'`;
     } else if (!fromDate && toDate) {
@@ -5441,7 +5441,7 @@ admin.post("/driver-group/transactions/excell", async (req, res) => {
       END transactionType
      FROM tir_balance_exchanges t
      LEFT JOIN users_list dl on dl.id = t.user_id AND dl.user_type = 1 
-     WHERE t.group_id = ${groupId} ${dateFilterCondition}
+     WHERE t.group_id = ${groupId}
   `);
 
     const [transactions] = await connect.query(` 
