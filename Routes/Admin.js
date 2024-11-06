@@ -5409,6 +5409,142 @@ admin.get("/driver-group/transactions", async (req, res) => {
   }
 });
 
+admin.get("/driver-group/transactions/excell", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() };
+  const { groupId } = req.query;
+
+  try {
+    connect = await database.connection.getConnection();
+
+    const [balances] = await connect.query(` 
+    SELECT 
+      t.id,
+      t.user_id driverId,
+      t.group_id groupId,
+      '3' status,
+      dl.name driverName,
+      t.amount_tir amount,
+      t.created_at createdAt,
+      CASE 
+       WHEN t.balance_type = 'tirgo' THEN 'Пополнение Tirgo баланса'
+       ELSE 'Пополнение TirgoService баланса'
+      END transactionType
+     FROM tir_balance_exchanges t
+     LEFT JOIN users_list dl on dl.id = t.user_id AND dl.user_type = 1 
+     WHERE t.group_id = ${groupId}
+  `);
+
+    const [transactions] = await connect.query(` 
+      SELECT 
+        t.id,
+        t.user_id driverId,
+        t.group_id groupId,
+        t.status,
+        s.id serviceId,
+        s.name serviceName,
+        sb.id subscriptionId,
+        sb.name subscriptionName,
+        dl.name driverName,
+        t.amount_tir amount,
+        t.created_at createdAt,
+        t.transaction_type transactionType
+       FROM tir_balance_transaction t
+       LEFT JOIN users_list dl on dl.id = t.user_id AND dl.user_type = 1 
+       LEFT JOIN services s on s.id = t.service_id AND t.transaction_type = 'service' 
+       LEFT JOIN subscription sb on sb.id = t.subscription_id AND t.transaction_type = 'subscription' 
+       WHERE t.group_id = ${groupId}
+    `);
+    const data = [...transactions, ...balances].sort((a, b) => {
+      return b.createdAt - a.createdAt
+    }).map((el) => {
+        return {
+          id: el.id,
+          driverId: el.driverId ? el.driverId : '',
+          driverName: el.driverName ? el.driverName : '',
+          groupId: el.groupId ? el.groupId : '',
+          serviceId: el.serviceId ? el.serviceId : '',
+          serviceName: el.serviceName ? el.serviceName : '',
+          subscriptionName: el.subscriptionName ? el.subscriptionName : '',
+          status: el.status ? el.status : '',
+          createdAt: new Date(el.createdAt).toLocaleString("ru-RU", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+          transactionType: el.transactionType,
+          amount: el.amount,
+          adminName: el.adminName,
+        };
+      });
+
+    if (data.length) {
+      const ws = XLSX.utils.json_to_sheet(data);
+      ws["!cols"] = [
+        { wch: 30 },
+        { wch: 15 },
+        { wch: 10 },
+        { wch: 10 },
+        { wch: 10 },
+        { wch: 30 },
+        { wch: 15 },
+      ];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+      ws["A1"] = { v: "D водителя", t: "s" };
+      ws["B1"] = { v: "Имя водителя", t: "s" };
+      ws["C1"] = { v: "Tir", t: "s" };
+      ws["D1"] = { v: "Статус", t: "s" };
+      ws["E1"] = { v: "Создан в ", t: "s" };
+      ws["F1"] = { v: "Тип", t: "s" };
+
+      data.forEach((item, index) => {
+        ws[`A${index + 2}`] = {
+          v: item.driverId ? item.driverId : "",
+          t: "s",
+        };
+        ws[`B${index + 2}`] = { v: item.driverName ? item.driverName : "", t: "s" };
+        ws[`C${index + 2}`] = {
+          v: item.amount,
+          t: "n",
+        };
+        ws[`D${index + 2}`] = {
+          v: item.status,
+          t: "n",
+        };
+        ws[`E${index + 2}`] = { v: item.createdAt, t: "n" };
+        ws[`F${index + 2}`] = { v: item.transactionType == 'service' ? item.serviceName : item.subscriptionName, t: "s" };
+      });
+      const wopts = { bookType: "xlsx", bookSST: false, type: "array" };
+      const wbout = XLSX.write(wb, wopts);
+
+      const blob = new Blob([wbout], { type: "application/octet-stream" });
+      res.setHeader(
+        "Content-Disposition",
+        "attachment; filename=services-transaction.xlsx"
+      );
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+      res.end(Buffer.from(wbout));
+    } else {
+      appData.status = false;
+      res.status(500).json(appData);
+    }
+  } catch (e) {
+    console.log("ERROR while getting driver groups: ", e);
+    appData.error = e.message;
+    res.status(400).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 admin.get("/drivers-by-group", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() };
