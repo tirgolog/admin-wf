@@ -643,22 +643,27 @@ reborn.post('/getAllTmcOrders', async (req, res) => {
             queryFilter += `id = ${id} `;
         }
         if(sendCargoDate) {
-            queryFilter += ` ${queryFilter.length ? `AND` : ''} date_send = ${sendCargoDate} `;
+            queryFilter += ` ${queryFilter.length ? ` AND ` : ''} date_send = ${sendCargoDate} `;
         }
         if(status) {
-            queryFilter += ` ${queryFilter.length ? `AND` : ''} status = ${status} `;
+            queryFilter += ` ${queryFilter.length ? ` AND ` : ''} status = ${status} `;
         }
         if(sendLocation) {
-            queryFilter += ` ${queryFilter.length ? `AND` : ''} sendLocation = ${sendLocation} `;
+            queryFilter += ` ${queryFilter.length ? ` AND ` : ''} sendLocation = ${sendLocation} `;
         }
         if(cargoDeliveryLocation) {
-            queryFilter += ` ${queryFilter.length ? `AND` : ''} cargoDeliveryLocation = ${cargoDeliveryLocation} `;
+            queryFilter += ` ${queryFilter.length ? ` AND ` : ''} cargoDeliveryLocation = ${cargoDeliveryLocation} `;
         }
         if(isSafeOrder) {
-            queryFilter += ` ${queryFilter.length ? `AND` : ''} secure_transaction = ${isSafeOrder} `;
+            queryFilter += ` ${queryFilter.length ? ` AND ` : ''} secure_transaction = ${isSafeOrder} `;
         }
-        const [rows] = await connect.query('SELECT * FROM orders' + queryFilter.length ? 'WHERE ' + queryFilter : '' + ' ORDER BY id DESC LIMIT ?, ?', [from, limit]);
-        const [rows_count] = await connect.query('SELECT count(*) as allcount FROM orders ' + queryFilter + ' ORDER BY id DESC');
+        let query = 'SELECT * FROM orders';
+        if(queryFilter.length) {
+            query += ' WHERE ' + queryFilter;
+        }
+        query += ' ORDER BY id DESC LIMIT ?, ?'
+        const [rows] = await connect.query(query, [from, limit]);
+        const [rows_count] = await connect.query(`SELECT count(*) as allcount FROM orders ${queryFilter.length ? ` WHERE ` + queryFilter : ''} ORDER BY id DESC`);
        
         if (rows.length){
             appData.data_count = rows_count[0].allcount
