@@ -639,29 +639,25 @@ reborn.post('/getAllTmcOrders', async (req, res) => {
 
         connect = await database.connection.getConnection();
         let queryFilter = ``;
-        if(id || sendCargoDate || status || sendLocation || cargoDeliveryLocation || isSafeOrder) {
-            queryFilter += ` WHERE `
-        }
         if(id) {
-            queryFilter += ` id = ${id} `;
+            queryFilter += `id = ${id} `;
         }
         if(sendCargoDate) {
-            queryFilter += ` AND date_send = ${sendCargoDate} `;
+            queryFilter += ` ${queryFilter.length ? `AND` : ''} AND date_send = ${sendCargoDate} `;
         }
         if(status) {
-            queryFilter += ` AND status = ${status} `;
+            queryFilter += ` ${queryFilter.length ? `AND` : ''} AND status = ${status} `;
         }
         if(sendLocation) {
-            queryFilter += ` AND sendLocation = ${sendLocation} `;
+            queryFilter += ` ${queryFilter.length ? `AND` : ''} AND sendLocation = ${sendLocation} `;
         }
         if(cargoDeliveryLocation) {
-            queryFilter += ` AND cargoDeliveryLocation = ${cargoDeliveryLocation} `;
+            queryFilter += ` ${queryFilter.length ? `AND` : ''} AND cargoDeliveryLocation = ${cargoDeliveryLocation} `;
         }
         if(isSafeOrder) {
-            queryFilter += ` AND secure_transaction = ${isSafeOrder} `;
+            queryFilter += ` ${queryFilter.length ? `AND` : ''} AND secure_transaction = ${isSafeOrder} `;
         }
-        queryFilter += ` `;
-        const [rows] = await connect.query('SELECT * FROM orders' + queryFilter + ' ORDER BY id DESC LIMIT ?, ?', [from, limit]);
+        const [rows] = await connect.query('SELECT * FROM orders' + queryFilter.length ? 'WHERE ' + queryFilter : '' + ' ORDER BY id DESC LIMIT ?, ?', [from, limit]);
         const [rows_count] = await connect.query('SELECT count(*) as allcount FROM orders ' + queryFilter + ' ORDER BY id DESC');
        
         if (rows.length){
