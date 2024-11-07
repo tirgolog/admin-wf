@@ -636,7 +636,6 @@ reborn.post('/getAllTmcOrders', async (req, res) => {
               };
             });
           }
-
         connect = await database.connection.getConnection();
         let queryFilter = ``;
         if(id) {
@@ -647,12 +646,6 @@ reborn.post('/getAllTmcOrders', async (req, res) => {
         }
         if(status) {
             queryFilter += ` ${queryFilter.length ? ` AND ` : ''} status = ${status} `;
-        }
-        if(sendLocation) {
-            queryFilter += ` ${queryFilter.length ? ` AND ` : ''} sendLocation = ${sendLocation} `;
-        }
-        if(cargoDeliveryLocation) {
-            queryFilter += ` ${queryFilter.length ? ` AND ` : ''} cargoDeliveryLocation = ${cargoDeliveryLocation} `;
         }
         if(isSafeOrder) {
             queryFilter += ` ${queryFilter.length ? ` AND ` : ''} secure_transaction = ${isSafeOrder} `;
@@ -665,7 +658,7 @@ reborn.post('/getAllTmcOrders', async (req, res) => {
         const [rows] = await connect.query(query, [from, limit]);
         const [rows_count] = await connect.query(`SELECT count(*) as allcount FROM orders ${queryFilter.length ? ` WHERE ` + queryFilter : ''} ORDER BY id DESC`);
        
-        if (rows.length){
+        if (rows.length || merchantData.length){
             appData.data_count = rows_count[0].allcount
             let data= [...merchantData ,...rows];
             data = (data.sort((a,b) => {
@@ -680,7 +673,9 @@ reborn.post('/getAllTmcOrders', async (req, res) => {
             appData.data = await Promise.all(data.map(async (item) => {
                 let newItem = item;
                 if (!item.isMerchant) {
-                    newItem.transport_types = JSON.parse(item.transport_types);
+                    if(item.transport_types) {
+                        newItem.transport_types = JSON.parse(item.transport_types);
+                    }
                   }
                 const [orders_accepted] = await connect.query('SELECT oa.price as priceorder,oa.one_day,oa.two_day,oa.three_day,oa.status_order,oa.date_create as date_create_accepted FROM orders_accepted oa LEFT JOIN users_list ul ON ul.id = oa.user_id WHERE oa.order_id = ?',[item.isMerchant ? +item.id.split("M")[1] : item.id]);
                 newItem.orders_accepted = orders_accepted;
@@ -698,6 +693,14 @@ reborn.post('/getAllTmcOrders', async (req, res) => {
                 return newItem;
             }
             ));
+
+            if(sendLocation) {
+                data = data.filter((el) => el.route.from_city == sendLocation);
+            }
+            if(cargoDeliveryLocation) {
+                data = data.filter((el) => el.route.to_city == cargoDeliveryLocation);
+            }
+
             appData.status = true;
         }else {
             appData.error = 'Нет заказов';
