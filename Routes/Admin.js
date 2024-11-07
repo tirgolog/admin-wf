@@ -1736,6 +1736,76 @@ admin.post("/agent/activate-order", async (req, res) => {
   }
 });
 
+admin.post("/agent/finish-order", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() },
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]),
+    orderid =
+      req.body.id.split("M").length > 1
+        ? req.body.id.split("M")[1]
+        : req.body.id,
+    isMerchant = req.body.isMerchant,
+    driver_id = req.body.driver_id;;
+
+  const amqp = require("amqplib");
+  const connection = await amqp.connect("amqp://13.232.83.179:5672");
+  const channel = await connection.createChannel();
+
+  try {
+
+    const [driver] = await connect.query(
+      "select agent_id from users_list where id= ?",
+      [driver_id]
+    );
+
+    if(driver[0]?.agent_id !== userInfo.id) { 
+      throw new Error("Доступ запрещен");
+    }
+
+    connect = await database.connection.getConnection();
+      appData.status = true;
+
+      const [rows] = await connect.query(
+        "UPDATE orders_accepted SET status_order = 2 WHERE order_id = ?",
+        [orderid]
+      );
+      
+      if(rows.affectedRows) { 
+        await connect.query(
+          "UPDATE secure_transaction SET status = 1 WHERE orderid = ?",
+          [orderid]
+        );
+
+        if(!isMerchant) {
+          await connect.query(`UPDATE orders SET status_order = 2 WHERE id = ?`, [orderid]);
+        } else {
+          channel.sendToQueue(
+            "finishOrderDriver",
+            Buffer.from(JSON.stringify(orderid))
+          );
+        }
+
+        socket.updateAllList("update-all-list", "1");
+
+        appData.status = true;
+        return res.status(200).json(appData);
+      }
+      appData.status = false;
+      appData.error = "Not Changed";
+      res.status(400).json(appData);
+  } catch (err) {
+    console.log(err);
+    appData.status = false;
+    appData.error = err;
+    res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+
 admin.post("/createOrder", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
