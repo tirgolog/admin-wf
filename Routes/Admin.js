@@ -1657,6 +1657,94 @@ admin.post("/agent/create-offer-to-order", async (req, res) => {
   }
 });
 
+admin.post("/agent/activate-order", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() },
+    orderid = req.body.orderid,
+    driver_id = req.body.driver_id,
+    isMerchant = req.body.isMerchant,
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+    if(isMerchant != false && isMerchant != true) {
+      throw new Error("IsMerchant is required");
+    }
+  try {
+    const amqp = require("amqplib");
+    const connection = await amqp.connect("amqp://13.232.83.179:5672");
+    const channel = await connection.createChannel();
+    await channel.assertQueue("acceptOrderDriver");
+    connect = await database.connection.getConnection();
+    
+    const [driver] = await connect.query(
+      "select agent_id from users_list where id= ?",
+      [driver_id]
+    );
+
+    if(driver[0]?.agent_id !== userInfo.id) { 
+      throw new Error("Доступ запрещен");
+    }
+
+    const [orders_accepted] = await connect.query(
+      "select * from orders_accepted  where user_id = ? AND order_id = ?",
+      [driver_id, orderid]
+    );
+    if (orders_accepted[0] && orders_accepted[0].status_order == 1) {
+      const [order] = await connect.query(
+        "select * from orders  where id = ?",
+        [orderid]
+      );
+
+      if(!order.length) { 
+        appData.error = 'Заказ не найден'
+        return res.status(400).json(appData)
+      }
+      const [rows] = await connect.query(`UPDATE orders_accepted SET status_order = 10 WHERE order_id = ? AND usrer_id = ?`, [orderid, driver_id]);
+
+      if(rows.affectedRows && !isMerchant) {
+        await connect.query(`UPDATE orders SET status_order = 10 WHERE id = ?`, [orderid]);
+      }
+
+      const [user] = await connect.query(
+        "select * from users_list  where  id= ?",
+        [order[0].user_id]
+      );
+     
+      if (user && user.length && !isMerchant) {
+        if (user[0].token !== "" && user[0].token !== null) {
+          Push.sendToClientDevice(user[0].token, 'Заказ отправлен в путь', `Ваш заказ с ID: ${order[0]?.id} начал свой путь к вашему исполнителю`)
+        }
+      }
+      
+      if (rows.affectedRows) {
+        socket.updateAllList("update-all-list", "1");
+        channel.sendToQueue("activeOrderDriver", Buffer.from(JSON.stringify(orderid)));
+        appData.status = true;
+      } else {
+        appData.error = "Невозможно принять заказ";
+      }
+      res.status(200).json(appData);
+    } else {
+      
+      if(!orders_accepted.length) { 
+        appData.error = "Данные не найдены";
+      } else {
+        appData.error = "Невозможно активировать в этом статусе";
+      }
+      
+      appData.status = false;
+      res.status(400).json(appData);
+    }
+  } catch (err) {
+    appData.status = false;
+    appData.error = err.message;
+    console.log(err);
+    res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 admin.post("/createOrder", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
