@@ -1606,7 +1606,7 @@ admin.post("/agent/create-offer-to-order", async (req, res) => {
       const [rows] = await connect.query(
         "INSERT INTO orders_accepted SET user_id = ?,order_id = ?,price = ?, additional_price = ?,one_day = ?,two_day = ?,three_day = ?, ismerchant = ?",
         [
-          userInfo.id,
+          driver_id,
           orderid,
           price,
           additional_price,
@@ -1656,7 +1656,6 @@ admin.post("/agent/create-offer-to-order", async (req, res) => {
     }
   }
 });
-
 
 admin.post("/createOrder", async (req, res) => {
   let connect,
