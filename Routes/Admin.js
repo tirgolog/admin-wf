@@ -1557,6 +1557,107 @@ admin.post("/agent/cancel-offer-to-order", async (req, res) => {
   }
 });
 
+admin.post("/agent/create-offer-to-order", async (req, res) => {
+  let connect,
+    appData = { status: false, timestamp: new Date().getTime() },
+    orderid = req.body.orderid,
+    driver_id = req.body.driver_id,
+    price = req.body.price,
+    dates = req.body.dates,
+    isMerchant = req.body.isMerchant,
+    one_day = 0,
+    two_day = 0,
+    three_day = 0,
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
+  pricePlus = 0;
+  if (isMerchant) {
+    const merchantCargos = await axios.get(
+      "https://merchant.tirgo.io/api/v1/cargo/id?id=" + orderid
+    );
+    if (merchantCargos.data.success && merchantCargos.data?.data?.isSafe) {
+      let x = +price;
+      let y = x / 0.88;
+      let t = (12 / 100) * y;
+      pricePlus = t + 100;
+    }
+  }
+  try {
+    const amqp = require("amqplib");
+    const connection = await amqp.connect("amqp://13.232.83.179:5672");
+    const channel = await connection.createChannel();
+    await channel.assertQueue("acceptOrderDriver");
+    if (dates.includes(0)) one_day = 1;
+    if (dates.includes(1)) two_day = 1;
+    if (dates.includes(2)) three_day = 1;
+    connect = await database.connection.getConnection();
+    
+    const [driver] = await connect.query(
+      "select agent_id from users_list where id= ?",
+      [driver_id]
+    );
+
+    if(driver[0]?.agent_id !== userInfo.id) { 
+      throw new Error("Доступ запрещен");
+    }
+
+    const [orders_accepted] = await connect.query(
+      "select * from orders_accepted  where user_id = ? AND order_id = ?",
+      [driver_id, orderid]
+    );
+    if (!orders_accepted.length) {
+      const [rows] = await connect.query(
+        "INSERT INTO orders_accepted SET user_id = ?,order_id = ?,price = ?, additional_price = ?,one_day = ?,two_day = ?,three_day = ?, ismerchant = ?",
+        [
+          userInfo.id,
+          orderid,
+          price,
+          pricePlus,
+          one_day,
+          two_day,
+          three_day,
+          isMerchant,
+        ]
+      );
+      const [order] = await connect.query(
+        "select * from orders  where id = ?",
+        [orderid]
+      );
+      const [user] = await connect.query(
+        "select * from users_list  where  id= ?",
+        [order[0].user_id]
+      );
+     
+      if (user.length) {
+        if (user[0].token !== "" && user[0].token !== null) {
+          Push.sendToClientDevice(user[0].token, 'Новое предложение по цене', `На ваш заказ ID: ${order[0]?.id} поступило новое предложение цены`)
+        }
+      }
+      if (rows.affectedRows) {
+        console.log("keldi");
+        socket.updateAllList("update-all-list", "1");
+        channel.sendToQueue("acceptOrderDriver", Buffer.from("request"));
+        appData.status = true;
+      } else {
+        appData.error = "Невозможно принять заказ";
+      }
+      res.status(200).json(appData);
+    } else {
+      appData.status = false;
+      appData.error = "Вы уже отправили предложение !";
+      res.status(400).json(appData);
+    }
+  } catch (err) {
+    appData.status = false;
+    appData.error = err;
+    console.log(err);
+    res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 
 admin.post("/createOrder", async (req, res) => {
   let connect,
