@@ -1570,7 +1570,7 @@ admin.post("/agent/create-offer-to-order", async (req, res) => {
     three_day = 0,
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]);
     pricePlus = 0;
-    if(isMerchant != false || isMerchant != true) {
+    if(isMerchant != false && isMerchant != true) {
       throw new Error("IsMerchant is required");
     }
   try {
