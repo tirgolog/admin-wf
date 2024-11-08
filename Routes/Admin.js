@@ -1740,10 +1740,7 @@ admin.post("/agent/finish-order", async (req, res) => {
   let connect,
     appData = { status: false, timestamp: new Date().getTime() },
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]),
-    orderid =
-      req.body.id.split("M").length > 1
-        ? req.body.id.split("M")[1]
-        : req.body.id,
+    orderid = req.body.id,
     isMerchant = req.body.isMerchant,
     driver_id = req.body.driver_id;;
 
