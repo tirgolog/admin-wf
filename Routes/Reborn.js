@@ -3,7 +3,8 @@ const
     reborn = express.Router(),
     database = require('../Database/database'),
     cors = require('cors'),
-    fs = require('fs');
+    fs = require('fs'),
+    jwt = require("jsonwebtoken");
     const axios = require("axios");
 
 reborn.use(cors());
@@ -520,12 +521,13 @@ reborn.post('/getAllTmcOrders', async (req, res) => {
     let connect,
         id = req.body.id ? req.body.id:'',
         sendCargoDate = req.body.sendCargoDate ? req.body.sendCargoDate:'',
-        status = req.body.status ? req.body.status:'',
+        status = req.body.status,
         sendLocation = req.body.sendLocation ? req.body.sendLocation:'',
         cargoDeliveryLocation = req.body.cargoDeliveryLocation ? req.body.cargoDeliveryLocation:'',
         isSafeOrder = req.body.isSafeOrder ? req.body.isSafeOrder:'',
         from = +req.body.from,
         limit = +req.body.limit,
+        userInfo = jwt.decode(req.headers.authorization.split(" ")[1]),
         appData = {status: false,timestamp: new Date().getTime()};
     try {
 
@@ -535,6 +537,32 @@ reborn.post('/getAllTmcOrders', async (req, res) => {
         if(!limit) {
             limit = 10;
         }
+        
+        connect = await database.connection.getConnection();
+        let queryFilter = ``;
+        if(id) {
+            queryFilter += `id = ${id} `;
+        }
+        if(sendCargoDate) {
+            queryFilter += ` ${queryFilter.length ? ` AND ` : ''} date_send = ${sendCargoDate} `;
+        }
+        if(status != undefined) {
+            console.log(status)
+            queryFilter += ` ${queryFilter.length ? ` AND ` : ''} status = ${status} `;
+        }
+        if(isSafeOrder) {
+            queryFilter += ` ${queryFilter.length ? ` AND ` : ''} secure_transaction = ${isSafeOrder} `;
+        }
+        let query = 'SELECT * FROM orders';
+        if(queryFilter.length) {
+            query += ' WHERE ' + queryFilter;
+        }
+        query += ' ORDER BY id DESC LIMIT ?, ?'
+        console.log(queryFilter)
+        const [rows] = await connect.query(query, [from, limit]);
+        const [rows_count] = await connect.query(`SELECT count(*) as allcount FROM orders ${queryFilter.length ? ` WHERE ` + queryFilter : ''} ORDER BY id DESC`);
+       
+
         let filter = '';
         if(sendCargoDate) {
             if(filter.length) {
@@ -543,7 +571,7 @@ reborn.post('/getAllTmcOrders', async (req, res) => {
                 filter += `?sendCargoDate=${sendCargoDate}`;    
             } 
         }
-        if(status != undefined && status != '') {
+        if(status != undefined) {
             if(filter.length) {
                 filter += `&status=${status}`;
             } else {
@@ -583,6 +611,18 @@ reborn.post('/getAllTmcOrders', async (req, res) => {
                 filter += `&from=${from}&limit=${limit}`;
             } else {
                 filter += `?from=${from}&limit=${limit}`;    
+            }
+        }
+        if(status == 1 || status == 3 || status == 4 || status == 10) {
+            let [orderIds] = await connect.query(`
+                SELECT oa.order_id FROM orders_accepted oa
+                LEFT JOIN users_list ul ON ul.id = oa.user_id
+                WHERE status_order = ${status} AND ismerchant = true AND ul.agent_id = ${userInfo.id}`);
+                orderIds = orderIds.map((el) => el.order_id);
+            if(filter.length) {
+                filter += `&orderIds=${JSON.stringify(orderIds)}`;
+            } else {
+                filter += `?orderIds=${JSON.stringify(orderIds)}`;    
             }
         }
         const merchantCargos = await axios.get(
@@ -636,28 +676,7 @@ reborn.post('/getAllTmcOrders', async (req, res) => {
               };
             });
           }
-        connect = await database.connection.getConnection();
-        let queryFilter = ``;
-        if(id) {
-            queryFilter += `id = ${id} `;
-        }
-        if(sendCargoDate) {
-            queryFilter += ` ${queryFilter.length ? ` AND ` : ''} date_send = ${sendCargoDate} `;
-        }
-        if(status != undefined && status != '') {
-            queryFilter += ` ${queryFilter.length ? ` AND ` : ''} status = ${status} `;
-        }
-        if(isSafeOrder) {
-            queryFilter += ` ${queryFilter.length ? ` AND ` : ''} secure_transaction = ${isSafeOrder} `;
-        }
-        let query = 'SELECT * FROM orders';
-        if(queryFilter.length) {
-            query += ' WHERE ' + queryFilter;
-        }
-        query += ' ORDER BY id DESC LIMIT ?, ?'
-        const [rows] = await connect.query(query, [from, limit]);
-        const [rows_count] = await connect.query(`SELECT count(*) as allcount FROM orders ${queryFilter.length ? ` WHERE ` + queryFilter : ''} ORDER BY id DESC`);
-       
+
         if (rows.length || merchantData.length){
             appData.data_count = rows_count[0].allcount
             let data= [...merchantData ,...rows];
