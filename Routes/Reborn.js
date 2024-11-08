@@ -547,7 +547,6 @@ reborn.post('/getAllTmcOrders', async (req, res) => {
             queryFilter += ` ${queryFilter.length ? ` AND ` : ''} date_send = ${sendCargoDate} `;
         }
         if(status != undefined) {
-            console.log(status)
             queryFilter += ` ${queryFilter.length ? ` AND ` : ''} status = ${status} `;
         }
         if(isSafeOrder) {
@@ -558,11 +557,38 @@ reborn.post('/getAllTmcOrders', async (req, res) => {
             query += ' WHERE ' + queryFilter;
         }
         query += ' ORDER BY id DESC LIMIT ?, ?'
-        console.log(queryFilter)
-        const [rows] = await connect.query(query, [from, limit]);
-        const [rows_count] = await connect.query(`SELECT count(*) as allcount FROM orders ${queryFilter.length ? ` WHERE ` + queryFilter : ''} ORDER BY id DESC`);
-       
 
+        let rows;
+        let rows_count;
+        if(status == 0) {
+            [rows] = await connect.query(query, [from, limit]);
+            [rows_count] = await connect.query(`SELECT count(*) as allcount FROM orders ${queryFilter.length ? ` WHERE ` + queryFilter : ''} ORDER BY id DESC`);
+        } else {
+            [rows] = await connect.query(`
+                SELECT o.* FROM orders_accepted oa
+                LEFT JOIN orders o ON o.id = oa.order_id
+                LEFT JOIN users_list ul ON ul.id = oa.user_id
+                WHERE 
+                    o.status = ${status} 
+                    AND ul.agent_id = ${userInfo.id}
+                    ${sendCargoDate ? `o.date_send = ${sendCargoDate}` : ''}
+                    ${id ? `o.id = ${id}` : ''}
+                    ${isSafeOrder ? `o.secure_transaction = ${isSafeOrder}` : ''}
+                    ${sendCargoDate ? `o.date_send = ${sendCargoDate}` : ''}
+                    ORDER BY id DESC LIMIT ?, ?
+                `, [from, limit]);
+            [rows_count] = await connect.query(`SELECT count(o.id) FROM orders_accepted oa
+                LEFT JOIN orders o ON o.id = oa.order_id
+                LEFT JOIN users_list ul ON ul.id = oa.user_id
+                WHERE 
+                    o.status = ${status} 
+                    AND ul.agent_id = ${userInfo.id}
+                    ${sendCargoDate ? `o.date_send = ${sendCargoDate}` : ''}
+                    ${id ? `o.id = ${id}` : ''}
+                    ${isSafeOrder ? `o.secure_transaction = ${isSafeOrder}` : ''}
+                    ${sendCargoDate ? `o.date_send = ${sendCargoDate}` : ''}`);
+        }
+       
         let filter = '';
         if(sendCargoDate) {
             if(filter.length) {
