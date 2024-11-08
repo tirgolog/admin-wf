@@ -527,6 +527,7 @@ reborn.post('/getAllTmcOrders', async (req, res) => {
         isSafeOrder = req.body.isSafeOrder ? req.body.isSafeOrder:'',
         from = +req.body.from,
         limit = +req.body.limit,
+        merchantData = [],
         userInfo = jwt.decode(req.headers.authorization.split(" ")[1]),
         appData = {status: false,timestamp: new Date().getTime()};
     try {
@@ -639,8 +640,9 @@ reborn.post('/getAllTmcOrders', async (req, res) => {
                 filter += `?from=${from}&limit=${limit}`;    
             }
         }
-        if(status == 1 || status == 3 || status == 4 || status == 10) {
-            let [orderIds] = await connect.query(`
+        let orderIds = [];
+        if(status == 1 || status == 2 || status == 3 || status == 4 || status == 10) {
+                [orderIds] = await connect.query(`
                 SELECT oa.order_id FROM orders_accepted oa
                 LEFT JOIN users_list ul ON ul.id = oa.user_id
                 WHERE status_order = ${status} AND ismerchant = true AND ul.agent_id = ${userInfo.id}`);
@@ -651,58 +653,60 @@ reborn.post('/getAllTmcOrders', async (req, res) => {
                 filter += `?orderIds=${JSON.stringify(orderIds)}`;    
             }
         }
-        const merchantCargos = await axios.get(
-            `https://merchant.tirgo.io/api/v1/cargo/all-admin${filter}`
-          );
-          if (merchantCargos.data.success) {
-            merchantData = merchantCargos.data.data.map((el) => {
-              return {
-                id: el.id,
-                isMerchant: true,
-                usernameorder: el.createdBy?.username,
-                userphoneorder: el.createdBy?.phoneNumber,
-                route: {
-                  from_city: el.sendLocation,
-                  to_city: el.cargoDeliveryLocation,
-                },
-                add_two_days: "",
-                adr: el.isDangrousCargo,
-                comment: "",
-                comment_client: "",
-                cubic: "",
-                currency: el.currency?.name,
-                date_create: new Date(el.createdAt),
-                date_send: el.sendCargoDate,
-                driver_id: el.driverId,
-                end_client: "",
-                end_date: "",
-                end_driver: "",
-                height_box: el.cargoHeight,
-                length_box: el.cargoLength,
-                loading: "",
-                mode: "",
-                no_cash: el.isCashlessPayment,
-                orders_accepted: el.acceptedOrders,
-                price: el.offeredPrice,
-                raiting_driver: "",
-                raiting_user: "",
-                route_id: "",
-                save_order: "",
-                secure_transaction: el.isSafe,
-                status: el.status,
-                transport_type: el.transportType?.name,
-                transport_types: el.transportTypes,
-                type_cargo: el.cargoType?.code,
-                user_id: el.clientId,
-                weight: el.cargoWeight,
-                width_box: el.cargoWidth,
-                created_at: new Date(el.createdAt),
-                logo: el.merchant?.logoFilePath,
-                merchant: el.merchant
-              };
-            });
+          if((orderIds.length && (status == 1 || status == 3 || status == 4 || status == 10)) || status == 0) {
+            const merchantCargos = await axios.get(
+                `https://merchant.tirgo.io/api/v1/cargo/all-admin${filter}`
+              );
+              if (merchantCargos.data.success) {
+                merchantData = merchantCargos.data.data.map((el) => {
+                  return {
+                    id: el.id,
+                    isMerchant: true,
+                    usernameorder: el.createdBy?.username,
+                    userphoneorder: el.createdBy?.phoneNumber,
+                    route: {
+                      from_city: el.sendLocation,
+                      to_city: el.cargoDeliveryLocation,
+                    },
+                    add_two_days: "",
+                    adr: el.isDangrousCargo,
+                    comment: "",
+                    comment_client: "",
+                    cubic: "",
+                    currency: el.currency?.name,
+                    date_create: new Date(el.createdAt),
+                    date_send: el.sendCargoDate,
+                    driver_id: el.driverId,
+                    end_client: "",
+                    end_date: "",
+                    end_driver: "",
+                    height_box: el.cargoHeight,
+                    length_box: el.cargoLength,
+                    loading: "",
+                    mode: "",
+                    no_cash: el.isCashlessPayment,
+                    orders_accepted: el.acceptedOrders,
+                    price: el.offeredPrice,
+                    raiting_driver: "",
+                    raiting_user: "",
+                    route_id: "",
+                    save_order: "",
+                    secure_transaction: el.isSafe,
+                    status: el.status,
+                    transport_type: el.transportType?.name,
+                    transport_types: el.transportTypes,
+                    type_cargo: el.cargoType?.code,
+                    user_id: el.clientId,
+                    weight: el.cargoWeight,
+                    width_box: el.cargoWidth,
+                    created_at: new Date(el.createdAt),
+                    logo: el.merchant?.logoFilePath,
+                    merchant: el.merchant
+                  };
+                });
+              }
           }
-
+          console.log(merchantData)
         if (rows.length || merchantData.length){
             appData.data_count = rows_count[0].allcount
             let data= [...merchantData ,...rows];
