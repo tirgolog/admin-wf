@@ -617,7 +617,7 @@ reborn.post('/getAllTmcOrders', async (req, res) => {
             let [orderIds] = await connect.query(`
                 SELECT oa.order_id FROM orders_accepted oa
                 LEFT JOIN users_list ul ON ul.id = oa.user_id
-                WHERE status_order = ${status} AND ismerchant = true AND ul.agent_id = ${6503}`);
+                WHERE status_order = ${status} AND ismerchant = true AND ul.agent_id = ${userInfo.id}`);
                 orderIds = orderIds.map((el) => el.order_id);
             if(filter.length) {
                 filter += `&orderIds=${JSON.stringify(orderIds)}`;
