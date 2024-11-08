@@ -543,7 +543,7 @@ reborn.post('/getAllTmcOrders', async (req, res) => {
                 filter += `?sendCargoDate=${sendCargoDate}`;    
             } 
         }
-        if(status) {
+        if(status != undefined && status != '') {
             if(filter.length) {
                 filter += `&status=${status}`;
             } else {
@@ -644,7 +644,7 @@ reborn.post('/getAllTmcOrders', async (req, res) => {
         if(sendCargoDate) {
             queryFilter += ` ${queryFilter.length ? ` AND ` : ''} date_send = ${sendCargoDate} `;
         }
-        if(status) {
+        if(status != undefined && status != '') {
             queryFilter += ` ${queryFilter.length ? ` AND ` : ''} status = ${status} `;
         }
         if(isSafeOrder) {
