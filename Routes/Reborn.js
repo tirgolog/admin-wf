@@ -653,7 +653,7 @@ reborn.post('/getAllTmcOrders', async (req, res) => {
                 filter += `?orderIds=${JSON.stringify(orderIds)}`;    
             }
         }
-          if((orderIds.length && (status == 1 || status == 3 || status == 4 || status == 10)) || status == 0) {
+          if((orderIds.length && (status == 1 || status == 2 || status == 3 || status == 4 || status == 10)) || status == 0) {
             const merchantCargos = await axios.get(
                 `https://merchant.tirgo.io/api/v1/cargo/all-admin${filter}`
               );
