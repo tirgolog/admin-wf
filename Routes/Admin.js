@@ -1758,6 +1758,7 @@ admin.post("/agent/finish-order", async (req, res) => {
   const channel = await connection.createChannel();
 
   try {
+    connect = await database.connection.getConnection();
 
     const [driver] = await connect.query(
       "select agent_id from users_list where id= ?",
@@ -1768,7 +1769,6 @@ admin.post("/agent/finish-order", async (req, res) => {
       throw new Error("Доступ запрещен");
     }
 
-    connect = await database.connection.getConnection();
       appData.status = true;
 
       const [rows] = await connect.query(
