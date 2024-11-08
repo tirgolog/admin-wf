@@ -1697,7 +1697,7 @@ admin.post("/agent/activate-order", async (req, res) => {
         appData.error = 'Заказ не найден'
         return res.status(400).json(appData)
       }
-      const [rows] = await connect.query(`UPDATE orders_accepted SET status_order = 10 WHERE order_id = ? AND usrer_id = ?`, [orderid, driver_id]);
+      const [rows] = await connect.query(`UPDATE orders_accepted SET status_order = 10 WHERE order_id = ? AND user_id = ?`, [orderid, driver_id]);
 
       if(rows.affectedRows && !isMerchant) {
         await connect.query(`UPDATE orders SET status_order = 10 WHERE id = ?`, [orderid]);
