@@ -1231,40 +1231,40 @@ users.post("/codeverifyClient", async (req, res) => {
   }
 });
 
-users.use((req, res, next) => {
-  let token =
-    req.body.token ||
-    req.headers["token"] ||
-    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-  let appData = {};
-  if (token && token !== undefined && token !== 'undefined') {
-    jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
-      if (err) {
-        if (err.name === 'TokenExpiredError') {
-          appData["error"] = "Token has expired";
-          return res.status(401).json(appData);
-        } else {
-          console.error("JWT Verification Error:", err);
-          appData["error"] = "Token is invalid";
-          return res.status(401).json(appData);
-        }
-      } else {
-        // Check if token has expired
-        const currentTimestamp = Math.floor(Date.now() / 1000);
-        if (decoded.exp < currentTimestamp) {
-          appData["data"] = "Token has expired";
-          return res.status(401).json(appData);
-        }
-        // Attach user information from the decoded token to the request
-        req.user = decoded;
-        next();
-      }
-    });
-  } else {
-    appData["error"] = "Token is null";
-    res.status(401).json(appData);
-  }
-});
+// users.use((req, res, next) => {
+//   let token =
+//     req.body.token ||
+//     req.headers["token"] ||
+//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+//   let appData = {};
+//   if (token && token !== undefined && token !== 'undefined') {
+//     jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
+//       if (err) {
+//         if (err.name === 'TokenExpiredError') {
+//           appData["error"] = "Token has expired";
+//           return res.status(401).json(appData);
+//         } else {
+//           console.error("JWT Verification Error:", err);
+//           appData["error"] = "Token is invalid";
+//           return res.status(401).json(appData);
+//         }
+//       } else {
+//         // Check if token has expired
+//         const currentTimestamp = Math.floor(Date.now() / 1000);
+//         if (decoded.exp < currentTimestamp) {
+//           appData["data"] = "Token has expired";
+//           return res.status(401).json(appData);
+//         }
+//         // Attach user information from the decoded token to the request
+//         req.user = decoded;
+//         next();
+//       }
+//     });
+//   } else {
+//     appData["error"] = "Token is null";
+//     res.status(401).json(appData);
+//   }
+// });
 
 users.post("/saveDeviceToken", async (req, res) => {
   let connect,
@@ -1453,6 +1453,86 @@ users.get("/getMerchantBalance", async function (req, res) {
     appData.data = { totalFrozenAmount, totalRemovalAmount };
     res.status(200).json(appData);
   } catch (err) {
+    appData.message = err.message;
+    res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+users.get("/getMerchantTransactions", async function (req, res) {
+  let connect,
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]),
+    appData = { status: false, timestamp: new Date().getTime() };
+  const merchantId = req.query.merchantId;
+  const from = req.query.from;
+  const limit = req.query.limit;
+  try {
+    connect = await database.connection.getConnection();
+    if(!from) {
+      from = 0;
+    }
+    if(!limit) {
+      limit = 10;
+    }
+    const [orders] = await connect.query(
+      `SELECT 
+      *, 'order_payment' as transcationType 
+      from orders_accepted 
+      where 
+        merchant_id = ? 
+        AND status_order = 3 
+        AND secure_transaction = 1
+      LIMIT ?, ?`,
+      [merchantId, +from, +limit]
+    );
+console.log(orders)
+    const [workingOrders] = await connect.query(
+      `SELECT 
+      *, 'order_payment' as transcationType 
+      from orders_accepted 
+      where 
+        merchant_id = ? 
+        AND status_order = 1 
+        AND secure_transaction = 1
+      LIMIT ?, ?`,
+      [merchantId, +from, +limit]
+    );
+
+    let data = [];
+    for (let order of orders) {
+      if(order.status_order === 3) {
+        data.push({ id: order.id, amount: order.price, transactionType: 'order_payment', createdAt: order.date_create, driver_id: order.user_id, orderId: order.order_id });
+        data.push({ id: order.id, amount: order.additional_price, transactionType: 'order_payment_comission', createdAt: order.date_create, driver_id: order.user_id, orderId: order.order_id });
+        data.push({ id: order.id, amount: +order.price + +order.additional_price, transactionType: 'order_price_freesing_out', createdAt: order.date_create, driver_id: order.user_id, orderId: order.order_id });
+      }
+    }
+    data.push(...workingOrders.map(item => {
+      return {
+        id: item.id,
+        amount: +item.price + +item.additional_price,
+        transactionType: 'order_price_freesing_in',
+        createdAt: item.date_create,
+        driver_id: item.user_id,
+        orderId: item.order_id
+      }
+    }));
+    data.sort((a,b) => {
+      if (a.createdAt < b.createdAt) {
+          return 1;
+        }
+        if (a.createdAt > b.createdAt) {
+          return -1;
+        }
+        return 0;
+  })
+    appData.status = true;
+    appData.data = data;
+    res.status(200).json(appData);
+  } catch (err) {
+    console.log(err);
     appData.message = err.message;
     res.status(403).json(appData);
   } finally {
@@ -3100,8 +3180,8 @@ users.post("/acceptDriverOffer", async (req, res) => {
     if (rows.affectedRows) {
       if (isSafe) {
         connect.query(
-          `INSERT INTO secure_transaction set userid = ?, dirverid = ?, orderid = ?, amount = ?, additional_amount = ?`,
-          [clientId, driverId, orderid, amount, addAmount]
+          `INSERT INTO secure_transaction set userid = ?, dirverid = ?, orderid = ?, amount = ?, additional_amount = ?, is_merchant = ?`,
+          [clientId, driverId, orderid, amount, addAmount, true]
         );
       }
       socket.updateAllList("update-active-order", "1");

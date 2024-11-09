@@ -1574,6 +1574,8 @@ admin.post("/agent/create-offer-to-order", async (req, res) => {
     price = req.body.price,
     additional_price = req.body.additional_price,
     isMerchant = req.body.isMerchant,
+    merchantId = req.body.merchantId,
+    isSafe = req.body.isSafe,
     one_day = 0,
     two_day = 0,
     three_day = 0,
@@ -1604,7 +1606,7 @@ admin.post("/agent/create-offer-to-order", async (req, res) => {
     );
     if (!orders_accepted.length) {
       const [rows] = await connect.query(
-        "INSERT INTO orders_accepted SET user_id = ?,order_id = ?,price = ?, additional_price = ?,one_day = ?,two_day = ?,three_day = ?, ismerchant = ?",
+        "INSERT INTO orders_accepted SET user_id = ?,order_id = ?,price = ?, additional_price = ?,one_day = ?,two_day = ?,three_day = ?, ismerchant = ?, merchant_id = ?, agent_id = ?, is_by_agent = ?, secure_transaction = ?",
         [
           driver_id,
           orderid,
@@ -1614,6 +1616,10 @@ admin.post("/agent/create-offer-to-order", async (req, res) => {
           two_day,
           three_day,
           isMerchant,
+          merchantId,
+          userInfo.id,
+          true,
+          isSafe
         ]
       );
       const [order] = await connect.query(
