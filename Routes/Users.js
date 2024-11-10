@@ -1483,20 +1483,19 @@ users.get("/getMerchantTransactions", async function (req, res) {
       from orders_accepted 
       where 
         merchant_id = ? 
-        AND status_order = 3 
+        AND status_order = 3
         AND secure_transaction = 1
       LIMIT ?, ?`,
       [merchantId, +from, +limit]
     );
-console.log(orders)
+
     const [workingOrders] = await connect.query(
       `SELECT 
-      *, 'order_payment' as transcationType 
-      from orders_accepted 
+      *, 'order_price_freesing_in' as transcationType 
+      from secure_transaction 
       where 
-        merchant_id = ? 
-        AND status_order = 1 
-        AND secure_transaction = 1
+        userid = ? 
+        AND is_merchant = 1 
       LIMIT ?, ?`,
       [merchantId, +from, +limit]
     );
@@ -1504,19 +1503,19 @@ console.log(orders)
     let data = [];
     for (let order of orders) {
       if(order.status_order === 3) {
-        data.push({ id: order.id, amount: order.price, transactionType: 'order_payment', createdAt: order.date_create, driver_id: order.user_id, orderId: order.order_id });
-        data.push({ id: order.id, amount: order.additional_price, transactionType: 'order_payment_comission', createdAt: order.date_create, driver_id: order.user_id, orderId: order.order_id });
-        data.push({ id: order.id, amount: +order.price + +order.additional_price, transactionType: 'order_price_freesing_out', createdAt: order.date_create, driver_id: order.user_id, orderId: order.order_id });
+        data.push({ id: order.id, amount: order.price, transactionType: 'order_payment', createdAt: order.completed_at, driver_id: order.user_id, orderId: order.order_id });
+        data.push({ id: order.id, amount: order.additional_price, transactionType: 'order_payment_comission', createdAt: order.completed_at, driver_id: order.user_id, orderId: order.order_id });
+        data.push({ id: order.id, amount: +order.price + +order.additional_price, transactionType: 'order_price_freesing_out', createdAt: new Date(new Date(order.completed_at).getTime() - 1 * 60 * 1000), driver_id: order.user_id, orderId: order.order_id });
       }
     }
     data.push(...workingOrders.map(item => {
       return {
         id: item.id,
-        amount: +item.price + +item.additional_price,
+        amount: +item.amount + +item.additional_amount,
         transactionType: 'order_price_freesing_in',
-        createdAt: item.date_create,
-        driver_id: item.user_id,
-        orderId: item.order_id
+        createdAt: item.date,
+        driver_id: item.driverid,
+        orderId: item.orderid
       }
     }));
     data.sort((a,b) => {
@@ -2449,7 +2448,7 @@ users.post("/finish-merchant-cargo", async (req, res) => {
     const [rows] = await connect.query(
       `
       UPDATE orders_accepted
-      SET status_order = 3
+      SET status_order = 3, completed_at = now()
       WHERE order_id = ? AND ismerchant = true`,
       [orderId]
     );
