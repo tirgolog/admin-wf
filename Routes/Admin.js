@@ -1817,6 +1817,104 @@ admin.post("/agent/finish-order", async (req, res) => {
   }
 });
 
+admin.get("/get-agent-orders-transactions", async function (req, res) {
+  let connect,
+    userInfo = jwt.decode(req.headers.authorization.split(" ")[1]),
+    appData = { status: false, timestamp: new Date().getTime() };
+  const transactionType = req.query.transactionType;
+  const orderId = req.query.orderId;
+  const driverId = req.query.driverId;
+  const from = req.query.from;
+  const limit = req.query.limit;
+  try {
+    connect = await database.connection.getConnection();
+    if(!from) {
+      from = 0;
+    }
+    if(!limit) {
+      limit = 10;
+    }
+
+    const [agent] = await connect.query(`SELECT id FROM users_list WHERE id = ? AND user_type = 5`, [userInfo.id]);
+
+    if(!agent.length) {
+      throw new Error("Доступ запрещен");
+    }
+  
+    let data = [];
+    
+   if(!transactionType || transactionType == 'order_payment' || transactionType == 'order_price_freesing_out') { 
+    const [orders] = await connect.query(
+      `SELECT 
+      *, 'order_payment' as transcationType 
+      from orders_accepted 
+      where 
+        agent_id = ? 
+        ${driverId ? `AND user_id = ${driverId}` : ``}
+        ${orderId ? `AND order_id = ${orderId}` : ``}
+        AND status_order = 3
+        AND is_by_agent = 1
+      LIMIT ?, ?`,
+      [merchantId, +from, +limit]
+    );
+    for (let order of orders) {
+      if(!transactionType || transactionType === 'order_payment') {
+        data.push({ id: order.id, amount: order.price, transactionType: 'order_payment', createdAt: order.completed_at, driver_id: order.user_id, orderId: order.order_id });
+      }
+      if(!transactionType || transactionType === 'order_price_freesing_out') { 
+        data.push({ id: order.id, amount: order.price, transactionType: 'order_price_freesing_out', createdAt: new Date(new Date(order.completed_at).getTime() - 1 * 60 * 1000), driver_id: order.user_id, orderId: order.order_id });
+      }
+    }
+   }
+
+
+   if(!transactionType || transactionType === 'order_price_freesing_in') {
+     
+    const [workingOrders] = await connect.query(
+      `SELECT 
+      *, 'order_price_freesing_in' as transcationType 
+      from secure_transaction 
+      where 
+      agent_id = ? 
+      AND is_by_agent = 1 
+      ${driverId ? `AND driverid = ${driverId}` : ``}
+      ${orderId ? `AND orderid = ${orderId}` : ``}
+      LIMIT ?, ?`,
+      [userInfo.id, +from, +limit]
+    );
+     data.push(...workingOrders.map(item => {
+       return {
+         id: item.id,
+         amount: +item.amount + +item.additional_amount,
+         transactionType: 'order_price_freesing_in',
+         createdAt: item.date,
+         driver_id: item.driverid,
+         orderId: item.orderid
+       }
+     }));
+   }
+    data.sort((a,b) => {
+      if (a.createdAt < b.createdAt) {
+          return 1;
+        }
+        if (a.createdAt > b.createdAt) {
+          return -1;
+        }
+        return 0;
+  })
+    appData.status = true;
+    appData.data = data;
+    res.status(200).json(appData);
+  } catch (err) {
+    console.log(err);
+    appData.message = err.message;
+    res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
 
 admin.post("/createOrder", async (req, res) => {
   let connect,
