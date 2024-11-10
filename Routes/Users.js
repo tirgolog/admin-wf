@@ -1467,6 +1467,9 @@ users.get("/getMerchantTransactions", async function (req, res) {
     userInfo = jwt.decode(req.headers.authorization.split(" ")[1]),
     appData = { status: false, timestamp: new Date().getTime() };
   const merchantId = req.query.merchantId;
+  const transactionType = req.query.transactionType;
+  const driverId = req.query.driverId;
+  const orderId = req.query.orderId;
   const from = req.query.from;
   const limit = req.query.limit;
   try {
@@ -1477,47 +1480,56 @@ users.get("/getMerchantTransactions", async function (req, res) {
     if(!limit) {
       limit = 10;
     }
-    const [orders] = await connect.query(
-      `SELECT 
-      *, 'order_payment' as transcationType 
-      from orders_accepted 
-      where 
-        merchant_id = ? 
-        AND status_order = 3
-        AND secure_transaction = 1
-      LIMIT ?, ?`,
-      [merchantId, +from, +limit]
-    );
-
-    const [workingOrders] = await connect.query(
-      `SELECT 
-      *, 'order_price_freesing_in' as transcationType 
-      from secure_transaction 
-      where 
-        userid = ? 
-        AND is_merchant = 1 
-      LIMIT ?, ?`,
-      [merchantId, +from, +limit]
-    );
 
     let data = [];
-    for (let order of orders) {
-      if(order.status_order === 3) {
-        data.push({ id: order.id, amount: order.price, transactionType: 'order_payment', createdAt: order.completed_at, driver_id: order.user_id, orderId: order.order_id });
-        data.push({ id: order.id, amount: order.additional_price, transactionType: 'order_payment_comission', createdAt: order.completed_at, driver_id: order.user_id, orderId: order.order_id });
-        data.push({ id: order.id, amount: +order.price + +order.additional_price, transactionType: 'order_price_freesing_out', createdAt: new Date(new Date(order.completed_at).getTime() - 1 * 60 * 1000), driver_id: order.user_id, orderId: order.order_id });
+
+    if(!transactionType || transactionType == 'order_payment' || transactionType == 'order_price_freesing_out' || transactionType == 'order_payment_comission') {
+      const [orders] = await connect.query(
+        `SELECT 
+        *, 'order_payment' as transcationType 
+        from orders_accepted 
+        where 
+          merchant_id = ? 
+          ${driverId ? `AND user_id = ${driverId}` : ``}
+          ${orderId ? `AND order_id = ${orderId}` : ``}
+          AND status_order = 3
+          AND secure_transaction = 1
+        LIMIT ?, ?`,
+        [merchantId, +from, +limit]
+      );
+      for (let order of orders) {
+        if(order.status_order === 3) {
+          data.push({ id: order.id, amount: order.price, transactionType: 'order_payment', createdAt: order.completed_at, driver_id: order.user_id, orderId: order.order_id });
+          data.push({ id: order.id, amount: order.additional_price, transactionType: 'order_payment_comission', createdAt: order.completed_at, driver_id: order.user_id, orderId: order.order_id });
+          data.push({ id: order.id, amount: +order.price + +order.additional_price, transactionType: 'order_price_freesing_out', createdAt: new Date(new Date(order.completed_at).getTime() - 1 * 60 * 1000), driver_id: order.user_id, orderId: order.order_id });
+        }
       }
     }
-    data.push(...workingOrders.map(item => {
-      return {
-        id: item.id,
-        amount: +item.amount + +item.additional_amount,
-        transactionType: 'order_price_freesing_in',
-        createdAt: item.date,
-        driver_id: item.driverid,
-        orderId: item.orderid
-      }
-    }));
+
+    if(!transactionType || transactionType == 'order_price_freesing_in') { 
+      const [workingOrders] = await connect.query(
+        `SELECT 
+        *, 'order_price_freesing_in' as transcationType 
+        from secure_transaction 
+        where 
+          userid = ? 
+          ${driverId ? `AND driverid = ${driverId}` : ``}
+          ${orderId ? `AND orderid = ${orderId}` : ``}
+          AND is_merchant = 1 
+        LIMIT ?, ?`,
+        [merchantId, +from, +limit]
+      );
+      data.push(...workingOrders.map(item => {
+        return {
+          id: item.id,
+          amount: +item.amount + +item.additional_amount,
+          transactionType: 'order_price_freesing_in',
+          createdAt: item.date,
+          driver_id: item.driverid,
+          orderId: item.orderid
+        }
+      }));
+    }
     data.sort((a,b) => {
       if (a.createdAt < b.createdAt) {
           return 1;
@@ -3178,9 +3190,15 @@ users.post("/acceptDriverOffer", async (req, res) => {
     );
     if (rows.affectedRows) {
       if (isSafe) {
+
+        const [accepted_order] = await connect.query(
+          "SELECT agent_id, is_by_agent FROM orders_accepted WHERE order_id = ? AND user_id = ?",
+          [orderid, driverId]
+        );
+
         connect.query(
-          `INSERT INTO secure_transaction set userid = ?, dirverid = ?, orderid = ?, amount = ?, additional_amount = ?, is_merchant = ?`,
-          [clientId, driverId, orderid, amount, addAmount, true]
+          `INSERT INTO secure_transaction set userid = ?, dirverid = ?, orderid = ?, amount = ?, additional_amount = ?, is_merchant = ?, agent_id = ?, is_by_agent = ?`,
+          [clientId, driverId, orderid, amount, addAmount, true, accepted_order[0]?.agent_id, accepted_order[0]?.is_by_agent]
         );
       }
       socket.updateAllList("update-active-order", "1");
