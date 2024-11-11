@@ -1829,11 +1829,6 @@ admin.get("/get-agent-orders-transactions", async function (req, res) {
       limit = 10;
     }
 
-    const [agent] = await connect.query(`SELECT id FROM users_list WHERE id = ? AND user_type = 5`, [userInfo.id]);
-    if(!agent.length) {
-      throw new Error("Доступ запрещен");
-    }
-  
     let data = [];
     
    if(!transactionType || transactionType == 'order_payment' || transactionType == 'order_price_freesing_out') { 
