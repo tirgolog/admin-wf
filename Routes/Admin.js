@@ -1875,7 +1875,7 @@ admin.get("/get-agent-orders-transactions", async function (req, res) {
       where 
       agent_id = ? 
       AND is_by_agent = 1 
-      ${driverId ? `AND driverid = ${driverId}` : ``}
+      ${driverId ? `AND dirverid = ${driverId}` : ``}
       ${orderId ? `AND orderid = ${orderId}` : ``}
       LIMIT ?, ?`,
       [userInfo.id, +from, +limit]
