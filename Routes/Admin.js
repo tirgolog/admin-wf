@@ -1826,8 +1826,9 @@ admin.get("/get-agent-orders-transactions", async function (req, res) {
   const transactionType = req.query.transactionType;
   const orderId = req.query.orderId;
   const driverId = req.query.driverId;
-  const from = req.query.from;
-  const limit = req.query.limit;
+  const agentId = req.query.agentId;
+  let from = req.query.from;
+  let limit = req.query.limit;
   try {
     connect = await database.connection.getConnection();
     if(!from) {
@@ -1838,7 +1839,6 @@ admin.get("/get-agent-orders-transactions", async function (req, res) {
     }
 
     const [agent] = await connect.query(`SELECT id FROM users_list WHERE id = ? AND user_type = 5`, [userInfo.id]);
-
     if(!agent.length) {
       throw new Error("Доступ запрещен");
     }
@@ -1857,7 +1857,7 @@ admin.get("/get-agent-orders-transactions", async function (req, res) {
         AND status_order = 3
         AND is_by_agent = 1
       LIMIT ?, ?`,
-      [userInfo.id, +from, +limit]
+      [agentId, +from, +limit]
     );
     for (let order of orders) {
       if(!transactionType || transactionType === 'order_payment') {
