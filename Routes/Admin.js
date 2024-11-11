@@ -601,6 +601,20 @@ admin.get("/getAgentBalanse/:agent_id", async (req, res) => {
       COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE status In(2, 3) AND deleted = 0 AND agent_id = ${agentId} AND transaction_type = 'service'), 0) AS serviceBalance
     `);
 
+    const [orders] = await connect.query(
+      `SELECT 
+      *, 'order_payment' as transcationType 
+      from orders_accepted 
+      where 
+        agent_id = ? 
+        ${driverId ? `AND user_id = ${driverId}` : ``}
+        ${orderId ? `AND order_id = ${orderId}` : ``}
+        AND status_order = 3
+        AND is_by_agent = 1
+      LIMIT ?, ?`,
+      [merchantId, +from, +limit]
+    );
+
     if (rows.length) {
       appData.status = true;
       appData.data = rows[0];
@@ -1846,7 +1860,7 @@ admin.get("/get-agent-orders-transactions", async function (req, res) {
         AND status_order = 3
         AND is_by_agent = 1
       LIMIT ?, ?`,
-      [merchantId, +from, +limit]
+      [userInfo.id, +from, +limit]
     );
     for (let order of orders) {
       if(!transactionType || transactionType === 'order_payment') {
