@@ -1525,7 +1525,7 @@ users.get("/getMerchantTransactions", async function (req, res) {
           amount: +item.amount + +item.additional_amount,
           transactionType: 'order_price_freesing_in',
           createdAt: item.date,
-          driver_id: item.driverid,
+          driver_id: item.dirverid,
           orderId: item.orderid
         }
       }));
