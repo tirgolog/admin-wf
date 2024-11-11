@@ -7556,7 +7556,7 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
           ws[`I${index + 2}`] = { v: item.completedAt, t: "s" };
           ws[`J${index + 2}`] = { v: status, t: "s" };
           ws[`K${index + 2}`] = { v: item.driverId ? item.driverId : '', t: "n" };
-          ws[`L${index + 2}`] = { v: item.transport_numbers[0], t: "n" };
+          ws[`L${index + 2}`] = { v: item.transport_numbers[0].transport_number, t: "n" };
         });
         const wopts = { bookType: "xlsx", bookSST: false, type: "array" };
         const wbout = XLSX.write(wb, wopts);
@@ -7664,6 +7664,16 @@ admin.get("/excel/services-transaction", async (req, res) => {
       query += ` ORDER BY st.id DESC `;
     }
     const [services_transaction] = await connect.query(query, queryParams);
+
+    for(let trans of services_transaction) {
+      const [transport_numbers] = await connect.query(`
+        SELECT 
+          transport_number
+        FROM users_transport
+        WHERE user_id = ${trans.driverId}`);
+        trans.transport_numbers = transport_numbers
+    }
+    
     if (services_transaction.length) {
       const ws = XLSX.utils.json_to_sheet(services_transaction);
       ws["!cols"] = [
@@ -7685,6 +7695,7 @@ admin.get("/excel/services-transaction", async (req, res) => {
       ws["F1"] = { v: "Админ", t: "s" };
       ws["G1"] = { v: "Статус", t: "s" };
       ws["H1"] = { v: "Дата", t: "s" };
+      ws["I1"] = { v: "Дата", t: "s" };
 
       services_transaction.forEach((item, index) => {
         ws[`A${index + 2}`] = {
@@ -7713,6 +7724,10 @@ admin.get("/excel/services-transaction", async (req, res) => {
             hour: "2-digit",
             minute: "2-digit",
           }),
+          t: "s",
+        };
+        ws[`I${index + 2}`] = {
+          v: item.transport_numbers[0].transport_number,
           t: "s",
         };
       });
