@@ -831,6 +831,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
         tbt.amount_tir amount,
         'Оформления сервиса' transactionType,
         tbt.created_at createdAt,
+        tbt.completed_at completedAt,
         tbt.status,
         tbt.kz_description,
         tbt.paid_kz_way_transaction_created_at
