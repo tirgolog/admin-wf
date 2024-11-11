@@ -598,22 +598,10 @@ admin.get("/getAgentBalanse/:agent_id", async (req, res) => {
       COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE deleted = 0 AND created_by_id = ${agentId} AND transaction_type = 'subscription'), 0) AS tirgoBalance,
       COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND user_id = ${agentId} AND balance_type = 'tirgo_service' ), 0) -
       COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE agent_id = ${agentId} AND created_by_id = ${agentId} AND balance_type = 'tirgo_service' ), 0) -
-      COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE status In(2, 3) AND deleted = 0 AND agent_id = ${agentId} AND transaction_type = 'service'), 0) AS serviceBalance
+      COALESCE ((SELECT SUM(amount_tir) FROM tir_balance_transaction WHERE status In(2, 3) AND deleted = 0 AND agent_id = ${agentId} AND transaction_type = 'service'), 0) AS serviceBalance,
+      COALESCE ((SELECT SUM(price + additional_price) FROM orders_accepted WHERE is_by_agent = 1 AND agent_id = ${agentId} AND status_order = 3 ), 0) AS ordersBalance,
+      COALESCE ((SELECT SUM(price + additional_price) FROM orders_accepted WHERE is_by_agent = 1 AND agent_id = ${agentId} AND status_order = 1 ), 0) AS freezedOrdersBalance
     `);
-
-    const [orders] = await connect.query(
-      `SELECT 
-      *, 'order_payment' as transcationType 
-      from orders_accepted 
-      where 
-        agent_id = ? 
-        ${driverId ? `AND user_id = ${driverId}` : ``}
-        ${orderId ? `AND order_id = ${orderId}` : ``}
-        AND status_order = 3
-        AND is_by_agent = 1
-      LIMIT ?, ?`,
-      [merchantId, +from, +limit]
-    );
 
     if (rows.length) {
       appData.status = true;
