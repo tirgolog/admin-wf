@@ -5848,6 +5848,7 @@ admin.get("/driver-group/transactions", async (req, res) => {
         dl.name driverName,
         t.amount_tir amount,
         t.created_at createdAt,
+        t.completed_at completedAt,
         t.transaction_type transactionType
        FROM tir_balance_transaction t
        LEFT JOIN users_list dl on dl.id = t.user_id AND dl.user_type = 1 
@@ -5920,6 +5921,7 @@ admin.post("/driver-group/transactions/excell", async (req, res) => {
         dl.name driverName,
         t.amount_tir amount,
         t.created_at createdAt,
+        t.completed_at completedAt,
         t.transaction_type transactionType
        FROM tir_balance_transaction t
        LEFT JOIN users_list dl on dl.id = t.user_id AND dl.user_type = 1 
@@ -5976,7 +5978,8 @@ admin.post("/driver-group/transactions/excell", async (req, res) => {
       ws["C1"] = { v: "Tir", t: "s" };
       ws["D1"] = { v: "Статус", t: "s" };
       ws["E1"] = { v: "Создан в ", t: "s" };
-      ws["F1"] = { v: "Тип", t: "s" };
+      ws["F1"] = { v: "Выполнен в ", t: "s" };
+      ws["G1"] = { v: "Тип", t: "s" };
 
       data.forEach((item, index) => {
         ws[`A${index + 2}`] = {
@@ -5993,7 +5996,8 @@ admin.post("/driver-group/transactions/excell", async (req, res) => {
           t: "n",
         };
         ws[`E${index + 2}`] = { v: item.createdAt, t: "n" };
-        ws[`F${index + 2}`] = { v: item.transactionType == 'service' ? item.serviceName : item.subscriptionName, t: "s" };
+        ws[`F${index + 2}`] = { v: item.completedAt, t: "n" };
+        ws[`G${index + 2}`] = { v: item.transactionType == 'service' ? item.serviceName : item.subscriptionName, t: "s" };
       });
       const wopts = { bookType: "xlsx", bookSST: false, type: "array" };
       const wbout = XLSX.write(wb, wopts);
@@ -7449,10 +7453,19 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
         WHERE tbt.deleted = 0 AND transaction_type = 'service' AND tbt.agent_id = ${agentId}  ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''};
         `);
         }
-        const data = ([...rows, ...trans[0]].sort((a, b) => {
+        let data = ([...rows, ...trans[0]].sort((a, b) => {
           return b.createdAt - a.createdAt
-        }))
-        .map((el) => {
+        }));
+        for(let trans of data) {
+          const [transport_numbers] = await connect.query(`
+            SELECT 
+              transport_number
+            FROM users_transport
+            WHERE user_id = ${trans.driverId}`);
+            trans.transport_numbers = transport_numbers
+        }
+        
+        data.map((el) => {
           return {
             id: el.id,
             driverId: el.driverId ? el.driverId : '',
@@ -7506,6 +7519,7 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
         ws["I1"] = { v: "Дата виполнения", t: "s" };
         ws["J1"] = { v: "Статус", t: "s" };
         ws["K1"] = { v: "ID водителя", t: "s" };
+        ws["L1"] = { v: "Гос номер автомобиля", t: "s" };
         data.forEach((item, index) => {
           let status;
           switch (item.status) {
@@ -7551,6 +7565,7 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
           ws[`I${index + 2}`] = { v: item.completedAt, t: "s" };
           ws[`J${index + 2}`] = { v: status, t: "s" };
           ws[`K${index + 2}`] = { v: item.driverId ? item.driverId : '', t: "n" };
+          ws[`L${index + 2}`] = { v: item.transport_numbers[0], t: "n" };
         });
         const wopts = { bookType: "xlsx", bookSST: false, type: "array" };
         const wbout = XLSX.write(wb, wopts);
