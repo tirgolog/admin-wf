@@ -7512,9 +7512,7 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
         XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
         ws["A1"] = { v: "Админ", t: "s" };
         ws["B1"] = { v: "Тип", t: "s" };
-        ws["C1"] = { v: "Тип", t: "s" };
         ws["D1"] = { v: "Сумма (Tir)", t: "s" };
-        ws["E1"] = { v: "Сумма (Tir)", t: "s" };
         ws["F1"] = { v: "Сумма (UZS)", t: "s" };
         ws["G1"] = { v: "Имя драйвера", t: "s" };
         ws["H1"] = { v: "Дата", t: "s" };
