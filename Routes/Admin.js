@@ -7503,14 +7503,14 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
         XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
         ws["A1"] = { v: "Админ", t: "s" };
         ws["B1"] = { v: "Тип", t: "s" };
+        ws["C1"] = { v: "Сумма (UZS)", t: "s" };
         ws["D1"] = { v: "Сумма (Tir)", t: "s" };
-        ws["F1"] = { v: "Сумма (UZS)", t: "s" };
-        ws["G1"] = { v: "Имя драйвера", t: "s" };
-        ws["H1"] = { v: "Дата", t: "s" };
-        ws["I1"] = { v: "Дата виполнения", t: "s" };
-        ws["J1"] = { v: "Статус", t: "s" };
-        ws["K1"] = { v: "ID водителя", t: "s" };
-        ws["L1"] = { v: "Гос номер автомобиля", t: "s" };
+        ws["E1"] = { v: "Имя драйвера", t: "s" };
+        ws["F1"] = { v: "Дата создания", t: "s" };
+        ws["G1"] = { v: "Дата виполнения", t: "s" };
+        ws["H1"] = { v: "Статус", t: "s" };
+        ws["I1"] = { v: "ID водителя", t: "s" };
+        ws["J1"] = { v: "Гос номер автомобиля", t: "s" };
         data.forEach((item, index) => {
           let status;
           switch (item.status) {
@@ -7535,28 +7535,14 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
             t: "s",
           };
           ws[`B${index + 2}`] = { v: item.transactionType ? item.transactionType : "", t: "s" };
-          ws[`C${index + 2}`] = { v: item.serviceName, t: "n" };
-          ws[`D${index + 2}`] = {
-            v:
-              item.transactionType === "Пополнение TirgoService баланса" && item.amount != null
-                ? item.amount
-                : "",
-            t: "n",
-          };
-          ws[`E${index + 2}`] = {
-            v:
-              item.transactionType !== "Пополнение TirgoService баланса" && item.amount != null
-                ? item.amount
-                : "",
-            t: "n",
-          };
-          ws[`F${index + 2}`] = { v: item.uzsAmount ? item.uzsAmount : '', t: "n" };
-          ws[`G${index + 2}`] = { v: item.driverName ? item.driverName : '', t: "s" };
-          ws[`H${index + 2}`] = { v: item.createdAt, t: "s" };
-          ws[`I${index + 2}`] = { v: item.completedAt, t: "s" };
-          ws[`J${index + 2}`] = { v: status, t: "s" };
-          ws[`K${index + 2}`] = { v: item.driverId ? item.driverId : '', t: "n" };
-          ws[`L${index + 2}`] = { v: item.transportNumber, t: "n" };
+          ws[`C${index + 2}`] = { v: item.uzsAmount ? item.uzsAmount : '', t: "n" };
+          ws[`D${index + 2}`] = { v: item.amount ? item.amount : '', t: "n" };
+          ws[`E${index + 2}`] = { v: item.driverName ? item.driverName : '', t: "s" };
+          ws[`F${index + 2}`] = { v: item.createdAt, t: "s" };
+          ws[`G${index + 2}`] = { v: item.completedAt, t: "s" };
+          ws[`H${index + 2}`] = { v: status, t: "s" };
+          ws[`I${index + 2}`] = { v: item.driverId ? item.driverId : '', t: "n" };
+          ws[`J${index + 2}`] = { v: item.transportNumber, t: "n" };
         });
         const wopts = { bookType: "xlsx", bookSST: false, type: "array" };
         const wbout = XLSX.write(wb, wopts);
