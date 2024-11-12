@@ -7459,7 +7459,6 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
         
         data = data.map((el) => {
           return {
-            id: el.id,
             driverId: el.driverId ? el.driverId : '',
             driverName: el.driverName ? el.driverName : '',
             createdAt: new Date(el.createdAt).toLocaleString("ru-RU", {
@@ -7511,6 +7510,7 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
         ws["H1"] = { v: "Статус", t: "s" };
         ws["I1"] = { v: "ID водителя", t: "s" };
         ws["J1"] = { v: "Гос номер автомобиля", t: "s" };
+        ws["K1"] = { v: "Название услуги", t: "s" };
         data.forEach((item, index) => {
           let status;
           switch (item.status) {
@@ -7543,6 +7543,7 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
           ws[`H${index + 2}`] = { v: status, t: "s" };
           ws[`I${index + 2}`] = { v: item.driverId ? item.driverId : '', t: "n" };
           ws[`J${index + 2}`] = { v: item.transportNumber, t: "n" };
+          ws[`K${index + 2}`] = { v: item.serviceName, t: "n" };
         });
         const wopts = { bookType: "xlsx", bookSST: false, type: "array" };
         const wbout = XLSX.write(wb, wopts);
