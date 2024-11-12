@@ -7466,7 +7466,7 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
             trans.transport_numbers = transport_numbers
         }
         
-        data.map((el) => {
+        data = data.map((el) => {
           return {
             id: el.id,
             driverId: el.driverId ? el.driverId : '',
