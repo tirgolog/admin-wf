@@ -8393,7 +8393,7 @@ admin.post("/paid-way-transactions", async (req, res) => {
       `SELECT ut.*, al.paid_kz_comission, al.id agent_id FROM users_transport ut 
       LEFT JOIN users_list ul ON ut.user_id = ul.id
       LEFT JOIN users_list al ON ul.agent_id = al.id
-      WHERE ut.active = 1 AND ut.transport_number IS NOT NULL AND LENGTH(ut.transport_number) = 8 
+      WHERE ut.active = 1 AND ul.agent_id <> 6820 AND ut.transport_number IS NOT NULL AND LENGTH(ut.transport_number) = 8 
             AND POSITION(' ' IN ut.transport_number) = 0 AND ul.agent_id IS NOT NULL AND al.user_type = 5`
     )
 
