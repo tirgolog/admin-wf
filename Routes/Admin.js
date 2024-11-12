@@ -7566,7 +7566,7 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
           ws[`I${index + 2}`] = { v: item.completedAt, t: "s" };
           ws[`J${index + 2}`] = { v: status, t: "s" };
           ws[`K${index + 2}`] = { v: item.driverId ? item.driverId : '', t: "n" };
-          ws[`L${index + 2}`] = { v: item.transport_numbers[0].transport_number, t: "n" };
+          ws[`L${index + 2}`] = { v: item.transport_numbers[0]?.transport_number, t: "n" };
         });
         const wopts = { bookType: "xlsx", bookSST: false, type: "array" };
         const wbout = XLSX.write(wb, wopts);
@@ -7737,7 +7737,7 @@ admin.get("/excel/services-transaction", async (req, res) => {
           t: "s",
         };
         ws[`I${index + 2}`] = {
-          v: item.transport_numbers[0].transport_number,
+          v: item.transport_numbers[0]?.transport_number,
           t: "s",
         };
       });
