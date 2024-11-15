@@ -844,7 +844,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
       WHERE tbt.deleted = 0 AND tbt.transaction_type = 'service' 
             ${driverId ? `AND tbt.user_id = ${driverId}` : ''}
             AND tbt.agent_id = ${agentId} 
-            ${transportNumber ? " AND ut.transport_number = " + `${transportNumber}` : ""}
+            ${transportNumber ? ` AND ut.transport_number =  ${transportNumber}` : ""}
             ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''} 
             ${dateFilterCondition} ${paidWayDateFilterCondition} ${serviceStatusId ? ` AND tbt.status = ${serviceStatusId}` : ""};`);
 
