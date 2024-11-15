@@ -840,6 +840,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
       LEFT JOIN users_list dl on dl.id = tbt.user_id AND dl.user_type = 1
       LEFT JOIN users_list adl on adl.id = tbt.created_by_id AND adl.user_type = 3
       LEFT JOIN users_transport ut on ut.user_id = tbt.user_id
+      LEFT JOIN services s on s.id = tbt.service_id
       WHERE tbt.deleted = 0 AND tbt.transaction_type = 'service' 
             ${driverId ? `AND tbt.user_id = ${driverId}` : ''}
             AND tbt.agent_id = ${agentId} 
