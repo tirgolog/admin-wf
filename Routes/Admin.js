@@ -807,7 +807,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
          FROM tir_balance_exchanges tbe
         LEFT JOIN users_list dl on dl.id = tbe.user_id AND dl.user_type = 1
         LEFT JOIN users_list adl on adl.id = tbe.created_by_id AND adl.user_type = 3
-        WHERE tbe.balance_type = 'tirgo_service' ${transportNumber ? " AND tbe.transport_number = " + transportNumber : ""} AND tbe.agent_id = ${agentId} ORDER BY ${sortByDate ? "created_at" : "id"
+        WHERE tbe.balance_type = 'tirgo_service' AND tbe.agent_id = ${agentId} ORDER BY ${sortByDate ? "created_at" : "id"
         } ${driverId ? "AND tbe.user_id = " + driverId : ""} ${sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
         } LIMIT ?, ?;`,
         [+from, +limit]
@@ -839,10 +839,11 @@ admin.get("/agent-service-transactions", async (req, res) => {
       FROM tir_balance_transaction tbt
       LEFT JOIN users_list dl on dl.id = tbt.user_id AND dl.user_type = 1
       LEFT JOIN users_list adl on adl.id = tbt.created_by_id AND adl.user_type = 3
-      LEFT JOIN services s on s.id = tbt.service_id
+      LEFT JOIN users_transport ut on ut.user_id = tbt.user_id
       WHERE tbt.deleted = 0 AND tbt.transaction_type = 'service' 
             ${driverId ? `AND tbt.user_id = ${driverId}` : ''}
             AND tbt.agent_id = ${agentId} 
+            ${transportNumber ? " AND ut.transport_number = " + transportNumber : ""}
             ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''} 
             ${dateFilterCondition} ${paidWayDateFilterCondition} ${serviceStatusId ? ` AND tbt.status = ${serviceStatusId}` : ""};`);
             totalServiceAmount = Array.isArray(trans) && trans.length > 0 
