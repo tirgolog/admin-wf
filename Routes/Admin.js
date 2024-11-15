@@ -748,6 +748,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
     sortType = req.query.sortType,
     limit = req.query.limit,
     serviceId = req.query.serviceId,
+    transportNumber = req.query.transportNumber,
     rows = [],
     row = [],
     trans = [],
@@ -806,7 +807,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
          FROM tir_balance_exchanges tbe
         LEFT JOIN users_list dl on dl.id = tbe.user_id AND dl.user_type = 1
         LEFT JOIN users_list adl on adl.id = tbe.created_by_id AND adl.user_type = 3
-        WHERE tbe.balance_type = 'tirgo_service' AND tbe.agent_id = ${agentId} ORDER BY ${sortByDate ? "created_at" : "id"
+        WHERE tbe.balance_type = 'tirgo_service' ${transportNumber ? " AND tbe.transport_number = " + transportNumber : ""} AND tbe.agent_id = ${agentId} ORDER BY ${sortByDate ? "created_at" : "id"
         } ${driverId ? "AND tbe.user_id = " + driverId : ""} ${sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
         } LIMIT ?, ?;`,
         [+from, +limit]
@@ -5229,6 +5230,7 @@ admin.get("/services-transaction", async (req, res) => {
     toDate,
     sortByDate,
     sortType,
+    transportNumber,
   } = req.query;
   try {
     connect = await database.connection.getConnection();
@@ -5265,6 +5267,11 @@ admin.get("/services-transaction", async (req, res) => {
     if (serviceId) {
       queryConditions.push("s.id = ?");
       queryParams.push(serviceId);
+    }
+
+    if (transportNumber) {
+      queryConditions.push("ut.transport_number = ?");
+      queryParams.push(transportNumber);
     }
 
     if (fromDate) {
@@ -5307,6 +5314,7 @@ admin.get("/services-transaction", async (req, res) => {
       LEFT JOIN users_list al ON tbt.is_by_agent = 1 AND al.id = tbt.agent_id
       LEFT JOIN users_list adl ON adl.id = tbt.created_by_id
       LEFT JOIN driver_group dg ON dg.id = tbt.group_id AND tbt.is_by_group = 1
+      LEFT JOIN users_transport ut ON ut.user_id = tbt.user_id
       LEFT JOIN services s ON s.id = tbt.service_id`;
 
     let countQuery = `
@@ -7249,7 +7257,7 @@ admin.get("/excel/agent-tirgo-balance-transactions", async (req, res) => {
          FROM tir_balance_exchanges tbe
         LEFT JOIN users_list dl on dl.id = tbe.user_id AND dl.user_type = 1
         LEFT JOIN users_list adl on adl.id = tbe.created_by_id AND adl.user_type = 3
-        WHERE tbe.balance_type = 'tirgo' AND tbe.agent_id = ${agentId} ORDER BY ${sortByDate ? "created_at" : "id"
+        WHERE tbe.balance_type = 'tirgo' ${driverId ? " AND tbe.user_id = " + driverId : ""} AND tbe.agent_id = ${agentId} ORDER BY ${sortByDate ? "created_at" : "id"
         } ${sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
         };`,
       );
@@ -7269,7 +7277,7 @@ admin.get("/excel/agent-tirgo-balance-transactions", async (req, res) => {
     FROM tir_balance_transaction tbt
     LEFT JOIN users_list dl on dl.id = tbt.user_id AND dl.user_type = 1
     LEFT JOIN users_list adl on adl.id = tbt.created_by_id AND adl.user_type = 3
-    WHERE tbt.deleted = 0 AND tbt.transaction_type = 'subscription' AND tbt.agent_id = ${agentId};
+    WHERE tbt.deleted = 0 ${driverId ? " AND tbt.user_id = " + driverId : ""} AND tbt.transaction_type = 'subscription' AND tbt.agent_id = ${agentId};
     `);
     }
 
@@ -7363,6 +7371,7 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
     appData = { status: false },
     transactionType = req.query.transactionType,
     driverId = req.query.driverId,
+    transportNumber = req.query.transportNumber,
     agentId = req.query.agentId,
     sortByDate = req.query.sortByDate == "true",
     sortType = req.query.sortType,
@@ -7403,7 +7412,7 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
            FROM tir_balance_exchanges tbe
           LEFT JOIN users_list dl on dl.id = tbe.user_id AND dl.user_type = 1
           LEFT JOIN users_list adl on adl.id = tbe.created_by_id AND adl.user_type = 3
-          WHERE tbe.balance_type = 'tirgo_service' AND tbe.agent_id = ${agentId} ORDER BY ${sortByDate ? "created_at" : "id"
+          WHERE tbe.balance_type = 'tirgo_service' ${driverId ? " AND tbe.user_id = " + driverId : ""} AND tbe.agent_id = ${agentId} ORDER BY ${sortByDate ? "created_at" : "id"
           } ${sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
           };`,
         );
@@ -7434,7 +7443,8 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
         LEFT JOIN users_list dl on dl.id = tbt.user_id AND dl.user_type = 1
         LEFT JOIN users_list adl on adl.id = tbt.created_by_id AND adl.user_type = 3
         LEFT JOIN services s on s.id = tbt.service_id
-        WHERE tbt.deleted = 0 AND tbt.transaction_type = 'service' 
+        LEFT JOIN users_transport ut on ut.user_id = tbt.user_id
+        WHERE tbt.deleted = 0 ${driverId ? " AND tbt.user_id = " + driverId : ""} ${transportNumber ? " AND ut.transport_number = " + transportNumber : ""} AND tbt.transaction_type = 'service' 
          AND tbt.agent_id = ${agentId} 
          ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''}
          ${dateFilterCondition} ${serviceStatusId ? `AND tbt.status = ${serviceStatusId}` : ""};`);
@@ -7442,7 +7452,7 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
         SELECT 
           Count(*) as count
         FROM tir_balance_transaction tbt
-        WHERE tbt.deleted = 0 AND transaction_type = 'service' AND tbt.agent_id = ${agentId}  ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''};
+        WHERE tbt.deleted = 0 AND transaction_type = 'service' ${driverId ? " AND tbt.user_id = " + driverId : ""} AND tbt.agent_id = ${agentId}  ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''};
         `);
         }
         let data = ([...rows, ...trans[0]].sort((a, b) => {
