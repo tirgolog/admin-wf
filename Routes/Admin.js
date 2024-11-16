@@ -134,41 +134,41 @@ admin.post("/refreshToken", async (req, res) => {
   }
 });
 
-admin.use((req, res, next) => {
-  let token =
-    req.body.token ||
-    req.headers["token"] ||
-    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-  let appData = {};
-  if (token && token !== undefined && token !== 'undefined') {
-    jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
-      if (err) {
-        console.log('Admin middleware error', err.name)
-        if (err.name === 'TokenExpiredError') {
-          appData["error"] = "Token has expired";
-          return res.status(401).json(appData);
-        } else {
-          console.error("JWT Verification Error:", err);
-          appData["error"] = "Token is invalid";
-          return res.status(401).json(appData);
-        }
-      } else {
-        // Check if token has expired
-        const currentTimestamp = Math.floor(Date.now() / 1000);
-        if (decoded.exp < currentTimestamp) {
-          appData["data"] = "Token has expired";
-          return res.status(401).json(appData);
-        }
-        // Attach user information from the decoded token to the request
-        req.user = decoded;
-        next();
-      }
-    });
-  } else {
-    appData["error"] = "Token is null";
-    res.status(401).json(appData);
-  }
-});
+// admin.use((req, res, next) => {
+//   let token =
+//     req.body.token ||
+//     req.headers["token"] ||
+//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+//   let appData = {};
+//   if (token && token !== undefined && token !== 'undefined') {
+//     jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
+//       if (err) {
+//         console.log('Admin middleware error', err.name)
+//         if (err.name === 'TokenExpiredError') {
+//           appData["error"] = "Token has expired";
+//           return res.status(401).json(appData);
+//         } else {
+//           console.error("JWT Verification Error:", err);
+//           appData["error"] = "Token is invalid";
+//           return res.status(401).json(appData);
+//         }
+//       } else {
+//         // Check if token has expired
+//         const currentTimestamp = Math.floor(Date.now() / 1000);
+//         if (decoded.exp < currentTimestamp) {
+//           appData["data"] = "Token has expired";
+//           return res.status(401).json(appData);
+//         }
+//         // Attach user information from the decoded token to the request
+//         req.user = decoded;
+//         next();
+//       }
+//     });
+//   } else {
+//     appData["error"] = "Token is null";
+//     res.status(401).json(appData);
+//   }
+// });
 
 admin.get("/getAllAgent", async (req, res) => {
   let connect,
@@ -807,8 +807,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
          FROM tir_balance_exchanges tbe
         LEFT JOIN users_list dl on dl.id = tbe.user_id AND dl.user_type = 1
         LEFT JOIN users_list adl on adl.id = tbe.created_by_id AND adl.user_type = 3
-        LEFT JOIN users_transport ut on ut.id = tbe.user_id
-        WHERE tbe.balance_type = 'tirgo_service' AND tbe.agent_id = ${agentId} ORDER BY ${sortByDate ? "created_at" : "id"
+        WHERE tbe.balance_type = 'tirgo_service' AND tbe.agent_id = ${agentId} ORDER BY ${sortByDate ? "created_at" : "tbe.id"
         } ${driverId ? "AND tbe.user_id = " + driverId : ""} ${sortType?.toString().toLowerCase() == "asc" ? "ASC" : "DESC"
         } LIMIT ?, ?;`,
         [+from, +limit]
@@ -840,7 +839,6 @@ admin.get("/agent-service-transactions", async (req, res) => {
       FROM tir_balance_transaction tbt
       LEFT JOIN users_list dl on dl.id = tbt.user_id AND dl.user_type = 1
       LEFT JOIN users_list adl on adl.id = tbt.created_by_id AND adl.user_type = 3
-      LEFT JOIN users_transport ut on ut.user_id = tbt.user_id
       LEFT JOIN services s on s.id = tbt.service_id
       WHERE tbt.deleted = 0 AND tbt.transaction_type = 'service' 
             ${driverId ? `AND tbt.user_id = ${driverId}` : ''}
@@ -850,6 +848,7 @@ admin.get("/agent-service-transactions", async (req, res) => {
             totalServiceAmount = Array.isArray(trans) && trans.length > 0 
             ? trans.reduce((acc, transaction) => acc + transaction.amount, 0)
             : 0;
+            console.log(trans)
       tran = await connect.query(`
       SELECT 
         Count(*) as count
@@ -5316,7 +5315,6 @@ admin.get("/services-transaction", async (req, res) => {
       LEFT JOIN users_list al ON tbt.is_by_agent = 1 AND al.id = tbt.agent_id
       LEFT JOIN users_list adl ON adl.id = tbt.created_by_id
       LEFT JOIN driver_group dg ON dg.id = tbt.group_id AND tbt.is_by_group = 1
-      LEFT JOIN users_transport ut ON ut.user_id = tbt.user_id
       LEFT JOIN services s ON s.id = tbt.service_id`;
 
     let countQuery = `
@@ -7449,7 +7447,6 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
         LEFT JOIN users_list dl on dl.id = tbt.user_id AND dl.user_type = 1
         LEFT JOIN users_list adl on adl.id = tbt.created_by_id AND adl.user_type = 3
         LEFT JOIN services s on s.id = tbt.service_id
-        LEFT JOIN users_transport ut on ut.user_id = tbt.user_id
         WHERE tbt.deleted = 0 ${driverId ? " AND tbt.user_id = " + driverId : ""} AND tbt.transaction_type = 'service' 
          AND tbt.agent_id = ${agentId} 
          ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''}
