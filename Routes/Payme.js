@@ -161,7 +161,7 @@ payme.post('/payMeMerchantApi', async function(req, res) {
                                           COALESCE((SELECT SUM(amount_tir) FROM tir_balance_exchanges WHERE user_id = ${+checkpay[0]?.userid} AND balance_type = 'tirgo'), 0) -
                                           COALESCE((SELECT SUM(amount_tir) FROM tir_balance_transaction  WHERE deleted = 0 AND user_id = ${+checkpay[0]?.userid} AND transaction_type = 'subscription'), 0) AS tirgoBalance`
                                       );
-                                    const tirCurrency = await database.query(`SELECT id, currency_name, rate, code FROM tirgo_balance_currency WHERE code = ${tirgoBalanceCurrencyCodes.uzs}`);
+                                    const tirCurrency = await connect.query(`SELECT id, currency_name, rate, code FROM tirgo_balance_currency WHERE code = ${tirgoBalanceCurrencyCodes.uzs}`);
                                     const [subscriptions] = await connect.query("SELECT * FROM subscription");
                                     const payAmount = +checkpay[0].amount + (+paymentUser[0]?.tirgoBalance * +tirCurrency[0]?.rate);
                                     let subscriptionId;
