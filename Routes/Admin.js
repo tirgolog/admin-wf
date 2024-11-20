@@ -840,7 +840,15 @@ admin.get("/agent-service-transactions", async (req, res) => {
       LEFT JOIN users_list dl on dl.id = tbt.user_id AND dl.user_type = 1
       LEFT JOIN users_list adl on adl.id = tbt.created_by_id AND adl.user_type = 3
       LEFT JOIN services s on s.id = tbt.service_id
-      WHERE tbt.deleted = 0 AND tbt.transaction_type = 'service' 
+      WHERE tbt.deleted = 0 
+            ${transactionNumber ? `
+                        AND EXISTS (
+                             SELECT 1
+                             FROM users_transport ut
+                             WHERE ut.user_id = tbt.user_id
+                             AND ut.transport_number = ?
+                        )` : ''} 
+            AND tbt.transaction_type = 'service' 
             ${driverId ? `AND tbt.user_id = ${driverId}` : ''}
             AND tbt.agent_id = ${agentId} 
             ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''} 
@@ -851,6 +859,13 @@ admin.get("/agent-service-transactions", async (req, res) => {
              sum(amount_tir) as totalAmount
             FROM tir_balance_transaction tbt
             WHERE tbt.deleted = 0 AND tbt.transaction_type = 'service' 
+             ${transactionNumber ? `
+                        AND EXISTS (
+                             SELECT 1
+                             FROM users_transport ut
+                             WHERE ut.user_id = tbt.user_id
+                             AND ut.transport_number = ?
+                        )` : ''} 
                   ${driverId ? `AND tbt.user_id = ${driverId}` : ''}
                   AND tbt.agent_id = ${agentId} 
                   ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''} 
@@ -861,7 +876,15 @@ admin.get("/agent-service-transactions", async (req, res) => {
       SELECT 
         Count(*) as count
       FROM tir_balance_transaction tbt
-      WHERE tbt.deleted = 0 AND transaction_type = 'service' AND tbt.agent_id = ${agentId} ${driverId ? `AND tbt.user_id = ${driverId}` : ''} ${dateFilterCondition} ${paidWayDateFilterCondition} ${serviceStatusId ? ` AND tbt.status = ${serviceStatusId}` : ""}   ${serviceId ? ` AND tbt.service_id = ${serviceId}` : ''};
+      WHERE tbt.deleted = 0 
+       ${transactionNumber ? `
+                        AND EXISTS (
+                             SELECT 1
+                             FROM users_transport ut
+                             WHERE ut.user_id = tbt.user_id
+                             AND ut.transport_number = ?
+                        )` : ''} 
+      AND transaction_type = 'service' AND tbt.agent_id = ${agentId} ${driverId ? `AND tbt.user_id = ${driverId}` : ''} ${dateFilterCondition} ${paidWayDateFilterCondition} ${serviceStatusId ? ` AND tbt.status = ${serviceStatusId}` : ""}   ${serviceId ? ` AND tbt.service_id = ${serviceId}` : ''};
       `);
       }
       let data = ([...rows, ...trans].sort((a, b) => {
@@ -875,10 +898,6 @@ admin.get("/agent-service-transactions", async (req, res) => {
           FROM users_transport
           WHERE user_id = ${trans.driverId}`);
           trans.transport_numbers = transport_numbers
-      }
-
-      if(transportNumber) {
-        data = data.filter((el) => el.transport_numbers.some((transport) => transport.transport_number == transportNumber));
       }
 
       const transCount = tran[0]
@@ -5341,6 +5360,21 @@ admin.get("/services-transaction", async (req, res) => {
       countQuery += " WHERE tbt.transaction_type = 'service'";
     }
 
+    if(transportNumber) { 
+      query + ` AND EXISTS (
+      SELECT 1
+      FROM users_transport ut
+      WHERE ut.user_id = tbt.user_id
+      AND ut.transport_number = ?
+    )`
+    countQuery + ` AND EXISTS (
+      SELECT 1
+      FROM users_transport ut
+      WHERE ut.user_id = tbt.user_id
+      AND ut.transport_number = ?
+    )`
+    }
+
     if (sortByDate) {
       query += ` ORDER BY tbt.created_at ${sortType} LIMIT ?, ?`;
     } else {
@@ -5359,10 +5393,6 @@ admin.get("/services-transaction", async (req, res) => {
           FROM users_transport
           WHERE user_id = ${trans.driverId}`);
           trans.transport_numbers = transport_numbers
-      }
-
-      if(transportNumber) {
-        services_transaction = services_transaction.filter((el) => el.transport_numbers.some((transport) => transport.transport_number == transportNumber));
       }
 
       appData.status = true;
@@ -7477,10 +7507,6 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
             WHERE user_id = ${trans.driverId}`);
             trans.transport_numbers = transport_numbers
         }
-        
-        if(transportNumber) {
-          data = data.filter((el) => el.transport_numbers.some((transport) => transport.transport_number == transportNumber));
-        }
 
         data = data.map((el) => {
           return {
@@ -7671,6 +7697,15 @@ admin.get("/excel/services-transaction", async (req, res) => {
       query += " WHERE " + queryConditions.join(" AND ");
     }
 
+    if(transportNumber) {
+      query += `AND EXISTS (
+                           SELECT 1
+                           FROM users_transport ut
+                           WHERE ut.user_id = tbt.user_id
+                           AND ut.transport_number = ?
+                          )` 
+    }
+
     if (sortByDate) {
       query += ` ORDER BY st.created_at ${sortType} `;
     } else {
@@ -7685,10 +7720,6 @@ admin.get("/excel/services-transaction", async (req, res) => {
         FROM users_transport
         WHERE user_id = ${trans.driverId}`);
         trans.transport_numbers = transport_numbers
-    }
-
-    if(transportNumber) { 
-      services_transaction = services_transaction.filter((el) => el.transport_numbers.some((transport) => transport.transport_number == transportNumber));
     }
     
     if (services_transaction.length) {
