@@ -841,12 +841,12 @@ admin.get("/agent-service-transactions", async (req, res) => {
       LEFT JOIN users_list adl on adl.id = tbt.created_by_id AND adl.user_type = 3
       LEFT JOIN services s on s.id = tbt.service_id
       WHERE tbt.deleted = 0 
-            ${transactionNumber ? `
+            ${transportNumber ? `
                         AND EXISTS (
                              SELECT 1
                              FROM users_transport ut
                              WHERE ut.user_id = tbt.user_id
-                             AND ut.transport_number = ?
+                             AND ut.transport_number = '${transportNumber}'
                         )` : ''} 
             AND tbt.transaction_type = 'service' 
             ${driverId ? `AND tbt.user_id = ${driverId}` : ''}
@@ -859,12 +859,12 @@ admin.get("/agent-service-transactions", async (req, res) => {
              sum(amount_tir) as totalAmount
             FROM tir_balance_transaction tbt
             WHERE tbt.deleted = 0 AND tbt.transaction_type = 'service' 
-             ${transactionNumber ? `
+             ${transportNumber ? `
                         AND EXISTS (
                              SELECT 1
                              FROM users_transport ut
                              WHERE ut.user_id = tbt.user_id
-                             AND ut.transport_number = ?
+                             AND ut.transport_number = '${transportNumber}'
                         )` : ''} 
                   ${driverId ? `AND tbt.user_id = ${driverId}` : ''}
                   AND tbt.agent_id = ${agentId} 
@@ -877,12 +877,12 @@ admin.get("/agent-service-transactions", async (req, res) => {
         Count(*) as count
       FROM tir_balance_transaction tbt
       WHERE tbt.deleted = 0 
-       ${transactionNumber ? `
+       ${transportNumber ? `
                         AND EXISTS (
                              SELECT 1
                              FROM users_transport ut
                              WHERE ut.user_id = tbt.user_id
-                             AND ut.transport_number = ?
+                             AND ut.transport_number = '${transportNumber}'
                         )` : ''} 
       AND transaction_type = 'service' AND tbt.agent_id = ${agentId} ${driverId ? `AND tbt.user_id = ${driverId}` : ''} ${dateFilterCondition} ${paidWayDateFilterCondition} ${serviceStatusId ? ` AND tbt.status = ${serviceStatusId}` : ""}   ${serviceId ? ` AND tbt.service_id = ${serviceId}` : ''};
       `);
@@ -5268,7 +5268,7 @@ admin.get("/services-transaction", async (req, res) => {
   try {
     connect = await database.connection.getConnection();
     from = isNaN(from) ? 0 : from;
-    limit = isNaN(limit) ? 10 : limit;
+    limit = isNaN(limit) ? 50 : limit;
     let queryParams = [];
     let queryConditions = [];
 
@@ -5361,20 +5361,17 @@ admin.get("/services-transaction", async (req, res) => {
     }
 
     if(transportNumber) { 
-      query + ` AND EXISTS (
+      query += ` AND EXISTS (
       SELECT 1
       FROM users_transport ut
-      WHERE ut.user_id = tbt.user_id
-      AND ut.transport_number = ?
+      WHERE ut.user_id = tbt.user_id AND ut.transport_number = '${transportNumber}'
     )`
-    countQuery + ` AND EXISTS (
+    countQuery += ` AND EXISTS (
       SELECT 1
       FROM users_transport ut
-      WHERE ut.user_id = tbt.user_id
-      AND ut.transport_number = ?
+      WHERE ut.user_id = tbt.user_id AND ut.transport_number = '${transportNumber}'
     )`
     }
-
     if (sortByDate) {
       query += ` ORDER BY tbt.created_at ${sortType} LIMIT ?, ?`;
     } else {
@@ -5385,7 +5382,6 @@ admin.get("/services-transaction", async (req, res) => {
 
     let [services_transaction] = await connect.query(query, queryParams);
     let [services_transaction_total_count] = await connect.query(countQuery, queryParams);
-
       for(let trans of services_transaction) {
         const [transport_numbers] = await connect.query(`
           SELECT 
@@ -7702,7 +7698,7 @@ admin.get("/excel/services-transaction", async (req, res) => {
                            SELECT 1
                            FROM users_transport ut
                            WHERE ut.user_id = tbt.user_id
-                           AND ut.transport_number = ?
+                           AND ut.transport_number = '${transportNumber}'
                           )` 
     }
 
