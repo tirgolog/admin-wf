@@ -7694,7 +7694,7 @@ admin.get("/excel/services-transaction", async (req, res) => {
     }
 
     if(transportNumber) {
-      query += `AND EXISTS (
+      query += ` AND EXISTS (
                            SELECT 1
                            FROM users_transport ut
                            WHERE ut.user_id = tbt.user_id
