@@ -7482,6 +7482,13 @@ admin.get("/excel/agent-service-transactions", async (req, res) => {
         LEFT JOIN users_list adl on adl.id = tbt.created_by_id AND adl.user_type = 3
         LEFT JOIN services s on s.id = tbt.service_id
         WHERE tbt.deleted = 0 ${driverId ? " AND tbt.user_id = " + driverId : ""} AND tbt.transaction_type = 'service' 
+         ${transportNumber ? `
+                          AND EXISTS (
+                           SELECT 1
+                           FROM users_transport ut
+                           WHERE ut.user_id = tbt.user_id
+                           AND ut.transport_number = '${transportNumber}'
+                          )` : ''}
          AND tbt.agent_id = ${agentId} 
          ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''}
          ${dateFilterCondition} ${serviceStatusId ? `AND tbt.status = ${serviceStatusId}` : ""};`);
