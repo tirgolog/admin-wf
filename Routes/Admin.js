@@ -7698,17 +7698,25 @@ admin.get("/excel/services-transaction", async (req, res) => {
 
     if (queryConditions.length > 0) {
       query += " WHERE " + queryConditions.join(" AND ");
+      if(transportNumber) {
+        query += ` AND EXISTS (
+                             SELECT 1
+                             FROM users_transport ut
+                             WHERE ut.user_id = st.user_id
+                             AND ut.transport_number = '${transportNumber}'
+                            )` 
+      }
     }
 
-    if(transportNumber) {
-      query += ` AND EXISTS (
+    if(!queryConditions.length && transportNumber) {
+      query += ` WHERE EXISTS (
                            SELECT 1
                            FROM users_transport ut
                            WHERE ut.user_id = st.user_id
                            AND ut.transport_number = '${transportNumber}'
                           )` 
     }
-
+    console.log(query)
     if (sortByDate) {
       query += ` ORDER BY st.created_at ${sortType} `;
     } else {
