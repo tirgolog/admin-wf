@@ -134,41 +134,41 @@ admin.post("/refreshToken", async (req, res) => {
   }
 });
 
-admin.use((req, res, next) => {
-  let token =
-    req.body.token ||
-    req.headers["token"] ||
-    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-  let appData = {};
-  if (token && token !== undefined && token !== 'undefined') {
-    jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
-      if (err) {
-        console.log('Admin middleware error', err.name)
-        if (err.name === 'TokenExpiredError') {
-          appData["error"] = "Token has expired";
-          return res.status(401).json(appData);
-        } else {
-          console.error("JWT Verification Error:", err);
-          appData["error"] = "Token is invalid";
-          return res.status(401).json(appData);
-        }
-      } else {
-        // Check if token has expired
-        const currentTimestamp = Math.floor(Date.now() / 1000);
-        if (decoded.exp < currentTimestamp) {
-          appData["data"] = "Token has expired";
-          return res.status(401).json(appData);
-        }
-        // Attach user information from the decoded token to the request
-        req.user = decoded;
-        next();
-      }
-    });
-  } else {
-    appData["error"] = "Token is null";
-    res.status(401).json(appData);
-  }
-});
+// admin.use((req, res, next) => {
+//   let token =
+//     req.body.token ||
+//     req.headers["token"] ||
+//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+//   let appData = {};
+//   if (token && token !== undefined && token !== 'undefined') {
+//     jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
+//       if (err) {
+//         console.log('Admin middleware error', err.name)
+//         if (err.name === 'TokenExpiredError') {
+//           appData["error"] = "Token has expired";
+//           return res.status(401).json(appData);
+//         } else {
+//           console.error("JWT Verification Error:", err);
+//           appData["error"] = "Token is invalid";
+//           return res.status(401).json(appData);
+//         }
+//       } else {
+//         // Check if token has expired
+//         const currentTimestamp = Math.floor(Date.now() / 1000);
+//         if (decoded.exp < currentTimestamp) {
+//           appData["data"] = "Token has expired";
+//           return res.status(401).json(appData);
+//         }
+//         // Attach user information from the decoded token to the request
+//         req.user = decoded;
+//         next();
+//       }
+//     });
+//   } else {
+//     appData["error"] = "Token is null";
+//     res.status(401).json(appData);
+//   }
+// });
 
 admin.get("/getAllAgent", async (req, res) => {
   let connect,
@@ -8614,17 +8614,16 @@ admin.patch('/tirgo-paid-kz-way-comission', async (req, res) => {
       return;
     }
 
+
     connect = await database.connection.getConnection();
     const [agent] = await connect.query(`SELECT id, user_type from users_list WHERE id = ? AND user_type = 5`, [agent_id]);
-
-    if(!agent.length) {
+    if (!agent.length) {
       appData.error = "Agent not found";
       res.status(403).json(appData);
       return;
     }
 
-    const [update] = await connect.query(`UPDATE users_list SET paid_kz_comission = ? WHERE id = ?`, [paid_kz_comission, id]);
-
+    const [update] = await connect.query(`UPDATE users_list SET paid_kz_comission = ? WHERE id = ?`, [paid_kz_comission, agent_id]);
     if (update.affectedRows) {
       appData.status = true;
     } else {
@@ -8632,6 +8631,7 @@ admin.patch('/tirgo-paid-kz-way-comission', async (req, res) => {
     }
     res.status(200).json(appData);
   } catch (err) {
+    console.log(err)
     appData.status = false;
     appData.error = err;
     res.status(403).json(appData);
