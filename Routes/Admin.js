@@ -8602,6 +8602,46 @@ admin.put('/tirgo-paid-kz-way-account', async (req, res) => {
   }
 });
 
+admin.patch('/tirgo-paid-kz-way-comission', async (req, res) => {
+  let appData = { status: false };
+  let connect,
+    paid_kz_comission = req.body.paid_kz_comission,
+    agent_id = req.body.agent_id;
+  try {
+    if (!agent_id || !paid_kz_comission) {
+      appData.error = "All fields are required";
+      res.status(403).json(appData);
+      return;
+    }
+
+    connect = await database.connection.getConnection();
+    const [agent] = await connect.query(`SELECT id, user_type from users_list WHERE id = ? AND user_type = 5`, [agent_id]);
+
+    if(!agent.length) {
+      appData.error = "Agent not found";
+      res.status(403).json(appData);
+      return;
+    }
+
+    const [update] = await connect.query(`UPDATE users_list SET paid_kz_comission = ? WHERE id = ?`, [paid_kz_comission, id]);
+
+    if (update.affectedRows) {
+      appData.status = true;
+    } else {
+      appData.error = "Что то пошло не так";
+    }
+    res.status(200).json(appData);
+  } catch (err) {
+    appData.status = false;
+    appData.error = err;
+    res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
 admin.get('/tirgo-paid-kz-way-account', async (req, res) => {
   let appData = { status: false };
   let connect;
