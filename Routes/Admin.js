@@ -134,41 +134,41 @@ admin.post("/refreshToken", async (req, res) => {
   }
 });
 
-// admin.use((req, res, next) => {
-//   let token =
-//     req.body.token ||
-//     req.headers["token"] ||
-//     (req.headers.authorization && req.headers.authorization.split(" ")[1]);
-//   let appData = {};
-//   if (token && token !== undefined && token !== 'undefined') {
-//     jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
-//       if (err) {
-//         console.log('Admin middleware error', err.name)
-//         if (err.name === 'TokenExpiredError') {
-//           appData["error"] = "Token has expired";
-//           return res.status(401).json(appData);
-//         } else {
-//           console.error("JWT Verification Error:", err);
-//           appData["error"] = "Token is invalid";
-//           return res.status(401).json(appData);
-//         }
-//       } else {
-//         // Check if token has expired
-//         const currentTimestamp = Math.floor(Date.now() / 1000);
-//         if (decoded.exp < currentTimestamp) {
-//           appData["data"] = "Token has expired";
-//           return res.status(401).json(appData);
-//         }
-//         // Attach user information from the decoded token to the request
-//         req.user = decoded;
-//         next();
-//       }
-//     });
-//   } else {
-//     appData["error"] = "Token is null";
-//     res.status(401).json(appData);
-//   }
-// });
+admin.use((req, res, next) => {
+  let token =
+    req.body.token ||
+    req.headers["token"] ||
+    (req.headers.authorization && req.headers.authorization.split(" ")[1]);
+  let appData = {};
+  if (token && token !== undefined && token !== 'undefined') {
+    jwt.verify(token, process.env.SECRET_KEY, function (err, decoded) {
+      if (err) {
+        console.log('Admin middleware error', err.name)
+        if (err.name === 'TokenExpiredError') {
+          appData["error"] = "Token has expired";
+          return res.status(401).json(appData);
+        } else {
+          console.error("JWT Verification Error:", err);
+          appData["error"] = "Token is invalid";
+          return res.status(401).json(appData);
+        }
+      } else {
+        // Check if token has expired
+        const currentTimestamp = Math.floor(Date.now() / 1000);
+        if (decoded.exp < currentTimestamp) {
+          appData["data"] = "Token has expired";
+          return res.status(401).json(appData);
+        }
+        // Attach user information from the decoded token to the request
+        req.user = decoded;
+        next();
+      }
+    });
+  } else {
+    appData["error"] = "Token is null";
+    res.status(401).json(appData);
+  }
+});
 
 admin.get("/getAllAgent", async (req, res) => {
   let connect,
@@ -871,6 +871,18 @@ admin.get("/agent-service-transactions", async (req, res) => {
                   ${serviceId ? `AND tbt.service_id = ${serviceId}` : ''} 
                   ${dateFilterCondition} ${paidWayDateFilterCondition} ${serviceStatusId ? ` AND tbt.status = ${serviceStatusId}` : ""};`);
 
+              //     const [balanceRows] = await connect.query(
+              //       `SELECT SUM(amount_tir) totalTirAmount FROM tir_balance_transaction WHERE deleted = 0 AND created_by_id = ? AND transaction_type = 'service' AND status In(2, 3)`,
+              //       [agentId]
+              //     );
+              
+              //     const [kzBalanceRows] = await connect.query(
+              //       `SELECT SUM(amount_tir) totalTirAmount FROM tir_balance_transaction WHERE deleted = 0 AND created_by_id = 7770 AND agent_id = ? AND transaction_type = 'service' AND status In(2, 3)`,
+              //       [agentId]
+              //     );
+      
+              // totalServiceAmount = balanceRows[0]?.totalTirAmount + balanceRows[0]?.kzBalanceRows;
+
         totalServiceAmount = totalAmount[0]?.totalAmount;
         tran = await connect.query(`
       SELECT 
@@ -1125,10 +1137,15 @@ admin.get("/agent-services/transations-total-amount", async (req, res) => {
       [agentId]
     );
 
+    const [kzRows] = await connect.query(
+      `SELECT SUM(amount_tir) totalTirAmount FROM tir_balance_transaction WHERE deleted = 0 AND created_by_id = 7770 AND agent_id = ? AND transaction_type = 'service' AND status In(2, 3)`,
+      [agentId]
+    );
+
     if (rows.length) {
       appData.status = true;
       appData.data = {
-        totalAmount: +rows[0].totalTirAmount,
+        totalAmount: +rows[0].totalTirAmount + +kzRows[0].totalTirAmount,
       };
     }
     res.status(200).json(appData);
@@ -8625,7 +8642,7 @@ admin.patch('/tirgo-paid-kz-way-comission', async (req, res) => {
 
     const [update] = await connect.query(`UPDATE users_list SET paid_kz_comission = ? WHERE id = ?`, [paid_kz_comission, agent_id]);
     if (update.affectedRows) {
-      appData.status = true;
+      appData.status = true; transations - total - amount
     } else {
       appData.error = "Что то пошло не так";
     }
