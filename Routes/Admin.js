@@ -8532,7 +8532,8 @@ admin.post("/paid-way-transactions", async (req, res) => {
               );
               console.log('dataExists', dataExists)
               const adminId = 7770;
-              if (!dataExists.length) {
+              if (!dataExists.length && paidWayKzDateParser(transaction.createdDate) >= lastUpdateTransactionsDate) {
+                console.log('transactionCreatedDate', paidWayKzDateParser(transaction.createdDate) ,paidWayKzDateParser(transaction.createdDate) >= lastUpdateTransactionsDate)
                 const [vazRes] = await connect.query(
                   `INSERT INTO tir_balance_transaction SET 
                   user_id = ?, 
