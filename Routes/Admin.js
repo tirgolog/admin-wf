@@ -8684,6 +8684,67 @@ admin.get('/tirgo-paid-kz-way-account', async (req, res) => {
   }
 });
 
+admin.get('/migrate', async (req, res) => {
+  let appData = { status: false };
+  let connect;
+  try {
+    console.log('asd')
+    connect = await database.connection.getConnection();
+    // let [data] = await connect.query(`SELECT * FROM users_list where user_type = 5 ORDER BY id asc LIMIT 20, 10`);
+
+    for(let i =0; i < 610; i++) {
+      const size = 10;
+      const page = i
+      const response = await axios.get(`http://localhost:3000/api/v2/users/drivers?pageSize=${size}&pageIndex=${page}`);
+      const data = response.data?.data?.content
+      console.log('step', i)
+
+    const addRes = await Promise.all(data.map(async(item) => {
+        const phoneNumber = item.phoneNumbers[0]?.code + item.phoneNumbers[0]?.number
+        let [myData] = await connect.query(`SELECT ut.* FROM users_list u 
+          INNER JOIN users_transport ut on ut.user_id = u.id AND ut.active = 1
+          where u.user_type = 1 AND u.phone = ?`, [phoneNumber]);
+          
+          if(myData.length) {
+            // const body = {
+            //   brand: myData[0]?.name || 'AAA',
+            //   transportNumber: myData[0]?.transport_number || item.id,
+            //   isAdr: myData[0]?.adr == 1,
+            //   isMain: true
+            // }
+            (await axios.post(`http://localhost:3000/api/v2/users/drivers/${item.id}/transports`, {
+              brand: myData[0]?.name || 'AAA',
+              transportNumber: myData[0]?.transport_number || item.id,
+              isAdr: myData[0]?.adr == 1,
+              isMain: true
+            }))?.data?.success;
+            
+          }
+        }))
+        console.log('addRes', addRes.length, addRes);
+      }
+
+    if (data.length) {
+      appData.status = true;
+      appData.data = data;
+    } else {
+      appData.error = "Что то пошло не так";
+    }
+    res.status(200).json(appData);
+  } catch (err) {
+    console.log(err.message)
+    // console.log(err.response.data)
+    appData.status = false;
+    appData.error = err;
+    res.status(403).json(appData);
+  } finally {
+    if (connect) {
+      connect.release();
+    }
+  }
+});
+
+
 function paidWayKzDateParser(date) {
   return new Date(date.split(' ')[0].split('-').reverse().join('-') + 'T' + date.split(' ')[1])
 }
