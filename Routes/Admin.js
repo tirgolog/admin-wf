@@ -53,7 +53,7 @@ admin.post("/loginAdmin", async (req, res) => {
     password = crypto.createHash("md5").update(password).digest("hex");
     connect = await database.connection.getConnection();
     const [rows] = await connect.query(
-      "SELECT * FROM users_list WHERE username = ? AND password = ? AND (user_type = 3 OR user_type = 4 OR user_type = 5) AND ban <> 1",
+      "SELECT * FROM users_list WHERE username = ? AND password = ? AND user_type = 3 AND ban <> 1",
       [login, password]
     );
     if (rows.length) {
