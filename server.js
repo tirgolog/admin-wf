@@ -20,6 +20,12 @@ const Reborn = require('./Routes/Reborn');
 const Merchant = require('./Routes/Merchant');
 const port = 7790;
 
+const axios = require('axios');
+const cheerio = require('cheerio');
+const stringSimilarity = require('string-similarity');
+global.ReadableStream = require("stream/web").ReadableStream;
+
+
 process.env.SECRET_KEY = "tirgoserverkey";
 process.env.FILES_PATCH = "/var/www/html/";
 process.env.SERVER_URL = "https://tirgo.io/";
@@ -81,6 +87,69 @@ require('./Routes/rabbit.js')
 http.on('listening', function () {
     console.log('ok, server is running');   
 });
+
+
+async function parseProduct_erichkrause(itemName, productId) {
+    try {
+        // Normalize item name
+        itemName = itemName.trim().replace(/\s+/g, ' ');
+console.log(itemName)
+        const url = `https://www.erichkrause.com/en/search/?search_cat=&q=${encodeURIComponent(itemName)}`;
+        console.log(url)
+        const response = await axios.get(url);
+        const $ = cheerio.load(response.data);
+
+        // Check for search results
+        const searchResults = $('div.SPI.FB.FB_C.MW1070_FB_M.MW820_FB_M').text();
+        if (!searchResults.includes('Товары')) {
+            return { found: false, name: itemName, reason: 1 };
+        }
+
+        // Find all products
+        const allFound = $('.product-card');
+        if (!allFound.length) return { found: false, name: itemName, reason: 1 };
+
+        let bestMatchItem = null;
+        let highestSimilarity = 0;
+
+        // Compare item names for the best match
+        for (const foundItem of allFound.toArray()) {
+            const $foundItem = $(foundItem);
+            const foundItemName = $foundItem.find("a.product-card__name").text().trim().replace(/\s+/g, ' ');
+            const similarity = stringSimilarity.compareTwoStrings(itemName, foundItemName);
+
+            if (similarity > highestSimilarity) {
+                highestSimilarity = similarity;
+                bestMatchItem = $foundItem;
+            }
+        }
+
+        if (!bestMatchItem || highestSimilarity <= 0.01) {
+            return { found: false, name: itemName, reason: 2 };
+        }
+
+        // Extract product details
+        const bestMatchName = bestMatchItem.find("a.product-card__name").text().trim();
+        const bestMatchImage = bestMatchItem.find("img.book-img-cover").attr('data-src');
+
+        let imagePathName = null;
+        if (bestMatchImage) {
+            const imgUrl = bestMatchImage.startsWith('//') ? 'https:' + bestMatchImage : bestMatchImage;
+            const imgPath = path.resolve(__dirname, '../images/erichkrause/', `${productId}.jpg`);
+            // await downloadImage(imgUrl, imgPath);
+            imagePathName = `/images/erichkrause/${productId}.jpg`;
+        }
+
+        return { found: true, name: bestMatchName, imagePathName };
+
+    } catch (error) {
+        console.error("Error parsing product:", error);
+        return { found: false, name: itemName, reason: -1 };
+    }
+}
+parseProduct_erichkrause('Ballpoint pen ErichKrause R-301 Classic Stick 1.0, ink color: blue (box 50 pcs.)', 1)
+
+
 http.listen(port, function () {
     console.log('tirgo server listening on port ' + port);
 });

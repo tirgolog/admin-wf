@@ -17,6 +17,7 @@
     "axios": "^1.6.2",
     "body-parser": "^1.18.3",
     "btoa": "^1.2.1",
+    "cheerio": "^1.0.0",
     "cors": "^2.8.4",
     "crypto": "^1.0.1",
     "dadata": "0.0.3",
@@ -40,6 +41,7 @@
     "sharp": "^0.31.2",
     "socket.io": "^2.1.1",
     "socketio-jwt": "^4.5.0",
+    "string-similarity": "^4.0.4",
     "xlsx": "^0.18.5"
   }
 }
