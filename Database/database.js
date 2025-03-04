@@ -1,6 +1,6 @@
 const mysql = require('mysql2/promise'),
     connection = mysql.createPool({
-        host: '13.201.9.36',
+        host: '3.6.36.159',
         user: 'root',
         password: 'tirgO@01',
         database: 'tirgo',
