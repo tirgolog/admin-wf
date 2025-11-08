@@ -5,11 +5,11 @@ const fs = require('fs');
 const path = require('path');
 const http = require('http').createServer(app);
 const io = require('socket.io')(http, {
-        cors: {
-            origin: '*',
-            methods: ['GET', 'POST'],
-        },
-    });
+    cors: {
+        origin: '*',
+        methods: ['GET', 'POST'],
+    },
+});
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const socket = require('./Modules/Socket');
@@ -80,7 +80,7 @@ app.use('/merchant', Merchant);
 require('./Routes/rabbit.js')
 
 http.on('listening', function () {
-    console.log('ok, server is running');   
+    console.log('ok, server is running');
 });
 
 http.listen(port, function () {
